@@ -1,5 +1,5 @@
 
-PRG    = ASTRAL
+PRG    = PASTML
 OBJ    = main.o make_tree_alloc.o lik_poly.o golden.o joint_poly.o marginal_poly.o relax_poly_PP.o samp_poly.o output_poly.o summary.o
 
 CFLAGS = -mcmodel=medium -w

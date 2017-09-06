@@ -86,235 +86,6 @@ double calc_correct(Node* nd, int nb, int nbanno, char **character){
   return 0.0;
 }
 
-void output_state_PP(Node* nd, int nb, int nbanno, char **character, FILE* outfile){
-  int i, j, count=0, node_start, num=0;
-  double sum=0.0;
-  static int tip_counts[MAXCHAR], node_counts=0, num_collapsed_tips=0, root_node_counts;
-
-  if(nd==root){
-    node_counts=0;
-    num_collapsed_tips=0;
-    for(i=0;i<nbanno;i++){
-      tip_counts[i]=0;
-      root_node_counts=0;
-    }
-    fprintf(outfile,"NodeID");
-    for(i=0;i<nbanno;i++){
-      fprintf(outfile, ", %s", character[i]);
-    }
-    fprintf(outfile,", Size, Is_Tip");
-    //for(i=0;i<nbanno;i++){
-      //fprintf(outfile, ", Tips_%s", character[i]);
-    //}
-    fprintf(outfile,"\n");
-  }
-  if(nd->nneigh==1){
-     for(i=0;i<nbanno;i++){
-       if(i==nd->state_flag) tip_counts[i]++;
-     }
-     return;
-  }
-
-  if(nd==root) {
-    node_start=0;
-  } else {
-    node_start=1;
-  }
-
-  for(i=0;i<nbanno;i++){
-    if(nd->local_flag[i]==1) {
-      num++;
-      //nd->marginal[i]=nd->marginal[i]/sum;
-    } else {
-    }
-  }
-  for(i=0;i<nbanno;i++){
-    if(nd->local_flag[i]==1) {
-      nd->marginal[i]=(double)1.0/num;
-    } else {
-    }
-  }
-  
-  for(i=node_start;i<nd->nneigh;i++){
-    output_state_PP(nd->neigh[i],nb,nbanno,character,outfile);
-  }
-
-  if(nd->node_flag==1) {
-    /*if(nd->neigh[0]==root){
-      root_node_counts+=node_counts;
-      //in full output root decendants are not represent, problem
-    } else if (nd == root) {
-      fprintf(outfile,"%s",nd->name);
-      for(i=0;i<nbanno;i++){
-        for(j=0;j<nbanno;j++){
-          if(strcmp(character[i],character[nd->tmp_best[j]])==0){
-            //printf("%s output PP of %s\n",nd->name,character[j]);
-            if(nd->local_flag[j]==1) {
-              fprintf(outfile, ", %.8f",nd->marginal[j]);
-            } else {
-              fprintf(outfile, ", 0.0");
-            }
-          }   
-        }
-      }
-      fprintf(outfile,", %d, F",root_node_counts);
-    } else {*/
-      fprintf(outfile,"%s",nd->name);
-      node_counts++;
-      for(i=0;i<nbanno;i++){
-        for(j=0;j<nbanno;j++){
-          if(strcmp(character[i],character[nd->tmp_best[j]])==0){
-            //printf("%s output PP of %s\n",nd->name,character[j]);
-            if(nd->local_flag[j]==1) {
-              fprintf(outfile, ", %.8f",nd->marginal[j]);
-            } else {
-              fprintf(outfile, ", 0.0");
-            }
-          }   
-        }
-      }
-      fprintf(outfile,", %d, F",node_counts);
-      for(i=0;i<nbanno;i++){
-        if(tip_counts[i]>0){
-          nd->tip_counts[i]=tip_counts[i];
-          num_collapsed_tips++;
-          fprintf(outfile,"\nTip%d",num_collapsed_tips);
-          sprintf(nd->tip_names[i],"Tip%d",num_collapsed_tips);
-          for(j=0;j<nbanno;j++){
-            if(j==i) {
-              fprintf(outfile, ", 1");
-            } else {
-              fprintf(outfile, ", 0");
-            }
-          }
-          fprintf(outfile,", %d, T",tip_counts[i]);
-        }
-      }
-      fprintf(outfile,"\n");
-      node_counts=0;
-      for(i=0;i<nbanno;i++){
-        tip_counts[i]=0;
-      }     
-    //} 
-  } else {
-    node_counts++;
-  }
-  return;
-}
-
-void output_state_IDs(Node* nd, int nb, int nbanno, char **character, FILE* outfile, char* parent_name){
-
-  int i, j, node_start;
-  char* current_parent;
-  //struct __Node* current;
-  if(nd==root){
-    fprintf(outfile,"NodeID, ParentID\n");
-  }
-  if(nd->nneigh==1){
-     return;
-  }
-  if(nd->node_flag==1) {
-    if(nd==root){
-      current_parent=parent_name;
-    } else {
-      /*if(nd->neigh[0]==root){
-        current_parent=parent_name;
-      } else {*/
-
-      fprintf(outfile,"%s, %s\n",nd->name,parent_name);
-      for(i=0;i<nbanno;i++){
-        if(nd->tip_counts[i]>0){
-          fprintf(outfile,"%s, %s\n",nd->tip_names[i],nd->name);
-        }
-      }
-      current_parent=nd->name;
-
-      //}
-    }
-  } else {
-    current_parent=parent_name;
-  }
-
-  if(nd==root) {
-    node_start=0;
-  } else {
-    node_start=1;
-  }
-
-  for(i=node_start;i<nd->nneigh;i++){
-    output_state_IDs(nd->neigh[i],nb,nbanno,character,outfile,current_parent);
-  }
-
-  return;
-}
-
-
-void output_state_anc(Node* nd, int nb, int nbanno, char **character, FILE* outfile){
-  int i, j, count=0, node_start;
-  double sum=0.0;
-
-  if(nd==root){
-    fprintf(outfile,"Internal NodeID");
-    for(i=0;i<nbanno;i++){
-      fprintf(outfile, ", %s", character[i]);
-    }
-    fprintf(outfile,"\n");
-  }
-  if(nd->nneigh==1){
-     return;
-  }
-
-  if(nd==root) {
-    node_start=0;
-  } else {
-    node_start=1;
-  }
-  
-  for(i=node_start;i<nd->nneigh;i++){
-    output_state_anc(nd->neigh[i],nb,nbanno,character,outfile);
-  }
-  if(nd->node_flag==1) {
-    fprintf(outfile,"%s",nd->name);
-    for(i=0;i<nbanno;i++){
-     for(j=0;j<nbanno;j++){
-       if(strcmp(character[i],character[nd->tmp_best[j]])==0){
-        fprintf(outfile, ", %.8f",nd->marginal[j]);
-       }
-     }
-    }
-    fprintf(outfile,"\n");
-  }
-  return;
-}
-
-void output_state_tip(Node* nd, int nb, int nbanno, char **character, FILE* outfile){
-  int i, node_start;
-
-  if(nd->nneigh==1){
-    fprintf(outfile,"%s",nd->name);
-     for(i=0;i<nbanno;i++){
-       if(i==nd->pupko_state){
-         fprintf(outfile, ", 1.0");
-       } else {
-         fprintf(outfile, ", 0.0");
-       }
-     }
-     fprintf(outfile,"\n");
-     return;
-  }
-
-  if(nd==root) {
-    node_start=0;
-  } else {
-    node_start=1;
-  }
-  
-  for(i=node_start;i<nd->nneigh;i++){
-    output_state_tip(nd->neigh[i],nb,nbanno,character,outfile);
-  }
-
-  return;
-}
 
 int sampling(Node* nd, int nb, int nbanno, int ancstate, int tmpnode, int tmpstate, int rep, char** tipnames, int* states, char str[100], char **character) {
   int i,j,ii, tmpfactor=0, count, num_anno, node_start;
@@ -599,7 +370,7 @@ int relaxing(Node* nd, int nb, int nbanno, int rep, char** tipnames, int* states
   if(nd==root){
     if(tmpstate!=-1){
       tmpfactor=sampling(root, nb, nbanno, -1, tmpnode, tmpstate, rep, tipnames, states, str, character);
-      //printf("\nStep %d, Relax at %s, ", rep+1, str);
+      printf("\nStep %d, Relax at %s, ", rep+1, str);
     } else {
       tmpfactor=-10;
     }
@@ -648,8 +419,9 @@ void make_samples (char** tipnames, int* states, int num_tips, int num_anno, cha
 
     sprintf(fname,"Result_states_probs.FULL.%d.taxa.%d.states.txt",num_tips,num_anno);
     fp=fopen(fname, "w");
-    output_state_PP(root,num_tips,num_anno,character,fp);
-    //output_state_tip(root,num_tips,num_anno,character,fp);
+    //output_state_PP(root,num_tips,num_anno,character,fp);
+    output_state_anc_PP(root,num_tips,num_anno,character,fp);
+    output_state_tip_PP(root,num_tips,num_anno,character,fp);
     fclose(fp);
     printf("Predictions for all internal Nodes and the Root are written in Result_states_probs.FULL.%d.taxa.%d.states.txt as a table format\n",num_tips,num_anno);
 
@@ -671,10 +443,13 @@ void make_samples (char** tipnames, int* states, int num_tips, int num_anno, cha
     output_state_IDs(root,num_tips,num_anno,character,fp,root->name);
     fclose(fp);
     printf("Relationships between collapsed nodes are written in Result_IDs.COLLAPSED.%d.taxa.%d.states.txt as a table format\n",num_tips,num_anno);
+    return;
   }
 
   for(i=0;i<((num_tips - 1)*(num_anno - 1));i++){
+    printf("Likelihood fraction methods\n");
     tmpfactor=relaxing(root, num_tips, num_anno, i, tipnames, states, character);
+    printf("Relaxing\n");
     reset_nd(root,num_tips,num_anno);
     calc_lik(root, tipnames, states, num_tips, num_anno, mu, scale, model, frequency, &maxlnl);
     down_like_marginal(root, num_tips, num_anno, mu, scale, frequency);

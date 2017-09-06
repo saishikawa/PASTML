@@ -3,5 +3,5 @@ PASTML options
 -t: name of tree file
 -m: name of Model, "JC" or "F81_E"
 -x: border of likelihood fraction (integer), -x 0 means you apply the new method
--s: on/off of tree scaling (boolean)
+-s: on/off of tree scaling (boolean, 'F' or 'T')
 -I: keep or rename of Node IDs (boolean)

@@ -315,10 +315,11 @@ int main(int argc, char** argv){
   printf("\n*** Calculating Posterior Probabilities...\n");
   down_like_marginal(root, num_tips, num_anno, mu, scale, frequency);
 
-  printf("\n*** Iterative algorithm to obtain intermediate solutions...\n\n");
+  printf("\n*** Predicting the best ancestral states...\n\n");
   make_samples(tips,states,num_tips,num_anno,character,mu,scale,frequency,model,border_frac);
 
   //free all
+  printf("Freeing step...\n");
   free(annotations);
   free(tips);
   free(character);

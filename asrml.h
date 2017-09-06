@@ -11,7 +11,7 @@
 #define MAXLLINE 10000
 #define MAXNSP 50000
 #define MAXPOLY 100
-#define MAXCHAR 50
+#define MAXCHAR 100
 #define	MIN_BRLEN	1e-8
 #define MAX_TREELENGTH	10000000 /* more or less 10MB for a tree file in NH format */
 #define MAX_NODE_DEPTH	100000 /* max depth for nodes in the tree */

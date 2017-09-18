@@ -37,6 +37,7 @@ void write_subtree_to_stream(Node* node, Node* node_from, FILE* stream, double s
 void write_nh_tree(Tree* tree, FILE* stream, double scale) {
 	/* writing the tree from the current position in the stream */
 	if (!tree) return;
+        scale=1.0;
 	Node* node = tree->node0; /* root or pseudoroot node */
 	int i, n = node->nneigh;
 	putc('(', stream);

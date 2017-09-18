@@ -67,5 +67,5 @@ double golden(char** tipnames, int* states, int nb, int nbanno, double mu, doubl
   //if(fabs(diff) > SIGMA)printf("###warning lnL not converged!!###\n");
   //printf("x1=%lf,fx1=%.12f,x2=%lf,fx2=%.12f\n",x1,fx1,x2,fx2);
   *scale=(x1+x2)/2.0;
-  return;
+  return (fx1+fx2)/2.0;
 }

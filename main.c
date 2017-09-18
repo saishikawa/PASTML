@@ -133,6 +133,7 @@ int main(int argc, char** argv){
   int tmpstate[4];
   double tmpfreq;
   char tmpchar[5];
+  double gold_scale, gold_lik, best_gold_lik;;
 
   opterr = 0;
   while ((opt = getopt(argc, argv, "a:t:x:m:f:s:I:")) != -1) {
@@ -297,8 +298,28 @@ int main(int argc, char** argv){
   printf("\n*** Initial likelihood of the tree ***\n\n %lf\n",lnl);
   //Optimise likelihood and tree scale with the golden section search
   scale=1.0;
-  golden(tips, states, num_tips, num_anno, mu, upbound, model, frequency, &scale);
+  printf("Multiple test of Golden Section Searching\n");
+  upbound=10.0;
+  gold_lik=golden(tips, states, num_tips, num_anno, mu, upbound, model, frequency, &scale);
+  best_gold_lik=gold_lik;
+  gold_scale=scale;
+  printf("first trial: scaling factor = %lf, likelihood = %lf\n",scale,gold_lik);
+  upbound=1.0;
+  gold_lik=golden(tips, states, num_tips, num_anno, mu, upbound, model, frequency, &scale);
+  if(best_gold_lik<gold_lik) {
+    best_gold_lik=gold_lik;
+    gold_scale=scale;
+  }
+  printf("second trial: scaling factor = %lf, likelihood = %lf\n",scale,gold_lik);
+  upbound=0.1;
+  gold_lik=golden(tips, states, num_tips, num_anno, mu, upbound, model, frequency, &scale);
+  if(best_gold_lik<gold_lik) {
+    best_gold_lik=gold_lik;
+    gold_scale=scale;
+  }
+  printf("third trial: scaling factor = %lf, likelihood = %lf\n",scale,gold_lik);
 
+  scale=gold_scale;
   if(strcmp(scaling,"F")==0){
     scale=1.0;
   }

@@ -5,6 +5,7 @@
 
   Tree *s_tree;
   Node *root;
+  int have_miss=-1;
 
 void *check_alloc(int nbrelt, int sizelt){
   void *retval;
@@ -120,23 +121,34 @@ void free_tree(Tree* tree, int num_anno) {
 
 int main(int argc, char** argv){
   /*input (-a annotation -t tree -c characters -n tips -x fraction -m model -f frequency)*/
-  int i,ii,j,ret,line=0,check,check2,sum_freq=0, retcode;
+  int i,ii,j,ret,line=0,check,check2,sum_freq=0, retcode, argnum, count_miss;
   int *states, *count, *factors, *locked;
   double sum=0.,mu=0.,lnl=0.,scale,maxlnl=0.,sum_marginal,factor,nano,sec,upbound=10.0,border_frac;
   double *frequency,*root_prob;  
-  char **annotations, **character, **tips, **tipnames, filefreq[100], filescale[100], *c_tree, str[] = "int", str2[]="ROOT";
+  char **annotations, **character, **tips, **tipnames, filefreq[100], filescale[100], fname[100], *c_tree, str[] = "int", str2[]="ROOT";
   int num_anno=0,num_tips=0;
   char *annotation_name, *tree_name, *model, *scaling, *keep_ID;
-  FILE *treefile,*annotationfile,*ffreq,*fscale;
+  char def_model[10],def_scaling[10],def_keep_ID[10];
+  FILE *treefile,*annotationfile,*ffreq,*fscale, *fp;
   struct timespec samp_ini, samp_fin;
   int opt, check_freq=0;
   int tmpstate[4];
   double tmpfreq;
   char tmpchar[5];
-  double gold_scale, gold_lik, best_gold_lik;;
+  double gold_scale, gold_lik, best_gold_lik;
+  char anno_line[MAXLNAME];
+  char anno_data[MAXNSP];
+  int num_data;
 
   opterr = 0;
-  while ((opt = getopt(argc, argv, "a:t:x:m:f:s:I:")) != -1) {
+  sprintf(def_model,"JC");
+  sprintf(def_scaling,"F");
+  sprintf(def_keep_ID,"F");
+  border_frac=20.0;
+  model=def_model;
+  scaling=def_scaling;
+  keep_ID=def_keep_ID;
+  while ((opt = getopt(argc, argv, "a:t:x:m:s:f:I:")) != -1) {
 
         switch (opt) {
             case 'a':
@@ -170,21 +182,19 @@ int main(int argc, char** argv){
                 break;
 
             case 'f':
-                if(num_anno==0){
-                  printf("Error: define -c option in advance of -f\n");
-                  exit(0);
-                }
-                frequency=check_alloc(num_anno,sizeof(double));
+                argnum = atoi(argv[optind-1]);
+                //printf("NUMofCHARACTER = %d\n",argnum);
+                frequency=check_alloc(argnum,sizeof(double));
                 //printf("optind = %s\n", argv[optind-1]);
-                for(i=0;i<num_anno;i++){
-                  frequency[i]=atof(argv[optind-1+i]);
+                for(i=1;i<=argnum;i++){
+                  frequency[i-1]=atof(argv[optind-1+i]);
                   //printf("freq %d = %lf\n", i, frequency[i]);
                 }
                 check_freq=1;
                 break;
-
+           
             default: /* '?' */
-                printf("Unexpected options...\nUsage: %s [-a name_of_annotationfile] [-t name_of_treefile] [-c number_of_states(integer)] [-n number_of_tips(integer)] [-x denominator_of_fraction(integer)] [-m name_of_model] [-f frequencies(double_array)]\n", argv[0]);
+                printf("Unexpected options...\nUsage: %s [-a name_of_annotationfile] [-t name_of_treefile] [-x denominator_of_fraction(integer)] [-m name_of_model(JC or F81_E or F81_U)] [-s do you need scaling(boolen)] [-I do you keep original Node IDs(boolen)] [-f user defined frequencies(NUMofCHARACTERS 0.1 0.1 0.1 ...)]\n", argv[0]);
                 break;
         }
   }
@@ -209,7 +219,7 @@ int main(int argc, char** argv){
   } else {
     border_frac=1.0/border_frac;
   }
-  //clock_gettime(CLOCK_PROCESS_CPUTIME_ID,&samp_ini);
+  clock_gettime(CLOCK_PROCESS_CPUTIME_ID,&samp_ini);
   srand((unsigned) time(NULL));
   /*Read annotation from file*/
   annotationfile=fopen(annotation_name, "r");
@@ -217,40 +227,55 @@ int main(int argc, char** argv){
       printf("Cannot find annotation file : %s\n", annotation_name);
       exit(0);
   }
-  num_anno=0;
-  while( ( ret = fscanf( annotationfile, "%[^,],%s\n", tips[line], annotations[line]) ) != EOF ){
-    check=0;
-    for(i=0;i<=line;i++){
-      if(strcmp(annotations[line],annotations[i])==0){
-        states[line]=states[i];
-         strcpy(character[states[line]],annotations[line]);
-         break;
-      } else {
-         check2=1;
-         for(j=0;j<i;j++){
-           if(strcmp(annotations[i],annotations[j])==0) check2=0;
-         }
-         if(check2==1)check++;
-         states[line]=check;
-         if(check > num_anno) num_anno=check;
-         //strcpy(character[states[line]],annotations[line]);
+  num_anno=-1;
+  count_miss=0;
+  line=0;
+  states[0]=0;
+  while(fgets(anno_line, MAXLNAME, annotationfile)){
+    sscanf(anno_line, "%[^\n,],%[^\n,]",tips[line],annotations[line]);
+    if(strcmp(annotations[line],"")==0) sprintf(annotations[line],"?");
+    if(strcmp(annotations[line],"?")==0){
+      count_miss++;
+      states[line]=-1;
+    } else {
+      check=0;
+      for(i=0;i<line;i++){
+        if(strcmp(annotations[i],"?")==0){
+        } else {
+          if(strcmp(annotations[line],annotations[i])==0){
+            states[line]=states[i];
+            strcpy(character[states[line]],annotations[line]);
+            check=1;
+            break;
+          } 
+        }
+      }
+      if(check==0){
+        num_anno++;
+        states[line]=num_anno;
+        strcpy(character[num_anno],annotations[line]);
       }
     }
-    count[states[line]]++;
-    //printf("%s, annotation %s = %d\n", tips[line], annotations[line], states[line]);
+    //printf("data %d, %s, %s, %d\n",line+1,tips[line],annotations[line],states[line]);
     line++;
-    if(line==num_tips){
-      //printf("Finish to read the annotation file...\n");
-      break;
-    }
   }
   fclose(annotationfile);
   //printf("number of character is %d\n",num_anno+1);
   num_anno++;
 
+  for(i=0;i<line;i++){
+    if(states[i]==-1){
+      states[i]=num_anno;
+      sprintf(character[num_anno],"?");
+    }
+    count[states[i]]++;
+  }
+  have_miss=num_anno;
+
   for(i=0;i<num_anno;i++){
     sum_freq=sum_freq+count[i];
   }
+  sum_freq=sum_freq+count_miss;
   printf("\n*** Frequency of each character in the MODEL %s ***\n\n",model);
   for(i=0;i<num_anno;i++){
     if(strcmp(model,"JC")==0){
@@ -260,6 +285,7 @@ int main(int argc, char** argv){
     }
     printf("%s = %lf\n", character[i], frequency[i]);
   }
+  printf("Frequency of Missing data %s = %lf\n",character[num_anno], (double)count_miss/(double)sum_freq);
 
   /*Read tree from file*/
 
@@ -294,38 +320,75 @@ int main(int argc, char** argv){
     sum+=frequency[i]*frequency[i];
   }
   mu=1/(1-sum);
+  s_tree->scale_A=MIN_BRLEN;
+  s_tree->scale_B=1.0;
   calc_lik(root, tips, states, num_tips, num_anno, mu, 1.0, model, frequency, &lnl);
   printf("\n*** Initial likelihood of the tree ***\n\n %lf\n",lnl);
-  //Optimise likelihood and tree scale with the golden section search
   scale=1.0;
-  printf("Multiple test of Golden Section Searching\n");
-  upbound=10.0;
-  gold_lik=golden(tips, states, num_tips, num_anno, mu, upbound, model, frequency, &scale);
-  best_gold_lik=gold_lik;
-  gold_scale=scale;
-  printf("first trial: scaling factor = %lf, likelihood = %lf\n",scale,gold_lik);
-  upbound=1.0;
-  gold_lik=golden(tips, states, num_tips, num_anno, mu, upbound, model, frequency, &scale);
-  if(best_gold_lik<gold_lik) {
-    best_gold_lik=gold_lik;
-    gold_scale=scale;
-  }
-  printf("second trial: scaling factor = %lf, likelihood = %lf\n",scale,gold_lik);
-  upbound=0.1;
-  gold_lik=golden(tips, states, num_tips, num_anno, mu, upbound, model, frequency, &scale);
-  if(best_gold_lik<gold_lik) {
-    best_gold_lik=gold_lik;
-    gold_scale=scale;
-  }
-  printf("third trial: scaling factor = %lf, likelihood = %lf\n",scale,gold_lik);
 
-  scale=gold_scale;
+  if(strcmp(scaling,"T")==0){
+    //Optimise likelihood and tree scale with the golden section search
+    printf("\n*** Multiple test of Golden Section Searching ***\n");
+    sprintf(fname,"scaling_A.txt");
+    fp=fopen(fname, "w");
+  
+    for(s_tree->scale_A=MIN_BRLEN;s_tree->scale_A<1.0;s_tree->scale_A=s_tree->scale_A*10.0){
+      calc_lik(root, tips, states, num_tips, num_anno, mu, 1.0, model, frequency, &gold_lik);
+      if(s_tree->scale_A==MIN_BRLEN) {
+        best_gold_lik=gold_lik;
+        gold_scale=s_tree->scale_A;
+      } else {
+        if(best_gold_lik<gold_lik) {
+          best_gold_lik=gold_lik;
+          gold_scale=s_tree->scale_A;
+        }
+      }
+      fprintf(fp,"scale_A = %.5e, likelihood = %lf\n",s_tree->scale_A,gold_lik);
+    }
+    s_tree->scale_A=gold_scale;
+    fclose(fp);
+
+    sprintf(fname,"scaling_B.txt");
+    fp=fopen(fname, "w");
+    gold_scale=1.0;
+    for(s_tree->scale_B=0.01;s_tree->scale_B<0.1;s_tree->scale_B=s_tree->scale_B+0.01){
+      calc_lik(root, tips, states, num_tips, num_anno, mu, 1.0, model, frequency, &gold_lik);
+      if(best_gold_lik<gold_lik) {
+        best_gold_lik=gold_lik;
+        gold_scale=s_tree->scale_B;
+      }
+      fprintf(fp,"scale_B = %lf, likelihood = %lf\n",s_tree->scale_B,gold_lik);
+    }
+    for(s_tree->scale_B=0.1;s_tree->scale_B<1.0;s_tree->scale_B=s_tree->scale_B+0.1){
+      calc_lik(root, tips, states, num_tips, num_anno, mu, 1.0, model, frequency, &gold_lik);
+      if(best_gold_lik<gold_lik) {
+        best_gold_lik=gold_lik;
+        gold_scale=s_tree->scale_B;
+      }
+      fprintf(fp,"scale_B = %lf, likelihood = %lf\n",s_tree->scale_B,gold_lik);
+    }
+    for(s_tree->scale_B=1.0;s_tree->scale_B<=10.0;s_tree->scale_B=s_tree->scale_B+1.0){
+      calc_lik(root, tips, states, num_tips, num_anno, mu, 1.0, model, frequency, &gold_lik);
+      if(best_gold_lik<gold_lik) {
+        best_gold_lik=gold_lik;
+        gold_scale=s_tree->scale_B;
+      }
+      fprintf(fp,"scale_B = %lf, likelihood = %lf\n",s_tree->scale_B,gold_lik);
+    }
+    s_tree->scale_B=gold_scale;
+    gold_lik=0.0;
+    golden(tips, states, num_tips, num_anno, mu, 1.0, model, frequency, &scale);
+    fprintf(fp,"golden scale_B = %lf, likelihood = %lf\n",scale,(s_tree->gold_1+s_tree->gold_2)/2.0);
+    s_tree->scale_B=scale;
+    fclose(fp);
+  }
   if(strcmp(scaling,"F")==0){
-    scale=1.0;
+    s_tree->scale_A=MIN_BRLEN;
+    s_tree->scale_B=1.0;
   }
 
   calc_lik(root, tips, states, num_tips, num_anno, mu, scale, model, frequency, &maxlnl);
-  printf("\n*** Optimised tree scaling factor ***\n\n %lf\n\n*** Optimised likelihood ***\n\n %.10f\n",scale,maxlnl);
+  printf("\n*** Optimised tree scaling factor A,B***\n\n %.5e %lf\n\n*** Optimised likelihood ***\n\n %.10f\n",s_tree->scale_A,s_tree->scale_B,maxlnl);
 
   //Joint reconstruction with Pupko's method
   printf("\n*** Calculating Joint Solution...\n");
@@ -344,13 +407,17 @@ int main(int argc, char** argv){
   free(annotations);
   free(tips);
   free(character);
-  free(states); free(count); free(factors); free(frequency), free(locked);
+  //free(frequency);
+  free(states); 
+  //free(count); 
+  free(factors); 
+  free(locked);
   free_tree(s_tree, num_anno);
   
-  //clock_gettime(CLOCK_PROCESS_CPUTIME_ID,&samp_fin);
-  //sec=(double)(samp_fin.tv_sec - samp_ini.tv_sec);
-  //nano=(double)(samp_fin.tv_nsec - samp_ini.tv_nsec)/1000.0/1000.0/1000.0;
+  clock_gettime(CLOCK_PROCESS_CPUTIME_ID,&samp_fin);
+  sec=(double)(samp_fin.tv_sec - samp_ini.tv_sec);
+  nano=(double)(samp_fin.tv_nsec - samp_ini.tv_nsec)/1000.0/1000.0/1000.0;
 
-  //printf("\n*** Total execution time ***\n\n %3.10lf seconds\n\n", (sec+nano));
+  printf("\nTotal execution time = %3.10lf seconds\n\n", (sec+nano));
   exit(0);
 }

@@ -1,6 +1,7 @@
 #include "asrml.h"
 
 int ntax;
+double BL_sum=0., BL_avg=0.;
 
 int index_toplevel_colon(char* in_str, int begin, int end) {
 	/* returns the index of the (first) toplevel colon only, -1 if not found */
@@ -117,11 +118,12 @@ void process_name_and_brlen(Node* son_node, Edge* edge, Tree* current_tree, char
 	/* processing the optional BRANCH LENGTH... */
 	if (colon == -1) {
 		edge->had_zero_length = TRUE;
-		edge->brlen = MIN_BRLEN;
+		//edge->brlen = MIN_BRLEN;
 	} else {
 		parse_double(in_str,colon+1,end,&brlen);
 		edge->had_zero_length = (brlen == 0.0);
-		edge->brlen = (brlen < MIN_BRLEN ? MIN_BRLEN : brlen);
+                edge->brlen=brlen;
+		//edge->brlen = (brlen < MIN_BRLEN ? MIN_BRLEN : brlen);
 	}
 
 			
@@ -452,7 +454,7 @@ Tree* parse_nh_string(char* in_str, int nbanno, char* keep_ID) {
           }
         }
         for(i=0; i<t->nb_nodes; i++){
-          //printf("%s, ",t->a_nodes[i]->name);
+          //printf("%s,",t->a_nodes[i]->name);
           if(t->a_nodes[i]->nneigh > MAXPOLY) {
             fprintf(stderr,"Fatal error: too many polytomy more than %d at the node %s.\n", MAXPOLY, t->a_nodes[i]->name);
 	    Generic_Exit(__FILE__,__LINE__,__FUNCTION__,EXIT_FAILURE);
@@ -460,16 +462,17 @@ Tree* parse_nh_string(char* in_str, int nbanno, char* keep_ID) {
           for(j=0; j<t->a_nodes[i]->nneigh; j++){
             if(j==0){
               if(i==0) {
-                //printf("Son%d = %s:%lf, ", j+1, t->a_nodes[i]->neigh[j]->name,t->a_nodes[i]->br[j]->brlen);
               } else {
-                //printf("Father = %s:%lf, ", t->a_nodes[i]->neigh[j]->name,t->a_nodes[i]->br[j]->brlen);
+                BL_sum+=t->a_nodes[i]->br[j]->brlen;
+                //printf("%lf",BL_sum);
               }
             } else {
-              //printf("Son%d = %s:%lf, ", j, t->a_nodes[i]->neigh[j]->name,t->a_nodes[i]->br[j]->brlen);
             }
           }
           //printf("\n");
         }
+        BL_avg=(double)BL_sum/(double)t->nb_edges;
+        t->avgbl=BL_avg;
 
 	printf("\n*** BASIC STATISTICS ***\n\n", in_str);
 	printf("Number of taxa in the tree read: %d\n", t->nb_taxa);
@@ -479,6 +482,7 @@ Tree* parse_nh_string(char* in_str, int nbanno, char* keep_ID) {
         }
 	printf("Number of nodes in the tree read: %d\n", t->nb_nodes-t->nb_taxa);
 	printf("Number of edges in the tree read: %d\n", t->nb_edges);
+	printf("Average of branch lengths in the tree: %lf\n", t->avgbl);
 	printf("Number of leaves according to the tree structure: %d\n", count_leaves(t));
 	printf("Number of roots in the whole tree (must be 1): %d\n", count_roots(t));
 	printf("Number of edges with zero length: %d\n", count_zero_length_branches(t));

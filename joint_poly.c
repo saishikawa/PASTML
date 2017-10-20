@@ -2,6 +2,7 @@
 
 extern Tree* s_tree;
 extern Node* root;
+extern have_miss;
 
 void pick_scenario(Node* nd, int nb, int anc){
   static int count=0;
@@ -62,8 +63,16 @@ void joint(Node* nd, char** tipnames, int* states, int nb, int nbanno, double* f
      /*tip probability*/
      for(i=0;i<nb;i++){
        if(strcmp(nd->name, tipnames[i])==0){
-         prob_i[states[i]]=1.0;
+         if(states[i]==have_miss){
+           //printf("have a missing data at tips, give equal probabilities\n");
+           for(j=0;j<nbanno;j++){
+             prob_i[j]=(double)1.0/(double)nbanno;
+           }
+         } else {
+           prob_i[states[i]]=1.0;
+         }
          for(j=0;j<nbanno;j++) nd->best_char[j]=states[i];
+         break;
        }
      }
      for(i=0;i<nbanno;i++){

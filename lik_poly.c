@@ -1,5 +1,5 @@
 #include "asrml.h"
-
+ extern int have_miss;
 extern Tree *s_tree;
 extern Node *root;
 
@@ -21,13 +21,29 @@ void calc_lik(Node *nd, char** tipnames, int* states, int nb, int nbanno, double
   if(nd->nneigh==1){ /*tips*/
      //printf("Calculating at %s:%lf\n",nd->name,nd->br[0]->brlen);
      bl=nd->br[0]->brlen;
-     mul=-1.*mu*bl*scale;
+     if(bl==0.0){
+       //printf("zero branches\n");
+       bl = (nd->br[0]->brlen+s_tree->scale_A) * (s_tree->avgbl / (s_tree->avgbl + s_tree->scale_A));
+     } else {
+       bl=nd->br[0]->brlen*s_tree->scale_B;
+     }
+     mul=-1.*mu*bl;
      expmul=exp(mul);
      /*tip probability*/
      for(i=0;i<nb;i++){
        if(strcmp(nd->name, tipnames[i])==0){
-         nd->condlike[states[i]]=1.0;
-         nd->up_like[states[i]]=1.0;
+         if(states[i]==have_miss){
+           //printf("have a missing data at tips, give equal probabilities\n");
+           for(j=0;j<nbanno;j++){
+             nd->condlike[j]=(double)1.0/(double)nbanno;
+             nd->up_like[j]=(double)1.0/(double)nbanno;
+           }
+           //printf("probability = %lf\n",nd->condlike[0]);
+         } else {
+           nd->condlike[states[i]]=1.0;
+           nd->up_like[states[i]]=1.0;
+         }
+         break;
        }
      }
      /*Pij*/
@@ -45,7 +61,12 @@ void calc_lik(Node *nd, char** tipnames, int* states, int nb, int nbanno, double
        freqTC = frequency[0]+frequency[1];
        freqAG = frequency[2]+frequency[3];
        beta=0.5 * 1 / (freqAG*freqTC + ts*(frequency[0]*frequency[1]+frequency[2]*frequency[3]));
-       bl=bl*scale;
+       bl=nd->br[0]->brlen;
+       if(bl==0.0){
+         bl = (nd->br[0]->brlen+s_tree->scale_A) * (s_tree->avgbl / (s_tree->avgbl + s_tree->scale_A));
+       } else {
+         bl=nd->br[0]->brlen*s_tree->scale_B;
+       }
        for(i=0;i<nbanno;i++){
         for(j=0;j<nbanno;j++){
         //T->T
@@ -226,11 +247,17 @@ void calc_lik(Node *nd, char** tipnames, int* states, int nb, int nbanno, double
     return;
   } else {
     //printf("Calculating at %s:%lf\n",nd->name,nd->br[0]->brlen);
-    bl=nd->br[0]->brlen;
-    mul=-1.*mu*bl*scale;
-    expmul=exp(mul);
+     bl=nd->br[0]->brlen;
+     if(bl==0.0){
+       //printf("zero branches\n");
+       bl = (nd->br[0]->brlen+s_tree->scale_A) * (s_tree->avgbl / (s_tree->avgbl + s_tree->scale_A));
+     } else {
+       bl=nd->br[0]->brlen*s_tree->scale_B;
+     }
+     mul=-1.*mu*bl;
+     expmul=exp(mul);
      /*Pij*/
-    for(i=0;i<nbanno;i++){
+     for(i=0;i<nbanno;i++){
        for(j=0;j<nbanno;j++){
          if(i==j){
            nd->pij[i][j]=expmul + (( 1.0 - expmul ) * frequency[i] );
@@ -238,14 +265,19 @@ void calc_lik(Node *nd, char** tipnames, int* states, int nb, int nbanno, double
            nd->pij[i][j]=frequency[j] * (1.0 - expmul );
          }
        }
-    }
+     }
 
      //for HKY     
      if(strcmp(model,"HKY")==0){
          freqTC = frequency[0]+frequency[1];
          freqAG = frequency[2]+frequency[3];
          beta=0.5 * 1 / (freqAG*freqTC + ts*(frequency[0]*frequency[1]+frequency[2]*frequency[3]));
-         bl=bl*scale;
+         bl=nd->br[0]->brlen;
+         if(bl==0.0){
+           bl = (nd->br[0]->brlen+s_tree->scale_A) * (s_tree->avgbl / (s_tree->avgbl + s_tree->scale_A));
+         } else {
+           bl=nd->br[0]->brlen*s_tree->scale_B;
+         }
          for(i=0;i<nbanno;i++){
           for(j=0;j<nbanno;j++){
           //T->T

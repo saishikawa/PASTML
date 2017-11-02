@@ -12,7 +12,7 @@
 #define MAXNSP 50000
 #define MAXPOLY 100
 #define MAXCHAR 500
-#define	MIN_BRLEN	1e-100
+#define	MIN_BRLEN	1e-4
 #define MAX_TREELENGTH	10000000 /* more or less 10MB for a tree file in NH format */
 #define MAX_NODE_DEPTH	100000 /* max depth for nodes in the tree */
 #define MAX_NAMELENGTH		255	/* max length of a taxon name */
@@ -128,5 +128,6 @@ typedef struct __Tree {
         double scale_B;
         double gold_1;
         double gold_2;
+        double min_bl;
 } Tree;
 

@@ -1,6 +1,6 @@
 
 PRG    = PASTML
-OBJ    = main.o make_tree_alloc.o lik_poly.o golden.o joint_poly.o marginal_poly.o relax_poly_PP.o samp_poly.o output_poly.o summary.o output_states.o
+OBJ    = main.o make_tree.o lik_bfgs.o marginal_lik.o marginal_approxi.o output_tree.o output_states.o bfgs.o nrutil.o
 
 CFLAGS = -mcmodel=medium -w
 LFLAGS = -lm
@@ -17,13 +17,11 @@ clean:
 	rm -rf $(PRG) $(OBJ)
 
 main.o : main.c asrml.h
-make_tree_alloc.o : make_tree_alloc.c asrml.h
-lik_poly.o : lik_poly.c asrml.h
-golden.o : golden.c asrml.h
-joint_poly.o: joint_poly.c asrml.h
-marginal_poly.o : marginal_poly.c asrml.h
-relax_poly_PP.o : relax_poly_PP.c asrml.h
-samp_poly.o : samp_poly.c asrml.h
-output_poly.o : output_poly.c asrml.h
-summary.o : summary.c asrml.h
+make_tree.o : make_tree.c asrml.h
+lik_bfgs.o : lik_bfgs.c asrml.h
+marginal_lik.o : marginal_lik.c asrml.h
+marginal_approxi.o : marginal_approxi.c asrml.h
+output_tree.o : output_tree.c asrml.h
 output_states.o : output_states.c asrml.h
+bfgs.o : bfgs.c asrml.h nrutil.h
+nrutil.o : nrutil.c asrml.h nrutil.h

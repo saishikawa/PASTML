@@ -67,13 +67,9 @@ void free_node(Node* node, int count, int num_anno) {
         int j;
 
 	if (node == NULL) return;
-	//printf("free name %d\n", count);
 	if (node->name&&count!=0) free(node->name);
-	//printf("free comment %d\n", count);
-	if (node->comment) free(node->comment);
-	//printf("free neigh %d\n", count);	
+	if (node->comment) free(node->comment);	
 	free(node->neigh);
-	//printf("free br %d\n", count);
 	free(node->br);
 
         for(j=0;j<num_anno;j++) free(node->pij[j]);
@@ -100,15 +96,12 @@ void free_node(Node* node, int count, int num_anno) {
 }
 
 void free_tree(Tree* tree, int num_anno) {
-	if (tree == NULL) return;
 	int i;
-        //printf("free 1\n");
+
+	if (tree == NULL) return;
 	for (i=0; i < tree->nb_nodes; i++) free_node(tree->a_nodes[i],i,num_anno);
-        //printf("free 2\n");
 	for (i=0; i < tree->nb_edges; i++) free_edge(tree->a_edges[i]);
-        //printf("free 3\n");
 	for (i=0; i < tree->nb_taxa; i++) free(tree->taxa_names[i]);
-        //printf("free 4\n");
 
 	free(tree->taxa_names);
 	free(tree->a_nodes);
@@ -120,11 +113,10 @@ void free_tree(Tree* tree, int num_anno) {
 //MAIN
 
 int main(int argc, char** argv){
-  /*input (-a annotation -t tree -c characters -n tips -x fraction -m model -f frequency)*/
   int i,ii,j,ret,line=0,check,check2,sum_freq=0, retcode, argnum, count_miss;
-  int *states, *count, *factors, *locked;
-  double sum=0.,mu=0.,lnl=0.,scale,maxlnl=0.,sum_marginal,factor,nano,sec,upbound=10.0,border_frac;
-  double *frequency,*root_prob;  
+  int *states, *count, *factors;
+  double sum=0.,mu=0.,lnl=0.,scale,maxlnl=0.,sum_marginal,factor,nano,sec,upbound=10.0;
+  double *frequency,*root_prob,*parameter;  
   char **annotations, **character, **tips, **tipnames, filefreq[100], filescale[100], fname[100], *c_tree, str[] = "int", str2[]="ROOT";
   int num_anno=0,num_tips=0;
   char *annotation_name, *tree_name, *model, *scaling, *keep_ID;
@@ -137,48 +129,37 @@ int main(int argc, char** argv){
   char tmpchar[5];
   double gold_scale, gold_lik, best_gold_lik;
   char anno_line[MAXLNAME];
-  char anno_data[MAXNSP];
-  int num_data;
+  int *iteration, ite;
+  double *optlnl;
 
   opterr = 0;
   sprintf(def_model,"JC");
-  sprintf(def_scaling,"F");
+  sprintf(def_scaling,"T");
   sprintf(def_keep_ID,"F");
-  border_frac=20.0;
   model=def_model;
   scaling=def_scaling;
   keep_ID=def_keep_ID;
-  while ((opt = getopt(argc, argv, "a:t:x:m:s:f:I:")) != -1) {
+  while ((opt = getopt(argc, argv, "a:t:m:s:f:I:")) != -1) {
 
         switch (opt) {
             case 'a':
                 annotation_name=optarg;
-                //printf("-a %s\n",annotation_name);
                 break;
 
             case 't':
                 tree_name=optarg;
-                //printf("-t %s\n",tree_name);
-                break;
-
-            case 'x':
-                border_frac=atof(optarg);
-                //printf("-x %lf\n",border_frac);
                 break;
 
             case 'm':
                 model=optarg;
-                //printf("-m %s\n",model);
                 break;
 
             case 's':
                 scaling=optarg;
-                //printf("-m %s\n",model);
                 break;
 
             case 'I':
                 keep_ID=optarg;
-                //printf("-m %s\n",model);
                 break;
 
             case 'f':
@@ -198,14 +179,14 @@ int main(int argc, char** argv){
                 break;
         }
   }
-  printf("\n*** Information of primary annotations ***\n\n");
+  //printf("\n*** Information of primary annotations ***\n\n");
   if(check_freq==0) frequency=calloc(MAXCHAR,sizeof(double));
+  parameter=calloc(MAXCHAR+2,sizeof(double));
   states=calloc(MAXNSP,sizeof(int));
   count=calloc(MAXCHAR,sizeof(int));
   factors=calloc(MAXNSP,sizeof(int));
   annotations=calloc(MAXNSP,sizeof(char*));
   tips=calloc(MAXNSP,sizeof(char*));
-  locked=calloc(MAXNSP,sizeof(int));
   for(i=0;i<MAXNSP;i++){
     annotations[i]=calloc(MAXLNAME,sizeof(char));
     tips[i]=calloc(MAXLNAME,sizeof(char));
@@ -213,11 +194,6 @@ int main(int argc, char** argv){
   character=calloc(MAXCHAR,sizeof(char*));
   for(i=0;i<MAXCHAR;i++){
     character[i]=calloc(MAXLNAME,sizeof(char));
-  }
-  if(border_frac==0){
-    border_frac=0.0;
-  } else {
-    border_frac=1.0/border_frac;
   }
   clock_gettime(CLOCK_PROCESS_CPUTIME_ID,&samp_ini);
   srand((unsigned) time(NULL));
@@ -286,6 +262,9 @@ int main(int argc, char** argv){
     printf("%s = %lf\n", character[i], frequency[i]);
   }
   printf("Frequency of Missing data %s = %lf\n",character[num_anno], (double)count_miss/(double)sum_freq);
+  for(i=0;i<num_anno;i++){
+    parameter[i] = frequency[i]; 
+  }
 
   /*Read tree from file*/
 
@@ -313,97 +292,46 @@ int main(int argc, char** argv){
   s_tree  = complete_parse_nh(c_tree, num_anno, keep_ID); /* sets taxname_lookup_table en passant */  
   root = s_tree->a_nodes[0];
   num_tips=s_tree->nb_taxa;
-  //printf("number of taxa is %d\n",num_tips);
 
   //Compute initial likelihood
   for(i=0;i<num_anno;i++){
     sum+=frequency[i]*frequency[i];
   }
   mu=1/(1-sum);
-  s_tree->scale_A=MIN_BRLEN;
-  s_tree->scale_B=1.0;
-  calc_lik(root, tips, states, num_tips, num_anno, mu, 1.0, model, frequency, &lnl);
-  printf("\n*** Initial likelihood of the tree ***\n\n %lf\n",lnl);
+  //parameter[num_anno]=s_tree->min_bl;
+  parameter[num_anno]=1.0;
+  parameter[num_anno+1]=MIN_BRLEN;
+  calc_lik_bfgs(root, tips, states, num_tips, num_anno, mu, model, parameter, &lnl);
+  printf("\n*** Initial likelihood of the tree ***\n\n %lf\n\n",lnl);
   scale=1.0;
-
+  ite=0;
+  iteration=&ite;
+  optlnl=&maxlnl;
   if(strcmp(scaling,"T")==0){
-    //Optimise likelihood and tree scale with the golden section search
-    printf("\n*** Multiple test of Golden Section Searching ***\n");
-    sprintf(fname,"scaling_A.txt");
-    fp=fopen(fname, "w");
-  
-    for(s_tree->scale_A=MIN_BRLEN;s_tree->scale_A<1.0;s_tree->scale_A=s_tree->scale_A*10.0){
-      calc_lik(root, tips, states, num_tips, num_anno, mu, 1.0, model, frequency, &gold_lik);
-      if(s_tree->scale_A==MIN_BRLEN) {
-        best_gold_lik=gold_lik;
-        gold_scale=s_tree->scale_A;
-      } else {
-        if(best_gold_lik<gold_lik) {
-          best_gold_lik=gold_lik;
-          gold_scale=s_tree->scale_A;
-        }
-      }
-      fprintf(fp,"scale_A = %.5e, likelihood = %lf\n",s_tree->scale_A,gold_lik);
-    }
-    s_tree->scale_A=gold_scale;
-    fclose(fp);
-
-    sprintf(fname,"scaling_B.txt");
-    fp=fopen(fname, "w");
-    gold_scale=1.0;
-    for(s_tree->scale_B=0.01;s_tree->scale_B<0.1;s_tree->scale_B=s_tree->scale_B+0.01){
-      calc_lik(root, tips, states, num_tips, num_anno, mu, 1.0, model, frequency, &gold_lik);
-      if(best_gold_lik<gold_lik) {
-        best_gold_lik=gold_lik;
-        gold_scale=s_tree->scale_B;
-      }
-      fprintf(fp,"scale_B = %lf, likelihood = %lf\n",s_tree->scale_B,gold_lik);
-    }
-    for(s_tree->scale_B=0.1;s_tree->scale_B<1.0;s_tree->scale_B=s_tree->scale_B+0.1){
-      calc_lik(root, tips, states, num_tips, num_anno, mu, 1.0, model, frequency, &gold_lik);
-      if(best_gold_lik<gold_lik) {
-        best_gold_lik=gold_lik;
-        gold_scale=s_tree->scale_B;
-      }
-      fprintf(fp,"scale_B = %lf, likelihood = %lf\n",s_tree->scale_B,gold_lik);
-    }
-    for(s_tree->scale_B=1.0;s_tree->scale_B<=10.0;s_tree->scale_B=s_tree->scale_B+1.0){
-      calc_lik(root, tips, states, num_tips, num_anno, mu, 1.0, model, frequency, &gold_lik);
-      if(best_gold_lik<gold_lik) {
-        best_gold_lik=gold_lik;
-        gold_scale=s_tree->scale_B;
-      }
-      fprintf(fp,"scale_B = %lf, likelihood = %lf\n",s_tree->scale_B,gold_lik);
-    }
-    s_tree->scale_B=gold_scale;
-    gold_lik=0.0;
-    golden(tips, states, num_tips, num_anno, mu, 1.0, model, frequency, &scale);
-    fprintf(fp,"golden scale_B = %lf, likelihood = %lf\n",scale,(s_tree->gold_1+s_tree->gold_2)/2.0);
-    s_tree->scale_B=scale;
-    fclose(fp);
+    dfpmin(root, tips, states, num_tips, num_anno, mu, model, parameter, num_anno+2, iteration, optlnl);
   }
-  if(strcmp(scaling,"F")==0){
-    s_tree->scale_A=MIN_BRLEN;
-    s_tree->scale_B=1.0;
+  //maxlnl = -1.0 * maxlnl;
+  printf("*** Optimized frequencies ***\n\n");
+  for(i=0;i<num_anno;i++){
+    parameter[i]=parameter[i]/100;
+    printf("%s = %lf\n", character[i], parameter[i]);
   }
+  parameter[num_anno]=parameter[num_anno]/10;
+  parameter[num_anno+1]=parameter[num_anno+1]*1.0e-4;
+  printf("\n\n*** Epsilon for zero branch lengths and Tree scaling factor ***\n\n %e %e",parameter[num_anno],parameter[num_anno+1]);
+  calc_lik_bfgs(root, tips, states, num_tips, num_anno, mu, model, parameter,&maxlnl);
+  printf("\n\n*** Optimised likelihood ***\n\n %lf\n",maxlnl);
 
-  calc_lik(root, tips, states, num_tips, num_anno, mu, scale, model, frequency, &maxlnl);
-  printf("\n*** Optimised tree scaling factor A,B***\n\n %.5e %lf\n\n*** Optimised likelihood ***\n\n %.10f\n",s_tree->scale_A,s_tree->scale_B,maxlnl);
 
-  //Joint reconstruction with Pupko's method
-  printf("\n*** Calculating Joint Solution...\n");
-  joint(root, tips, states, num_tips, num_anno, frequency);
-  printf("\n*** Joint solution, Likelihood ***\n\n %lf\n", s_tree->pupko_value);
 
   //Marginal likelihood calculation
-  printf("\n*** Calculating Posterior Probabilities...\n");
-  down_like_marginal(root, num_tips, num_anno, mu, scale, frequency);
+  printf("\n*** Calculating Marginal Likelihoods...\n");
+  down_like_marginal(root, num_tips, num_anno, mu, scale, parameter);
 
-  printf("\n*** Predicting the best ancestral states...\n\n");
-  make_samples(tips,states,num_tips,num_anno,character,mu,scale,frequency,model,border_frac);
+  printf("\n*** Computing Marginal Approximation...\n\n");
+  make_samples(tips,states,num_tips,num_anno,character,parameter);
 
   //free all
-  printf("Freeing step...\n");
   free(annotations);
   free(tips);
   free(character);
@@ -411,7 +339,6 @@ int main(int argc, char** argv){
   free(states); 
   //free(count); 
   free(factors); 
-  free(locked);
   free_tree(s_tree, num_anno);
   
   clock_gettime(CLOCK_PROCESS_CPUTIME_ID,&samp_fin);

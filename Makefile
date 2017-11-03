@@ -1,6 +1,6 @@
 
 PRG    = PASTML
-OBJ    = main.o make_tree.o lik_bfgs.o marginal_lik.o marginal_approxi.o output_tree.o output_states.o bfgs.o nrutil.o
+OBJ    = main.o make_tree.o lik.o marginal_lik.o marginal_approxi.o output_tree.o output_states.o bfgs.o nrutil.o
 
 CFLAGS = -mcmodel=medium -w
 LFLAGS = -lm
@@ -18,7 +18,7 @@ clean:
 
 main.o : main.c asrml.h
 make_tree.o : make_tree.c asrml.h
-lik_bfgs.o : lik_bfgs.c asrml.h
+lik.o : lik.c asrml.h
 marginal_lik.o : marginal_lik.c asrml.h
 marginal_approxi.o : marginal_approxi.c asrml.h
 output_tree.o : output_tree.c asrml.h

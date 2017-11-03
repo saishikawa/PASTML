@@ -318,7 +318,7 @@ int main(int argc, char** argv){
   }
   parameter[num_anno]=parameter[num_anno]/10;
   parameter[num_anno+1]=parameter[num_anno+1]*1.0e-4;
-  printf("\n\n*** Epsilon for zero branch lengths and Tree scaling factor ***\n\n %e %e",parameter[num_anno],parameter[num_anno+1]);
+  printf("\n*** Tree scaling factor ***\n\n %e \n\n*** Epsilon for zero branch length ***\n\n %e",parameter[num_anno],parameter[num_anno+1]);
   calc_lik_bfgs(root, tips, states, num_tips, num_anno, mu, model, parameter,&maxlnl);
   printf("\n\n*** Optimised likelihood ***\n\n %lf\n",maxlnl);
 

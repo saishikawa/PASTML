@@ -34,7 +34,6 @@ void output_state_anc_PP(Node* nd, int nb, int nbanno, char **character, FILE* o
   for(i=0;i<nbanno;i++){
     if(nd->local_flag[i]==1) {
       num++;
-      //nd->marginal[i]=nd->marginal[i]/sum;
     } else {
     }
   }
@@ -56,7 +55,7 @@ void output_state_anc_PP(Node* nd, int nb, int nbanno, char **character, FILE* o
 
        if(strcmp(character[i],character[nd->tmp_best[j]])==0){
             if(nd->local_flag[j]==1) {
-              fprintf(outfile, ", %.8f",nd->marginal[j]);
+              fprintf(outfile, ", %.3f",nd->marginal[j]);
             } else {
               fprintf(outfile, ", 0.0");
             }

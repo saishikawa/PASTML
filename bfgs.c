@@ -3,14 +3,14 @@
 #define ALF 1.0e-4
 #define ITMAX 1000
 #define EPS 3.0e-8
-#define TOLX (4*EPS)
+#define TOLX 1.0e-6
 #define TOL 1.0e-7
 #define SIGMA 1.0e-3
 #define STPMX 100.0
 #define STEP 1.0e-5
 #define STEP2 1.0e-6
 #define STEP3 1.0e-9
-#define SIMPLEX 1.0e-5
+#define SIMPLEX 1.0e-3
 #define SCAL_MAX 100.0
 #define SCAL_MIN 1.0e-3
 
@@ -173,8 +173,8 @@ iter (the number of iterations that were performed), and fret (the minimum value
 function). The routine lnsrch is called to perform approximate line minimizations.*/
 
   int check,i,its,j;
-  double den,fac,fad,fae,fp,stpmax,sum=0.0,sumdg,sumxi,temp,test,fpold;
-  double *dg,*g,*hdg,**hessin,*pnew,*xi,*pold,diff,*init_p;
+  double den,fac,fad,fae,fp,stpmax,sum=0.0,sumdg,sumxi,temp,test,fpold,tmp_fpbest;
+  double *dg,*g,*hdg,**hessin,*pnew,*xi,*pold,diff,*init_p, *tmp_pbest;
 
   check=0;
   dg=vector(0,n-1);
@@ -185,6 +185,8 @@ function). The routine lnsrch is called to perform approximate line minimization
   pold=vector(0,n-1);
   init_p=vector(0,n-1);
   xi=vector(0,n-1);
+  tmp_pbest=vector(0,n-1);
+  tmp_fpbest=DBL_MAX;
 
   calc_lik_bfgs(root, tipnames, states, nb, nbanno, mu, model, p, &fp); /*likelihood calculation*/  
   fpold = fp;
@@ -218,12 +220,11 @@ function). The routine lnsrch is called to perform approximate line minimization
 
     diff = (*fret) - fp;
     diff = fabs(diff);
-    //printf("old = %lf, new = %lf, difference = %e\n",fp, *fret, diff);
+    //printf("lnL = %lf, ", *fret);
     fpold = fp;
     fp = *fret;
     for(i=0;i<n;i++){
       xi[i]=pnew[i]-pold[i];
-      //if(i==nbanno) printf("old i = %lf, new i = %lf\n",pold[i],pnew[i]);
       if(i==nbanno) {
         if(pnew[i] < SCAL_MIN) pnew[i] = pold[i];
         if(pnew[i] > SCAL_MAX) pnew[i] = pold[i];
@@ -245,6 +246,14 @@ function). The routine lnsrch is called to perform approximate line minimization
               for(i=0;i<n;i++) p[i] = pold[i];
               //printf("Final likelihood is not converged, bigger than before ... \n");
       }
+      if(fabs(fp) > fabs(tmp_fpbest)){
+        for(i=0;i<n;i++) p[i] = tmp_pbest[i];
+        for(i=0;i<nbanno;i++){
+          p[i] = p[i]*100;
+        }
+    p[nbanno] = p[nbanno] * 10;
+    p[nbanno+1] = p[nbanno+1] * 1.0e+4;
+      }
       return;
     }
     for(i=0;i<n;i++) dg[i]=g[i];
@@ -253,7 +262,13 @@ function). The routine lnsrch is called to perform approximate line minimization
     }
     p[nbanno] = p[nbanno] / 10;
     p[nbanno+1] = p[nbanno+1] * 1.0e-4;
-
+    //for(i=0;i<n;i++) printf("param%d=%lf, ",i,p[i]);
+    if(fabs(tmp_fpbest) > fabs(fp)){
+      tmp_fpbest = fp;
+      for(i=0;i<n;i++) tmp_pbest[i] = p[i];
+      //printf("tmplnl = %lf",tmp_fpbest);
+    }
+    //printf("\n");
     gradient(root, tipnames, states, nb, nbanno, mu, model, p, g, n); /*gradient calculation*/
     for(i=0;i<nbanno;i++){
       p[i] = p[i]*100;
@@ -267,7 +282,15 @@ function). The routine lnsrch is called to perform approximate line minimization
       temp=fabs(g[i])*FMAX(fabs(p[i]),1.0)/den;
       if (temp > test) test=temp;
     }
-    if (test < SIMPLEX || (diff < SIMPLEX && its > 1)) {
+    if (test < TOLX || (diff < SIMPLEX && its > 1)) {
+      if(fabs(fp) > fabs(tmp_fpbest)){
+        for(i=0;i<n;i++) p[i] = tmp_pbest[i];
+        for(i=0;i<nbanno;i++){
+          p[i] = p[i]*100;
+        }
+        p[nbanno] = p[nbanno] * 10;
+        p[nbanno+1] = p[nbanno+1] * 1.0e+4;
+      }
       //FREEALL
       //printf("finally likelihood optimised = %lf\n",*fret);
       return;
@@ -299,8 +322,9 @@ function). The routine lnsrch is called to perform approximate line minimization
       for (j=0;j<n;j++) xi[i] -= hessin[i][j]*g[j];
     }
   }
-  nrerror("too many iterations in dfpmin, parameter optimazion is NOT converged and stopped at 1000th loop\n");
-  exit(0);
+  nrerror("parameter or likelihood is NOT converged untill 1000th step\n*** PASTML returns a possible best solution found during optimization ***\n");
+  for(i=0;i<n;i++) p[i] = tmp_pbest[i];
+  //exit(0);
   return;
   //FREEALL;
 }

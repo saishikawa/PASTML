@@ -43,11 +43,11 @@ double calc_correct(Node* nd, int nb, int nbanno, char **character){
     tmppossib = calc_correct(nd->neigh[i],nb,nbanno,character);
   }
 
-  while(nd->marginal[nd->relax_count]==0.0){
-    nd->relax_count--;
-  }
-  possib+=nd->relax_count+1;
-  num_pos = 1.0 / (double) (nd->relax_count + 1);
+  //while(nd->marginal[nd->relax_count]==0.0){
+    //nd->relax_count--;
+  //}
+  //possib+=nd->relax_count+1;
+  //num_pos = 1.0 / (double) (nd->relax_count + 1);
 
  /*local_fraction_optimize*/
   for(i=0;i<nbanno;i++){
@@ -100,7 +100,7 @@ void order_marginal(Node* nd, int nb, int nbanno){
       pupko=1;
       for(j=0;j<nbanno;j++) {
         tmpmarginal[j]=root->mar_prob[j];
-        if(root->mar_prob[j]==0.0){
+        if(tmpmarginal[j]==0.0){
           zerostate[zero_count]=j;
           zero_count++;
         }
@@ -110,12 +110,12 @@ void order_marginal(Node* nd, int nb, int nbanno){
 	tmpbest=0.;
 	tmpnum=-1;
 	for(k=0;k<nbanno;k++){
-	  if(k==nd->pupko_flag&&pupko==1){
+	  /*if(k==nd->pupko_flag&&pupko==1){
             pupko=0;
             tmpbest=tmpmarginal[k];
 	    tmpnum=k;
             break;
-          }
+          }*/
 	  if(tmpmarginal[k]>tmpbest) {
 	    tmpbest=tmpmarginal[k];
 	    tmpnum=k;
@@ -146,12 +146,12 @@ void order_marginal(Node* nd, int nb, int nbanno){
         tmpbest=0.;
         tmpnum=-1;
         for(k=0;k<nbanno;k++){
-          if(k==nd->pupko_flag&&pupko==1){
+          /*if(k==nd->pupko_flag&&pupko==1){
             pupko=0;
 	        tmpbest=tmpmarginal[k];
 	        tmpnum=k;
             break;
-          }
+          }*/
           if(tmpmarginal[k]>tmpbest) {
             tmpbest=tmpmarginal[k];
             tmpnum=k;
@@ -162,7 +162,7 @@ void order_marginal(Node* nd, int nb, int nbanno){
         nd->mar_state[j]=tmpnum;
         nd->tmp_best[j]=tmpnum;
         if(tmpbest==0.0){
-	      nd->mar_state[j]=zerostate[zero_count];
+	  nd->mar_state[j]=zerostate[zero_count];
           nd->tmp_best[j]=zerostate[zero_count];
           zero_count++;
         }
@@ -194,8 +194,10 @@ void make_samples (char** tipnames, int* states, int num_tips, int num_anno, cha
   int max_step;
 
   order_marginal(root, num_tips, num_anno);  
+  printf("###for develop ### Ordering end\n");
   possib=calc_correct(root, num_tips, num_anno, character);
 
+  printf("###for develop ### Marginal approximation end\n");
   sprintf(fname,"Result_treeIDs.%d.taxa.%d.states.tre",num_tips,num_anno);
   fp=fopen(fname, "w");
 

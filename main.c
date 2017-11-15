@@ -131,7 +131,7 @@ int main(int argc, char** argv){
   double gold_scale, gold_lik, best_gold_lik;
   char anno_line[MAXLNAME];
   int *iteration, ite;
-  double *optlnl;
+  double *optlnl, scaleup;
 
   opterr = 0;
   sprintf(def_model,"JC");
@@ -308,7 +308,10 @@ int main(int argc, char** argv){
   ite=0;
   iteration=&ite;
   optlnl=&maxlnl;
+  scaleup = 2.0 / s_tree->avgbl;
   if(strcmp(scaling,"T")==0){
+    golden(root, tips, states, num_tips, num_anno, mu, model, parameter, scaleup);
+    printf("scaling factor is roughly optimized by golden section search to %.5e\n",parameter[num_anno]);
     //dfpmin(root, tips, states, num_tips, num_anno, mu, model, parameter, num_anno+2, iteration, optlnl);
     frprmn(root, tips, states, num_tips, num_anno, mu, model, parameter, num_anno+2, 1.0e-3, iteration, optlnl);
   }

@@ -323,7 +323,7 @@ function). The routine linmin is called to perform line minimizations.*/
   double *g, *h, *xi, sum;
 
   scale_up = 2.0 / s_tree->avgbl;
-  p[nbanno] = (scale_up - SCAL_MIN) / 2.0;
+  //p[nbanno] = (scale_up - SCAL_MIN) / 2.0;
   printf("Scalingfactor upbound = %lf, start = %lf\n",scale_up,p[nbanno]);
   g=vector(0,n-1);
   h=vector(0,n-1);

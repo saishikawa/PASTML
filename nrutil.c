@@ -7,7 +7,7 @@
 void nrerror(char error_text[])
 /* Numerical Recipes standard error handler */
 {
-	fprintf(stderr,"BFGS optimization warning...\n");
+	//fprintf(stderr,"BFGS optimization warning...\n");
 	fprintf(stderr,"%s\n",error_text);
 	//fprintf(stderr,"...now exiting to system...\n");
 	//exit(1);
@@ -17,9 +17,9 @@ double *vector(long nl, long nh)
 /* allocate a double vector with subscript range v[nl..nh] */
 {
 	double *v;
-
 	v=(double *)malloc((size_t) ((nh-nl+1+NR_END)*sizeof(double)));
 	if (!v) nrerror("allocation failure in vector()");
+        //printf("allocating\n");
 	return v-nl+NR_END;
 }
 

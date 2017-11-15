@@ -6,6 +6,7 @@
   Tree *s_tree;
   Node *root;
   int have_miss=-1;
+  double opt_param[MAXCHAR+2];
 
 void *check_alloc(int nbrelt, int sizelt){
   void *retval;
@@ -308,19 +309,21 @@ int main(int argc, char** argv){
   iteration=&ite;
   optlnl=&maxlnl;
   if(strcmp(scaling,"T")==0){
-    dfpmin(root, tips, states, num_tips, num_anno, mu, model, parameter, num_anno+2, iteration, optlnl);
+    //dfpmin(root, tips, states, num_tips, num_anno, mu, model, parameter, num_anno+2, iteration, optlnl);
+    frprmn(root, tips, states, num_tips, num_anno, mu, model, parameter, num_anno+2, 1.0e-3, iteration, optlnl);
   }
   //maxlnl = -1.0 * maxlnl;
   printf("*** Optimized frequencies ***\n\n");
   for(i=0;i<num_anno;i++){
-    parameter[i]=parameter[i]/100;
+    //parameter[i]=parameter[i];
     printf("%s = %lf\n", character[i], parameter[i]);
+    //printf("%s = %.12f\n", character[i], opt_param[i]);
   }
-  parameter[num_anno]=parameter[num_anno]/10;
-  parameter[num_anno+1]=parameter[num_anno+1]*1.0e-4;
-  printf("\n*** Tree scaling factor ***\n\n %e \n\n*** Epsilon for zero branch length ***\n\n %e",parameter[num_anno],parameter[num_anno+1]);
-  calc_lik_bfgs(root, tips, states, num_tips, num_anno, mu, model, parameter,&maxlnl);
-  printf("\n\n*** Optimised likelihood ***\n\n %lf\n",maxlnl);
+  //parameter[num_anno]=parameter[num_anno];
+  //parameter[num_anno+1]=parameter[num_anno+1];
+  printf("\n*** Tree scaling factor ***\n\n %.12f \n\n*** Epsilon for zero branch length ***\n\n %.12e",parameter[num_anno],parameter[num_anno+1]);
+  calc_lik_bfgs(root, tips, states, num_tips, num_anno, mu, model, parameter, optlnl);
+  printf("\n\n*** Optimised likelihood ***\n\n %lf\n",(*optlnl));
 
 
 

@@ -8,15 +8,20 @@ double global_factor;
 
 void calc_lik_bfgs(Node *nd, char** tipnames, int* states, int nb, int nbanno, double mu, char* model, double* p, double* likelihood){
   int i,j,ii;
-  double mul, expmul, sum=0., prob_left=0., prob_right=0., bl, smallest, scaled_lk, logroot, prob_sons[MAXPOLY];
+  double mul, expmul, sum=0., prob_left=0., prob_right=0., bl, smallest, scaled_lk, logroot, prob_sons[MAXPOLY],sum_mu;
   static int factors=0;
   double curr_scaler;
   int curr_scaler_pow, piecewise_scaler_pow, node_start;
-  double ts=8.0, tv=1.0, beta, freqTC, freqAG, mul2, rig, lef;
 
   for(i=0;i<nbanno;i++) {
     nd->prob[i]=0.;
   }
+  sum_mu=0.0;
+  //printf("mu calc\n");
+  for(i=0;i<nbanno;i++){
+      sum_mu+=p[i]*p[i];
+  }
+  mu=1/(1-sum_mu);
   sum=0.;
   if(nd->nneigh==1){ /*tips*/
      //printf("Calculating at %s:%lf\n",nd->name,nd->br[0]->brlen);
@@ -139,8 +144,8 @@ void calc_lik_bfgs(Node *nd, char** tipnames, int* states, int nb, int nbanno, d
       factors -= piecewise_scaler_pow;
     } while(factors != 0);
     factors=0;
-    //printf("scaled lk = %.12e, log = %lf\n",scaled_lk,log(scaled_lk));
-    *likelihood = logroot;
+    //printf("scaled lk = %.12e, log = %lf\n",scaled_lk,logroot);
+    *likelihood = fabs(logroot);
     //return logroot;
     return;
   } else {

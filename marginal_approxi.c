@@ -194,10 +194,8 @@ void make_samples (char** tipnames, int* states, int num_tips, int num_anno, cha
   int max_step;
 
   order_marginal(root, num_tips, num_anno);  
-  printf("###for develop ### Ordering end\n");
   possib=calc_correct(root, num_tips, num_anno, character);
 
-  printf("###for develop ### Marginal approximation end\n");
   sprintf(fname,"Result_treeIDs.%d.taxa.%d.states.tre",num_tips,num_anno);
   fp=fopen(fname, "w");
 

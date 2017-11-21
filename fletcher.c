@@ -1,7 +1,7 @@
 #include "asrml.h"
 #include "nrutil.h"
 
-#define ITMAX_O 200
+#define ITMAX_O 1000
 #define ITMAX 200
 #define EPS 1.0e-10
 #define TOL 2.0e-4
@@ -11,8 +11,8 @@
 #define CGOLD 0.3819660
 #define ZEPS 1.0e-10
 #define STEP 1.0e-4
-#define STEP2 1.0e-6
-#define STEP3 1.0e-8
+#define STEP2 1.0e-4
+#define STEP3 1.0e-9
 #define SCAL_MIN 1.0e-4
 #define SIGMA 1.0e-3
 
@@ -75,7 +75,7 @@ void gradient(Node *nd, char** tipnames, int* states, int nb, int nbanno, double
 
 double f1dim(Node *nd, char** tipnames, int* states, int nb, int nbanno, double mu, char* model, double x) {
   int j;
-  double f,*xt,x_sum=0.0,tmp_x,sumfreq;
+  double f,*xt,x_sum=0.0,tmp_x,sumfreq,e1,e2,exp1,exp2;
   
   xt=vector(0,ncom-1);
   //printf("UPDATE ");
@@ -94,8 +94,21 @@ double f1dim(Node *nd, char** tipnames, int* states, int nb, int nbanno, double 
     //xt[j]=xt[j]/x_sum;
     xt[j] = fabs(xt[j]) / sumfreq;
   }
-  xt[nbanno]=(pcom[nbanno]*100+x*xicom[nbanno])/100;
-  xt[nbanno+1]=(pcom[nbanno+1]*1.0e+4+x*xicom[nbanno+1])/1.0e+4;
+  if(xicom[nbanno]==0.0){
+    exp1=1.0;
+  } else {
+    e1=log(fabs(xicom[nbanno]));
+    exp1=pow(10.0,e1);
+  }
+  if(xicom[nbanno+1]==0.0){
+    exp2=1.0;
+  } else {
+    e2=log(fabs(xicom[nbanno+1]));
+    exp2=pow(10.0,e2);
+  }
+  //printf("x = %.5e, exp1 = %.5e, exp2 = %.5e\n", x, exp1, exp2);
+  xt[nbanno]=(pcom[nbanno]*exp1+x*xicom[nbanno])/exp1;
+  xt[nbanno+1]=(pcom[nbanno+1]*exp2+x*xicom[nbanno+1])/exp2;
   //xt[nbanno]=(pcom[nbanno]+x*xicom[nbanno]);
   //xt[nbanno+1]=(pcom[nbanno+1]+x*xicom[nbanno+1]);
   if(xt[nbanno] >  scale_up || xt[nbanno] < SCAL_MIN) xt[nbanno] = pcom[nbanno];
@@ -270,6 +283,7 @@ routines mnbrak and brent .*/
     pcom[j]=p[j];
     xicom[j]=xi[j];
     pold[j]=p[j];
+    best_p[j] = p[j];
   }
   ax=0.0;
   xx=1.0;
@@ -372,7 +386,7 @@ function). The routine linmin is called to perform line minimizations.*/
     }
   //  printf("check6");
   }
-  nrerror("parameter or likelihood is NOT converged within 200 steps\n*** PASTML returns a possible best solution found during optimization ***\n");
+  nrerror("parameter or likelihood is NOT converged within 1000 steps\n*** PASTML returns a possible best solution found during optimization ***\n");
   //free(g); free(h); free(xi);
   free_vector(g,0,n-1); free_vector(h,0,n-1); free_vector(xi,0,n-1);
 }

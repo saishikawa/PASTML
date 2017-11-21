@@ -209,7 +209,7 @@ int main(int argc, char** argv){
   line=0;
   states[0]=0;
   while(fgets(anno_line, MAXLNAME, annotationfile)){
-    sscanf(anno_line, "%[^\n,],%[^\n,]",tips[line],annotations[line]);
+    sscanf(anno_line, "%[^\n,],%[^\n\r]",tips[line],annotations[line]);
     if(strcmp(annotations[line],"")==0) sprintf(annotations[line],"?");
     if(strcmp(annotations[line],"?")==0){
       count_miss++;
@@ -261,6 +261,10 @@ int main(int argc, char** argv){
       frequency[i]=(double)count[i]/sum_freq;
     }
     printf("%s = %lf\n", character[i], frequency[i]);
+    if(strcmp(character[i],character[i+1])==0) {
+      fprintf(stderr,"PASTML cannot recognize what is your characters during it reads input annotation file.\n*** Check your file format, character encoding (UTF-8 or not), and newline encoding (Windows, Mac is not acceptable, use Unix/Linux option)\n Aborting...\n");
+      Generic_Exit(__FILE__,__LINE__,__FUNCTION__,EXIT_FAILURE);
+    }
   }
   printf("Frequency of Missing data %s = %lf\n",character[num_anno], (double)count_miss/(double)sum_freq);
   for(i=0;i<num_anno;i++){
@@ -319,12 +323,12 @@ int main(int argc, char** argv){
   printf("*** Optimized frequencies ***\n\n");
   for(i=0;i<num_anno;i++){
     //parameter[i]=parameter[i];
-    printf("%s = %lf\n", character[i], parameter[i]);
+    printf("%s = %.5f\n", character[i], parameter[i]);
     //printf("%s = %.12f\n", character[i], opt_param[i]);
   }
   //parameter[num_anno]=parameter[num_anno];
   //parameter[num_anno+1]=parameter[num_anno+1];
-  printf("\n*** Tree scaling factor ***\n\n %.12f \n\n*** Epsilon for zero branch length ***\n\n %.12e",parameter[num_anno],parameter[num_anno+1]);
+  printf("\n*** Tree scaling factor ***\n\n %.5f \n\n*** Epsilon for zero branch length ***\n\n %.5e",parameter[num_anno],parameter[num_anno+1]);
   calc_lik_bfgs(root, tips, states, num_tips, num_anno, mu, model, parameter, optlnl);
   printf("\n\n*** Optimised likelihood ***\n\n %lf\n",(*optlnl));
 

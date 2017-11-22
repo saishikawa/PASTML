@@ -315,12 +315,12 @@ int main(int argc, char** argv){
   scaleup = 2.0 / s_tree->avgbl;
   if(strcmp(scaling,"T")==0){
     golden(root, tips, states, num_tips, num_anno, mu, model, parameter, scaleup);
-    printf("scaling factor is roughly optimized by golden section search to %.5e\n",parameter[num_anno]);
+    printf("Scaling factor is roughly optimized by GSS\n");
     //dfpmin(root, tips, states, num_tips, num_anno, mu, model, parameter, num_anno+2, iteration, optlnl);
-    frprmn(root, tips, states, num_tips, num_anno, mu, model, parameter, num_anno+2, 1.0e-3, iteration, optlnl);
+    frprmn(root, tips, states, num_tips, num_anno, mu, model, parameter, num_anno+2, 1.0e-3, iteration, optlnl, character);
   }
   //maxlnl = -1.0 * maxlnl;
-  printf("*** Optimized frequencies ***\n\n");
+  printf("\n*** Optimized frequencies ***\n\n");
   for(i=0;i<num_anno;i++){
     //parameter[i]=parameter[i];
     printf("%s = %.5f\n", character[i], parameter[i]);

@@ -13,11 +13,11 @@ void calc_lik_bfgs(Node *nd, char** tipnames, int* states, int nb, int nbanno, d
   double curr_scaler;
   int curr_scaler_pow, piecewise_scaler_pow, node_start;
 
+//printf("Calculating at %s:%lf\n",nd->name,nd->br[0]->brlen);
   for(i=0;i<nbanno;i++) {
     nd->prob[i]=0.;
   }
   sum_mu=0.0;
-  //printf("mu calc\n");
   for(i=0;i<nbanno;i++){
       sum_mu+=p[i]*p[i];
   }
@@ -170,6 +170,7 @@ void calc_lik_bfgs(Node *nd, char** tipnames, int* states, int nb, int nbanno, d
         }
       }
     }
+    //printf("calc pij\n");
 
     for(i=0;i<nbanno;i++){
       for(ii=node_start;ii<nd->nneigh;ii++){      

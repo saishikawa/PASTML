@@ -4,10 +4,108 @@
 int ntax;
 double BL_sum=0., BL_avg=0.;
 
+void free_node(Node* node, int count, int num_anno);
+void free_edge(Edge* edge);
+
 int min_int(int a, int b) {
 	return (a<b ? a : b);
 }
 
+
+
+/* collapsing a branch */
+void collapse_branch(Edge* branch, Tree* tree, int count, int nbanno) {
+	/* this function collapses the said branch and creates a higher-order multifurcation (n1 + n2 - 2 neighbours for the resulting node).
+	   We also have to remove the extra node from tree->a_nodes and the extra edge from t->a_edges.
+	   to be done:
+	   (1) create a new node with n1+n2-2 neighbours. Ultimately we will destroy the original node.
+	   (2) populate its list of neighbours from the lists of neighbours corresponding to the two original nodes
+	   (3) populate its list of neighbouring edges form the br lists of the two original nodes
+	   (4) for each of the neighbours, set the info regarding their new neighbour (that is, our new node)
+	   (5) for each of the neighbouring branches, set the info regarding their new side (that is, our new node)
+	   (6) destroy the two original nodes and commit this info to a_nodes. Modify tree->nb_nodes
+	   (7) destroy the original edge and commit this info to a_edges. Modify tree->nb_edges */
+
+	/* WARNING: this function won't accept to collapse terminal edges */
+	Node *node1 = branch->left, *node2 = branch->right;
+	int i, j, n1 = node1->nneigh, n2 = node2->nneigh;
+	if (n1 == 1 || n2 == 1) { fprintf(stderr,"Warning: %s() won't collapse terminal edges.\n",__FUNCTION__); return; }
+	int degree = n1+n2-2;
+	/* (1) */
+	/* Node* new = new_node("collapsed", tree, n1 + n2 - 2); */ /* we cannot use that because we want to reuse n1's spot in tree->a_nodes */
+        //printf("start collapse");
+	Node* new = (Node*) malloc(sizeof(Node));
+	new->nneigh = degree;
+	new->neigh = malloc(degree * sizeof(Node*));
+	new->br = malloc(degree * sizeof(Edge*));
+	new->id = node1->id; /* because we are going to store the node at this index in tree->a_nodes */
+	new->name = strdup("collapsed");
+	new->comment = NULL;
+	new->depth = min_int(node1->depth, node2->depth);
+
+	/* very important: set tree->node0 to new in case it was either node1 or node2 */
+	if (tree->node0 == node1 || tree->node0 == node2) tree->node0 = new;
+
+
+	int ind = 0; /* index in the data structures in new */
+	/* (2) and (3) and (4) and (5) */
+	for (i=0; i < n1; i++) {
+		if (node1->neigh[i] == node2) continue;
+		new->neigh[ind] = node1->neigh[i];
+		/*  then change one of the neighbours of that neighbour to be the new node... */
+		for (j=0; j < new->neigh[ind]->nneigh; j++) {
+			if(new->neigh[ind]->neigh[j] == node1) {
+				new->neigh[ind]->neigh[j] = new;
+				break;
+			}
+		} /* end for j */
+
+		new->br[ind] = node1->br[i];
+		/* then change one of the two ends of that branch to be the new node... */
+		if (new->neigh[ind] == new->br[ind]->right) new->br[ind]->left = new; else new->br[ind]->right = new; 
+		ind++;
+	}
+
+	for (i=0; i < n2; i++) {
+		if (node2->neigh[i] == node1) continue;
+		new->neigh[ind] = node2->neigh[i];
+		/*  then change one of the neighbours of that neighbour to be the new node... */
+		for (j=0; j < new->neigh[ind]->nneigh; j++) {
+			if(new->neigh[ind]->neigh[j] == node2) {
+				new->neigh[ind]->neigh[j] = new;
+				break;
+			}
+		} /* end for j */
+
+		new->br[ind] = node2->br[i];
+		/* then change one of the two ends of that branch to be the new node... */
+		if (new->neigh[ind] == new->br[ind]->right) new->br[ind]->left = new; else new->br[ind]->right = new; 
+		ind++;
+	}
+
+	/* (6) tidy up tree->a_nodes and destroy old nodes */
+	assert(tree->a_nodes[new->id] == node1);
+	tree->a_nodes[new->id] = new;
+	/* current last node in tree->a_edges changes id and is now placed at the position were node2 was */
+	int id2 = node2->id;
+	assert(tree->a_nodes[id2] == node2);
+	tree->a_nodes[id2] = tree->a_nodes[-- tree->next_avail_node_id]; /* moving the last node into the spot occupied by node2... */
+	tree->a_nodes[id2]->id = id2;					/* and changing its id accordingly */
+	tree->a_nodes[tree->next_avail_node_id] = NULL; /* not strictly necessary, but... */
+	tree->nb_nodes--;
+        //printf("finished before free");
+	free_node(node1, 1, nbanno);
+	free_node(node2, 1, nbanno);
+
+	/* (7) tidy up tree->a_edges and destroy the old branch */
+	assert(tree->a_edges[branch->id] == branch);
+	tree->a_edges[branch->id] = tree->a_edges[-- tree->next_avail_edge_id]; /* moving the last branch into the spot occupied by 'branch' */
+	tree->a_edges[branch->id]->id = branch->id; 				/* ... and changing its id accordingly */
+	tree->a_edges[tree->next_avail_edge_id] = NULL; /* not strictly necessary, but... */
+	tree->nb_edges--;
+	free_edge(branch);
+
+} /* end collapse_branch */
 
 int index_toplevel_colon(char* in_str, int begin, int end) {
 	/* returns the index of the (first) toplevel colon only, -1 if not found */
@@ -124,14 +222,13 @@ void process_name_and_brlen(Node* son_node, Edge* edge, Tree* current_tree, char
 	/* processing the optional BRANCH LENGTH... */
 	if (colon == -1) {
 		edge->had_zero_length = TRUE;
-		//edge->brlen = MIN_BRLEN;
+		edge->brlen = 0.0;
 	} else {
 		parse_double(in_str,colon+1,end,&brlen);
 		edge->had_zero_length = (brlen == 0.0);
                 edge->brlen=brlen;
 		//edge->brlen = (brlen < MIN_BRLEN ? MIN_BRLEN : brlen);
 	}
-
 			
 	/* then scan backwards from the colon (or from the end if no branch length) to get the NODE NAME,
 	   not going further than the first closing par */
@@ -391,6 +488,7 @@ Tree* parse_nh_string(char* in_str, int nbanno, char* keep_ID) {
 	int begin, end; /* to delimitate the string to further process */
 	int n_otu = 0, nodecount = 0;
         char str[MAXLNAME];
+        int collapsed_one = 0, uncollapsed_terminal = 0, collapsed_internal=0;
 
 	/* SYNTACTIC CHECKS on the input string */ 	
 	i = 0; while (isspace(in_str[i])) i++;
@@ -461,7 +559,7 @@ Tree* parse_nh_string(char* in_str, int nbanno, char* keep_ID) {
         }
         t->min_bl=DBL_MAX;
         for(i=0; i<t->nb_nodes; i++){
-          //printf("%s,",t->a_nodes[i]->name);
+          //printf("%s:%lf",t->a_nodes[i]->name,t->a_nodes[i]->br[0]->brlen);
           if(t->a_nodes[i]->nneigh > MAXPOLY) {
             fprintf(stderr,"Fatal error: too many polytomy more than %d at the node %s.\n", MAXPOLY, t->a_nodes[i]->name);
 	    Generic_Exit(__FILE__,__LINE__,__FUNCTION__,EXIT_FAILURE);
@@ -482,6 +580,10 @@ Tree* parse_nh_string(char* in_str, int nbanno, char* keep_ID) {
         BL_avg=(double)BL_sum/(double)t->nb_edges;
         t->avgbl=BL_avg;
 
+        for(i=0; i<t->nb_nodes; i++){
+          //t->a_nodes[i]->br[0]->brlen=t->avgbl;
+        }
+
 	printf("\n*** BASIC STATISTICS ***\n\n", in_str);
 	printf("Number of taxa in the tree read: %d\n", t->nb_taxa);
         if(t->nb_taxa > MAXNSP) {
@@ -493,8 +595,75 @@ Tree* parse_nh_string(char* in_str, int nbanno, char* keep_ID) {
 	printf("Average of branch lengths in the tree: %lf\n", t->avgbl);
         printf("Minimum branch length in the tree: %lf\n", t->min_bl);
 	printf("Number of leaves according to the tree structure: %d\n", count_leaves(t));
-	printf("Number of roots in the whole tree (must be 1): %d\n", count_roots(t));
-	printf("Number of edges with zero length: %d\n", count_zero_length_branches(t));
+	//printf("Number of roots in the whole tree (must be 1): %d\n", count_roots(t));
+	//printf("Number of edges with zero length: %d\n", count_zero_length_branches(t));
+
+        if(count_zero_length_branches(t) > 0) {
+
+         do {
+          collapsed_one = 0; 
+          uncollapsed_terminal = 0;
+          for(i=0; i < t->nb_edges; i++) {
+            if (t->a_edges[i]->brlen == 0.0) {
+              if (t->a_edges[i]->right->nneigh == 1) { 
+	        uncollapsed_terminal++;
+	      }else{
+	        //collapse_branch(t->a_edges[i], t, 1, nbanno);
+                t->a_edges[i]->brlen=MIN_BRLEN;
+	        collapsed_one = 1;
+	        collapsed_internal++;
+	        break; 
+	      }
+	    }
+          } 
+         } while (collapsed_one);
+         printf("Found 0.0 length on %d internal branches and fixed it to %.5f\n",collapsed_internal, MIN_BRLEN);
+/*
+         nodecount = 0;
+         if(strcmp(keep_ID,"F")==0){
+	  for(i=0; i<t->nb_nodes; i++){
+            if(t->a_nodes[i]->nneigh>1&&i>0){
+              nodecount++;
+              sprintf(t->a_nodes[i]->name,"%s%d","Node",nodecount);
+            }
+          }
+         }
+         t->min_bl=DBL_MAX;
+         BL_sum=0.0;
+         for(i=0; i<t->nb_nodes; i++){
+          printf("%s:%lf",t->a_nodes[i]->name,t->a_nodes[i]->br[0]->brlen);
+          if(t->a_nodes[i]->nneigh > MAXPOLY) {
+            fprintf(stderr,"Fatal error: too many polytomy more than %d at the node %s.\n", MAXPOLY, t->a_nodes[i]->name);
+	    Generic_Exit(__FILE__,__LINE__,__FUNCTION__,EXIT_FAILURE);
+          }
+          if(t->min_bl > t->a_nodes[i]->br[0]->brlen && t->a_nodes[i]->br[0]->brlen != 0.0) t->min_bl=t->a_nodes[i]->br[0]->brlen;
+          for(j=0; j<t->a_nodes[i]->nneigh; j++){
+            if(j==0){
+              if(i==0) {
+              } else {
+                BL_sum+=t->a_nodes[i]->br[j]->brlen;
+              }
+            } else {
+            }
+          }
+          printf("\n");
+         }
+         BL_avg=(double)BL_sum/(double)t->nb_edges;
+         t->avgbl=BL_avg;
+         printf("\n*** Collapsed %d zero length internal branches of the tree ***\n",collapsed_internal);
+	 printf("\n*** TREE STATISTICS after COLLAPSE***\n\n", in_str);
+	 printf("Number of taxa in the tree read: %d\n", t->nb_taxa);
+
+	 printf("Number of nodes in the tree read: %d\n", t->nb_nodes-t->nb_taxa);
+	 printf("Number of edges in the tree read: %d\n", t->nb_edges);
+	 printf("Average of branch lengths in the tree: %lf\n", t->avgbl);
+         printf("Minimum branch length in the tree: %lf\n", t->min_bl);
+	 printf("Number of leaves according to the tree structure: %d\n", count_leaves(t));
+	 printf("Number of edges with zero length: %d\n", count_zero_length_branches(t));
+we need to consider about all factors, e.g. condlike at the NEW node */ 
+        }
+
+
 
 	return t;
 
@@ -510,96 +679,3 @@ Tree *complete_parse_nh(char* big_string, int nbanno, char* keep_ID) {
 
 	return mytree;
 }
-
-
-/* collapsing a branch */
-void collapse_branch(Edge* branch, Tree* tree) {
-	/* this function collapses the said branch and creates a higher-order multifurcation (n1 + n2 - 2 neighbours for the resulting node).
-	   We also have to remove the extra node from tree->a_nodes and the extra edge from t->a_edges.
-	   to be done:
-	   (1) create a new node with n1+n2-2 neighbours. Ultimately we will destroy the original node.
-	   (2) populate its list of neighbours from the lists of neighbours corresponding to the two original nodes
-	   (3) populate its list of neighbouring edges form the br lists of the two original nodes
-	   (4) for each of the neighbours, set the info regarding their new neighbour (that is, our new node)
-	   (5) for each of the neighbouring branches, set the info regarding their new side (that is, our new node)
-	   (6) destroy the two original nodes and commit this info to a_nodes. Modify tree->nb_nodes
-	   (7) destroy the original edge and commit this info to a_edges. Modify tree->nb_edges */
-
-	/* WARNING: this function won't accept to collapse terminal edges */
-	Node *node1 = branch->left, *node2 = branch->right;
-	int i, j, n1 = node1->nneigh, n2 = node2->nneigh;
-	if (n1 == 1 || n2 == 1) { fprintf(stderr,"Warning: %s() won't collapse terminal edges.\n",__FUNCTION__); return; }
-	int degree = n1+n2-2;
-	/* (1) */
-	/* Node* new = new_node("collapsed", tree, n1 + n2 - 2); */ /* we cannot use that because we want to reuse n1's spot in tree->a_nodes */
-	Node* new = (Node*) malloc(sizeof(Node));
-	new->nneigh = degree;
-	new->neigh = malloc(degree * sizeof(Node*));
-	new->br = malloc(degree * sizeof(Edge*));
-	new->id = node1->id; /* because we are going to store the node at this index in tree->a_nodes */
-	new->name = strdup("collapsed");
-	new->comment = NULL;
-	new->depth = min_int(node1->depth, node2->depth);
-
-	/* very important: set tree->node0 to new in case it was either node1 or node2 */
-	if (tree->node0 == node1 || tree->node0 == node2) tree->node0 = new;
-
-
-	int ind = 0; /* index in the data structures in new */
-	/* (2) and (3) and (4) and (5) */
-	for (i=0; i < n1; i++) {
-		if (node1->neigh[i] == node2) continue;
-		new->neigh[ind] = node1->neigh[i];
-		/*  then change one of the neighbours of that neighbour to be the new node... */
-		for (j=0; j < new->neigh[ind]->nneigh; j++) {
-			if(new->neigh[ind]->neigh[j] == node1) {
-				new->neigh[ind]->neigh[j] = new;
-				break;
-			}
-		} /* end for j */
-
-		new->br[ind] = node1->br[i];
-		/* then change one of the two ends of that branch to be the new node... */
-		if (new->neigh[ind] == new->br[ind]->right) new->br[ind]->left = new; else new->br[ind]->right = new; 
-		ind++;
-	}
-
-	for (i=0; i < n2; i++) {
-		if (node2->neigh[i] == node1) continue;
-		new->neigh[ind] = node2->neigh[i];
-		/*  then change one of the neighbours of that neighbour to be the new node... */
-		for (j=0; j < new->neigh[ind]->nneigh; j++) {
-			if(new->neigh[ind]->neigh[j] == node2) {
-				new->neigh[ind]->neigh[j] = new;
-				break;
-			}
-		} /* end for j */
-
-		new->br[ind] = node2->br[i];
-		/* then change one of the two ends of that branch to be the new node... */
-		if (new->neigh[ind] == new->br[ind]->right) new->br[ind]->left = new; else new->br[ind]->right = new; 
-		ind++;
-	}
-
-	/* (6) tidy up tree->a_nodes and destroy old nodes */
-	assert(tree->a_nodes[new->id] == node1);
-	tree->a_nodes[new->id] = new;
-	/* current last node in tree->a_edges changes id and is now placed at the position were node2 was */
-	int id2 = node2->id;
-	assert(tree->a_nodes[id2] == node2);
-	tree->a_nodes[id2] = tree->a_nodes[-- tree->next_avail_node_id]; /* moving the last node into the spot occupied by node2... */
-	tree->a_nodes[id2]->id = id2;					/* and changing its id accordingly */
-	tree->a_nodes[tree->next_avail_node_id] = NULL; /* not strictly necessary, but... */
-	tree->nb_nodes--;
-	free_node(node1);
-	free_node(node2);
-
-	/* (7) tidy up tree->a_edges and destroy the old branch */
-	assert(tree->a_edges[branch->id] == branch);
-	tree->a_edges[branch->id] = tree->a_edges[-- tree->next_avail_edge_id]; /* moving the last branch into the spot occupied by 'branch' */
-	tree->a_edges[branch->id]->id = branch->id; 				/* ... and changing its id accordingly */
-	tree->a_edges[tree->next_avail_edge_id] = NULL; /* not strictly necessary, but... */
-	tree->nb_edges--;
-	free_edge(branch);
-
-} /* end collapse_branch */

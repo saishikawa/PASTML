@@ -325,7 +325,7 @@ routines mnbrak and brent .*/
   free_vector(pcom,0,n-1); free_vector(xicom,0,n-1); free_vector(pold,0,n-1); free_vector(store_p,0,n-1); free_vector(best_p,0,n-1);
 }
 
-void frprmn(Node *nd, char** tipnames, int* states, int nb, int nbanno, double mu, char* model, double* p, int n, double ftol, int* iter, double* fret) {
+void frprmn(Node *nd, char** tipnames, int* states, int nb, int nbanno, double mu, char* model, double* p, int n, double ftol, int* iter, double* fret, char **character) {
 /*Given a starting point p[1..n] , Fletcher-Reeves-Polak-Ribiere minimization is performed on a
 function func , using its gradient as calculated by a routine dfunc . The convergence tolerance
 on the function value is input as ftol . Returned quantities are p (the location of the minimum),
@@ -338,7 +338,7 @@ function). The routine linmin is called to perform line minimizations.*/
 
   scale_up = 2.0 / s_tree->avgbl;
   //p[nbanno] = (scale_up - SCAL_MIN) / 2.0;
-  printf("Scalingfactor upbound = %lf, start = %lf\n",scale_up,p[nbanno]);
+  printf("Scalingfactor upbound = %lf, start point = %.5e\n\n***Fletcher-Reeves-Polak-Ribiere minimization ...\n\n",scale_up,p[nbanno]);
   g=vector(0,n-1);
   h=vector(0,n-1);
   xi=vector(0,n-1);
@@ -350,11 +350,13 @@ function). The routine linmin is called to perform line minimizations.*/
   }
   for (its=0;its<ITMAX_O;its++) {
     *iter=its;
-    printf("UPDATE step%d, ",its);
+    printf("Step%d, ",its);
     linmin(root, tipnames, states, nb, nbanno, mu, model, p,xi,n,fret);
     for (i=0;i<n;i++) {
       opt_param[i]=p[i];
-      printf("param%d=%.6e, ",i,p[i]);
+      if(i < nbanno) printf("%s=%.6e, ",character[i],p[i]);
+      if(i == nbanno) printf("Scaling=%.6e, ",p[i]);
+      if(i == nbanno+1) printf("Epsilon=%.6e, ",p[i]);
     }
     calc_lik_bfgs(root, tipnames, states, nb, nbanno, mu, model, p, &fl);
     printf("lnL = %lf\n",fl);

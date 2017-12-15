@@ -176,7 +176,7 @@ int main(int argc, char** argv){
                 break;
            
             default: /* '?' */
-                printf("Unexpected options...\nUsage: %s [-a name_of_annotationfile] [-t name_of_treefile] [-x denominator_of_fraction(integer)] [-m name_of_model(JC or F81_E or F81_U)] [-s do you need scaling(boolen)] [-I do you keep original Node IDs(boolen)] [-f user defined frequencies(NUMofCHARACTERS 0.1 0.1 0.1 ...)]\n", argv[0]);
+                printf("Unexpected options...\nUsage: %s [-a name_of_annotationfile] [-t name_of_treefile] [-x denominator_of_fraction(integer)] [-m name_of_model(JC or F81)] [-s do you need scaling(boolen)] [-I do you keep original Node IDs(boolen)] [-f user defined frequencies(NUMofCHARACTERS 0.1 0.1 0.1 ...)]\n", argv[0]);
                 break;
         }
   }
@@ -257,7 +257,7 @@ int main(int argc, char** argv){
   for(i=0;i<num_anno;i++){
     if(strcmp(model,"JC")==0){
       frequency[i]=(double)1/num_anno;
-    } else if (strcmp(model,"F81_E")==0){
+    } else if (strcmp(model,"F81")==0){
       frequency[i]=(double)count[i]/sum_freq;
     }
     printf("%s = %lf\n", character[i], frequency[i]);
@@ -317,7 +317,19 @@ int main(int argc, char** argv){
     golden(root, tips, states, num_tips, num_anno, mu, model, parameter, scaleup);
     printf("Scaling factor is roughly optimized by GSS\n");
     //dfpmin(root, tips, states, num_tips, num_anno, mu, model, parameter, num_anno+2, iteration, optlnl);
-    frprmn(root, tips, states, num_tips, num_anno, mu, model, parameter, num_anno+2, 1.0e-3, iteration, optlnl, character);
+    if (strcmp(model,"F81")==0) {
+      frprmn(root, tips, states, num_tips, num_anno, mu, model, parameter, num_anno+2, 1.0e-3, iteration, optlnl, character);
+    } else if (strcmp(model,"JC")==0) {
+       parameter[0]=parameter[num_anno];
+        parameter[1]=parameter[num_anno+1];
+      frprmnJC(root, tips, states, num_tips, num_anno, mu, model, parameter, 2, 1.0e-3, iteration, optlnl, character, frequency);
+      parameter[num_anno]=parameter[0];
+      parameter[num_anno+1]=parameter[1];
+      for(i=0;i<num_anno;i++){
+        parameter[i] = frequency[i]; 
+       }
+      
+     } 
   }
   //maxlnl = -1.0 * maxlnl;
   printf("\n*** Optimized frequencies ***\n\n");

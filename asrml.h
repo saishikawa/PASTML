@@ -7,6 +7,21 @@
 #include <float.h>
 #include <limits.h>
 
+#define ITMAX_O 1000
+#define ITMAX 200
+#define EPS 1.0e-10
+#define TOL 2.0e-4
+#define GOLD 1.618034
+#define GLIMIT 100.0
+#define TINY 1.0e-20
+#define CGOLD 0.3819660
+#define ZEPS 1.0e-10
+#define STEP 1.0e-4
+#define STEP2 1.0e-4
+#define STEP3 1.0e-9
+#define SCAL_MIN 1.0e-4
+#define SIGMA 1.0e-3
+
 #define MAXLNAME 255
 #define MAXLLINE 10000
 #define MAXNSP 50000

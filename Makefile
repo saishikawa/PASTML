@@ -1,6 +1,6 @@
 
 PRG    = PASTML
-OBJ    = main.o make_tree.o lik.o marginal_lik.o marginal_approxi.o output_tree.o output_states.o fletcher.o nrutil.o golden.o fletcherJC.o
+OBJ    = main.o runpastml.o make_tree.o lik.o marginal_lik.o marginal_approxi.o output_tree.o output_states.o fletcher.o nrutil.o golden.o fletcherJC.o
 
 CFLAGS = -mcmodel=medium -w
 LFLAGS = -lm
@@ -16,7 +16,8 @@ $(PRG) : $(OBJ)
 clean:
 	rm -rf $(PRG) $(OBJ)
 
-main.o : main.c asrml.h
+main.o : main.c asrml.h runpastml.h
+runpastml.o : runpastml.c asrml.h marginal_lik.h lik.h marginal_approxi.h golden.h fletcher.h fletcherJC.h make_tree.h
 make_tree.o : make_tree.c asrml.h
 lik.o : lik.c asrml.h
 marginal_lik.o : marginal_lik.c asrml.h

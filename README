@@ -1,6 +1,15 @@
-PASTML options
--a: name of annotation file
--t: name of tree file
--m: name of Model, "JC" or "F81_E"
--s: on/off of tree scaling (boolean, 'F' or 'T')
--I: keep or rename of Node IDs (boolean)
+PASTML infers ancestral states on a phylogenetical tree with annotated tips.
+
+usage: PASTML -a ANNOTATION_FILE -t TREE_NWK [-m MODEL] [-o OUTPUT_ANNOTATION_FILE] [-n OUTPUT_TREE_NWK] [-s SCALING_ON_OFF] [-I KEEP_INTERNAL_NODE_IDS_ON_OFF] [-f CHAR_FREQUENCES]
+
+required arguments:
+   -a ANNOTATION_FILE                  path to the annotation csv file containing tip states
+   -t TREE_NWK                         path to the tree file (in newick format)
+
+optional arguments:
+   -o OUTPUT_ANNOTATION_FILE           path where the output annotation csv file containing node states will be created
+   -n OUTPUT_TREE_NWK                  path where the output tree file will be created (in newick format)
+   -m MODEL                            state evolution model (JC or F81)
+   -s SCALING_ON_OFF                   branch length scaling on (T, by default) or off (F)
+   -I KEEP_INTERNAL_NODE_IDS_ON_OFF    keep internal node ids from the input tree: T (true) or F (false)
+

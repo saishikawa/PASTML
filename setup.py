@@ -12,7 +12,8 @@ pastml_module = Extension('pastml_module', sources=['pastmlpymodule.c',
                                                     'fletcher.c',
                                                     'nrutil.c',
                                                     'golden.c',
-                                                    'fletcherJC.c'])
+                                                    'fletcherJC.c'],
+                          language='c')
 
 setup(
     name='pastml',
@@ -25,12 +26,14 @@ setup(
         'Topic :: Software Development',
         'Topic :: Software Development :: Libraries :: Python Modules',
     ],
-    version='0.2',
+    version='0.2.9',
     description='Python wrapper for PASTML.',
     maintainer='Anna Zhukova',
     maintainer_email='anna.zhukova@pasteur.fr',
     url='https://github.com/saishikawa/PASTML',
     download_url='https://github.com/saishikawa/PASTML',
     keywords=['PASTML', 'phylogeny', 'ancestral state inference', 'likelihood'],
-    ext_modules=[pastml_module]
+    ext_modules=[pastml_module],
+    headers=['asrml.h', 'runpastml.h', 'make_tree.h', 'lik.h', 'marginal_lik.h', 'marginal_approxi.h',
+             'output_tree.h', 'output_states.h', 'fletcher.h', 'nrutil.h', 'golden.h', 'fletcherJC.h']
 )

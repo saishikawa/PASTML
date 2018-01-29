@@ -407,31 +407,15 @@ int parse_substring_into_node(char *in_str, int begin, int end, Node *current_no
     current_node->condlike = calloc(nbanno, sizeof(double));
     current_node->condlike_mar = calloc(nbanno, sizeof(double));
     current_node->up_like = calloc(nbanno, sizeof(double));
-    current_node->sortedlike = calloc(nbanno, sizeof(double));
-    current_node->sortedstates = calloc(nbanno, sizeof(int));
-    current_node->best_char = calloc(nbanno, sizeof(int));
-    current_node->prob = calloc(nbanno, sizeof(double));
     current_node->mar_prob = calloc(nbanno, sizeof(double));
-    current_node->best_i = calloc(nbanno, sizeof(double));
     current_node->pij = calloc(nbanno, sizeof(double *));
-    current_node->node_flag = 1;
+    for (i = 0; i < nbanno; i++) current_node->pij[i] = calloc(nbanno, sizeof(double));
     current_node->marginal = calloc(nbanno, sizeof(double));
-    current_node->mar_state = calloc(nbanno, sizeof(int));
     current_node->tmp_best = calloc(nbanno, sizeof(int));
     current_node->sum_down = calloc(nbanno, sizeof(double));
 
-    current_node->tip_counts = calloc(nbanno, sizeof(int));
-    for (i = 0; i < nbanno; i++) current_node->tip_counts[i] = 0;
-    for (i = 0; i < nbanno; i++) current_node->pij[i] = calloc(nbanno, sizeof(double));
-
-    current_node->tip_names = calloc(nbanno, sizeof(char *));
-    for (i = 0; i < nbanno; i++) current_node->tip_names[i] = calloc(MAXLNAME, sizeof(char));
-
     current_node->rootpij = calloc(nbanno, sizeof(double *));
     for (i = 0; i < nbanno; i++) current_node->rootpij[i] = calloc(nbanno, sizeof(double));
-
-    current_node->calc_flag = calloc(nbanno, sizeof(int));
-    for (i = 0; i < nbanno; i++) current_node->calc_flag[i] = 1;
 
     current_node->local_flag = calloc(nbanno, sizeof(int));
     for (i = 0; i < nbanno; i++) current_node->local_flag[i] = 1;
@@ -560,10 +544,7 @@ Tree *parse_nh_string(char *in_str, int nbanno, char *keep_ID) {
 
     /* SANITY CHECKS AFTER READING THE TREE */
 
-    //DEBUG
-    //printf("\n*** Array of node ***\n\n");
     if (strcmp(keep_ID, "F") == 0) {
-        //printf("Node IDs are changed\n");
         for (i = 0; i < t->nb_nodes; i++) {
             if (t->a_nodes[i]->nneigh > 1 && i > 0) {
                 nodecount++;
@@ -573,7 +554,6 @@ Tree *parse_nh_string(char *in_str, int nbanno, char *keep_ID) {
     }
     t->min_bl = DBL_MAX;
     for (i = 0; i < t->nb_nodes; i++) {
-        //printf("%s:%lf",t->a_nodes[i]->name,t->a_nodes[i]->br[0]->brlen);
         if (t->a_nodes[i]->nneigh > MAXPOLY) {
             fprintf(stderr, "Fatal error: too many polytomy more than %d at the node %s.\n", MAXPOLY,
                     t->a_nodes[i]->name);
@@ -586,19 +566,13 @@ Tree *parse_nh_string(char *in_str, int nbanno, char *keep_ID) {
                 if (i == 0) {
                 } else {
                     BL_sum += t->a_nodes[i]->br[j]->brlen;
-                    //printf("%lf",BL_sum);
                 }
             } else {
             }
         }
-        //printf("\n");
     }
     BL_avg = (double) BL_sum / (double) t->nb_edges;
     t->avgbl = BL_avg;
-
-    for (i = 0; i < t->nb_nodes; i++) {
-        //t->a_nodes[i]->br[0]->brlen=t->avgbl;
-    }
 
     printf("\n*** BASIC STATISTICS ***\n\n", in_str);
     printf("Number of taxa in the tree read: %d\n", t->nb_taxa);
@@ -611,74 +585,7 @@ Tree *parse_nh_string(char *in_str, int nbanno, char *keep_ID) {
     printf("Average of branch lengths in the tree: %lf\n", t->avgbl);
     printf("Minimum branch length in the tree: %lf\n", t->min_bl);
     printf("Number of leaves according to the tree structure: %d\n", count_leaves(t));
-    //printf("Number of roots in the whole tree (must be 1): %d\n", count_roots(t));
-    //printf("Number of edges with zero length: %d\n", count_zero_length_branches(t));
-
-    if (count_zero_length_branches(t) > 0) {
-
-        do {
-            collapsed_one = 0;
-            uncollapsed_terminal = 0;
-            for (i = 0; i < t->nb_edges; i++) {
-                if (t->a_edges[i]->brlen == 0.0) {
-                    if (t->a_edges[i]->right->nneigh == 1) {
-                        uncollapsed_terminal++;
-                    } else {
-                        //collapse_branch(t->a_edges[i], t, 1, nbanno);
-                        t->a_edges[i]->brlen = MIN_BRLEN;
-                        collapsed_one = 1;
-                        collapsed_internal++;
-                        break;
-                    }
-                }
-            }
-        } while (collapsed_one);
-        printf("Found 0.0 length on %d internal branches and fixed it to %.5f\n", collapsed_internal, MIN_BRLEN);
-/*
-         nodecount = 0;
-         if(strcmp(keep_ID,"F")==0){
-	  for(i=0; i<t->nb_nodes; i++){
-            if(t->a_nodes[i]->nneigh>1&&i>0){
-              nodecount++;
-              sprintf(t->a_nodes[i]->name,"%s%d","Node",nodecount);
-            }
-          }
-         }
-         t->min_bl=DBL_MAX;
-         BL_sum=0.0;
-         for(i=0; i<t->nb_nodes; i++){
-          printf("%s:%lf",t->a_nodes[i]->name,t->a_nodes[i]->br[0]->brlen);
-          if(t->a_nodes[i]->nneigh > MAXPOLY) {
-            fprintf(stderr,"Fatal error: too many polytomy more than %d at the node %s.\n", MAXPOLY, t->a_nodes[i]->name);
-	    return NULL;
-          }
-          if(t->min_bl > t->a_nodes[i]->br[0]->brlen && t->a_nodes[i]->br[0]->brlen != 0.0) t->min_bl=t->a_nodes[i]->br[0]->brlen;
-          for(j=0; j<t->a_nodes[i]->nneigh; j++){
-            if(j==0){
-              if(i==0) {
-              } else {
-                BL_sum+=t->a_nodes[i]->br[j]->brlen;
-              }
-            } else {
-            }
-          }
-          printf("\n");
-         }
-         BL_avg=(double)BL_sum/(double)t->nb_edges;
-         t->avgbl=BL_avg;
-         printf("\n*** Collapsed %d zero length internal branches of the tree ***\n",collapsed_internal);
-	 printf("\n*** TREE STATISTICS after COLLAPSE***\n\n", in_str);
-	 printf("Number of taxa in the tree read: %d\n", t->nb_taxa);
-
-	 printf("Number of nodes in the tree read: %d\n", t->nb_nodes-t->nb_taxa);
-	 printf("Number of edges in the tree read: %d\n", t->nb_edges);
-	 printf("Average of branch lengths in the tree: %lf\n", t->avgbl);
-         printf("Minimum branch length in the tree: %lf\n", t->min_bl);
-	 printf("Number of leaves according to the tree structure: %d\n", count_leaves(t));
-	 printf("Number of edges with zero length: %d\n", count_zero_length_branches(t));
-we need to consider about all factors, e.g. condlike at the NEW node */
-    }
-
+    printf("Number of edges with zero length: %d\n", count_zero_length_branches(t));
 
     return t;
 

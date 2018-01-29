@@ -28,9 +28,9 @@
 #define MAXLNAME 255
 #define MAXLLINE 10000
 #define MAXNSP 50000
-#define MAXPOLY 100
-#define MAXCHAR 500
-#define    MIN_BRLEN    1e-5
+#define MAXPOLY 10000
+#define MAXCHAR 50
+#define MIN_BRLEN    1e-5
 #define MAX_TREELENGTH    10000000 /* more or less 10MB for a tree file in NH format */
 #define MAX_NODE_DEPTH    100000 /* max depth for nodes in the tree */
 #define MAX_NAMELENGTH        255    /* max length of a taxon name */
@@ -40,8 +40,8 @@
 #define FALSE 0
 #define SIMREP 50
 #define EPSILON 1e-10
-#define LIM_P pow(2,-100)
-#define POW -100
+#define LIM_P pow(2,-50)
+#define POW -50
 #define MAX_TAX 10000
 #define LOG2 0.69314718055994528623
 #define MIN(a, b) ((a)<(b)?(a):(b))
@@ -61,36 +61,19 @@ typedef struct __Node {
     double depth;        /* the depth of a node is its min distance to a leaf */
 
     double **pij;           /* probability of substitution */
-    double *prob;           /* temp probability at the nodes or tips*/
-    double *best_i;
-    int *best_char;         /* states at the node with best probability */
     double *condlike;       /*conditional likelihoods at the node*/
     double *condlike_mar;
-    double *sortedlike;
-    int *sortedstates;
     double *marginal;
-    int *mar_state;
-    int relax_count;
     int *tmp_best;
     double *mar_prob;
     double *up_like;
     double *sum_down;
     int up_factor;
     int down_factor;
-    int *calc_flag;
-    int pupko_flag;
     double **rootpij;
     int pupko_state;
-    int prob_sampled;
     int *local_flag;
     int count;
-    int bestnum;
-    int pppos;
-    int node_flag;
-    int state_flag;
-    int is_tip;
-    int *tip_counts;
-    char **tip_names;
 
 } Node;
 
@@ -126,24 +109,7 @@ typedef struct __Tree {
     int next_avail_edge_id;
     int next_avail_taxon_id;
     char **taxname_lookup_table;
-
-    double pupko_value;
-    double pupko_like;
-    int pupko_factor;
-    double like;
-    double sample_value;
-    double sample_like;
-    double scenario_values;
-    double maxBL;
-    double scenario_like;
-    int scenario_factors;
-    int marginal_factor;
-    double marginal_like;
     double avgbl;
-    double scale_A;
-    double scale_B;
-    double gold_1;
-    double gold_2;
     double min_bl;
 } Tree;
 

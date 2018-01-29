@@ -44,22 +44,21 @@ void output_state_anc_PP(Node *nd, int nb, int nbanno, char **character, FILE *o
         output_state_anc_PP(nd->neigh[i], nb, nbanno, character, outfile);
     }
 
-    if (nd->node_flag == 1) {
-        fprintf(outfile, "%s", nd->name);
+    fprintf(outfile, "%s", nd->name);
         for (i = 0; i < nbanno; i++) {
             for (j = 0; j < nbanno; j++) {
 
                 if (strcmp(character[i], character[nd->tmp_best[j]]) == 0) {
                     if (nd->local_flag[j] == 1) {
-                        fprintf(outfile, ", %.3f", nd->marginal[j]);
+                        fprintf(outfile, ", %.5f", nd->marginal[j]);
                     } else {
                         fprintf(outfile, ", 0.0");
                     }
                 }
             }
         }
-        fprintf(outfile, "\n");
-    }
+    fprintf(outfile, "\n");
+
     return;
 }
 

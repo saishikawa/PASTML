@@ -15,10 +15,9 @@ void *check_alloc(int nbrelt, int sizelt){
 int main(int argc, char **argv) {
     char *annotation_name = "", *tree_name = "", *model = "JC";
     char *out_annotation_name = "", *out_tree_name = "";
-    int i;
+    int i, argnum;
     struct timespec;
     double *frequency;
-    int argnum;
     int opt;
     int check_freq = 0;
     char *scaling = "T", *keep_ID = "T";
@@ -28,7 +27,7 @@ int main(int argc, char **argv) {
 
     const char *help_string = "usage: PASTML -a ANNOTATION_FILE -t TREE_NWK [-m MODEL] "
             "[-o OUTPUT_ANNOTATION_FILE] [-n OUTPUT_TREE_NWK] "
-            "[-s SCALING_ON_OFF] [-I KEEP_INTERNAL_NODE_IDS_ON_OFF] [-f CHAR_FREQUENCES]\n"
+            "[-s SCALING_ON_OFF] [-I KEEP_INTERNAL_NODE_IDS_ON_OFF] [-f USER_DEFINED_CHAR_FREQUENCES]\n"
             "\n"
             "required arguments:\n"
             "   -a ANNOTATION_FILE                  path to the annotation csv file containing tip states\n"
@@ -38,6 +37,7 @@ int main(int argc, char **argv) {
             "   -o OUTPUT_ANNOTATION_FILE           path where the output annotation csv file containing node states will be created\n"
             "   -n OUTPUT_TREE_NWK                  path where the output tree file will be created (in newick format)\n"
             "   -m MODEL                            state evolution model (JC or F81)\n"
+            "   -f USER_DEFINED_FREQUENCY           state frequencies, the sum must be 1.0 (e.g. -f 0.1 0.2 0.3 ... 0.4)\n"
             "   -s SCALING_ON_OFF                   branch length scaling on (T, by default) or off (F)\n"
             "   -I KEEP_INTERNAL_NODE_IDS_ON_OFF    keep internal node ids from the input tree: T (true) or F (false)\n";
 
@@ -69,16 +69,14 @@ int main(int argc, char **argv) {
                 break;
 
             case 'f':
-                argnum = atoi(argv[optind - 1]);
-                //printf("NUMofCHARACTER = %d\n",argnum);
+                argnum = atoi(argv[optind-1]);
                 frequency = check_alloc(argnum, sizeof(double));
                 if (frequency == NULL) {
                     return ENOMEM;
                 }
-                //printf("optind = %s\n", argv[optind-1]);
                 for (i = 1; i <= argnum; i++) {
                     frequency[i - 1] = atof(argv[optind - 1 + i]);
-                    //printf("freq %d = %lf\n", i, frequency[i]);
+                    printf("Input Frequency No.%d = %lf\n", i, frequency[i]);
                 }
                 check_freq = 1;
                 break;

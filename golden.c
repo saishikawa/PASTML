@@ -27,44 +27,8 @@ int Stopping_Rule(double x0, double x1) {
     }
 }
 
-/*double golden(char** tipnames, int* states, int nb, int nbanno, double mu, double ub, char* model, double* frequency, double* scale){
-  double lb=0.0, x1, x2, fx1=0., fx2=0., diff;
-  int count=0;
-
-  x1=ub+(lb-ub)/gratio;
-  x2=lb+(ub-lb)/gratio;
-  calc_lik(root,tipnames,states,nb,nbanno,mu,x1, model, frequency, &fx1);
-  calc_lik(root,tipnames,states,nb,nbanno,mu,x2, model, frequency, &fx2);
-  *scale=(x1+x2)/2;
-  diff=fx1-fx2;
-
-  while(Stopping_Rule(lb,ub)==1){
-    if(fabs(diff)<SIGMA) break;
-    if(diff < 0.0){
-      lb=x1;
-      x1=x2;
-      fx1=fx2;
-      x2=lb+(ub-lb)/gratio;
-      calc_lik(root,tipnames,states,nb,nbanno,mu,x2, model, frequency,&fx2);
-      *scale=(x1+x2)/2;
-      diff=fx1-fx2;
-    } else if (diff > 0.0) {
-      ub=x2;
-      x2=x1;
-      fx2=fx1;
-      x1=ub+(lb-ub)/gratio;
-      calc_lik(root,tipnames,states,nb,nbanno,mu,x1, model, frequency,&fx1);
-      *scale=(x1+x2)/2;
-      diff=fx1-fx2;
-    }
-    count++;
-  }
-  *scale=(x1+x2)/2.0;
-  return (fx1+fx2)/2.0;
-}*/
-
 void golden(Node *nd, char **tipnames, int *states, int nb, int nbanno, double mu, char *model, double *p, double ub) {
-    double lb = 0.0, x1, x2, fx1 = 0., fx2 = 0., diff;
+    double lb = 0.05 / s_tree->avgbl, x1, x2, fx1 = 0., fx2 = 0., diff;
     int count = 0;
 
     x1 = ub + (lb - ub) / gratio;
@@ -102,6 +66,4 @@ void golden(Node *nd, char **tipnames, int *states, int nb, int nbanno, double m
     }
     p[nbanno] = (x1 + x2) / 2.0;
     //printf("fx1 = %lf, fx2 = %lf\n",fx1, fx2);
-    s_tree->gold_1 = fx1;
-    s_tree->gold_2 = fx2;
 }

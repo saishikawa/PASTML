@@ -68,12 +68,6 @@ void free_node(Node *node, int count, int num_anno) {
     if (node->comment) free(node->comment);
     free(node->neigh);
     free(node->br);
-    for (j = 0; j < num_anno; j++) free(node->pij[j]);
-    free(node->pij);
-    if (count == 0) {
-        for (j = 0; j < num_anno; j++) free(node->rootpij[j]);
-        free(node->rootpij);
-    }
     free(node->condlike);
     free(node->condlike_mar);
     free(node->marginal);
@@ -81,7 +75,11 @@ void free_node(Node *node, int count, int num_anno) {
     free(node->mar_prob);
     free(node->up_like);
     free(node->sum_down);
-
+    free(node->local_flag);
+    for (j = 0; j < num_anno; j++) free(node->pij[j]);
+    free(node->pij);
+    for (j = 0; j < num_anno; j++) free(node->rootpij[j]);
+    free(node->rootpij);
     free(node);
 }
 
@@ -90,11 +88,10 @@ void free_tree(Tree *tree, int num_anno) {
     printf("\nStart freeing tree\n\n");
     if (tree == NULL) return;
     printf("\nThere is a tree to free with %d nodes\n\n", tree->nb_nodes);
-    printf("\nand %d annots\n\n", num_anno);
+    printf("\nand %d annotations\n\n", num_anno);
     for (i = 0; i < tree->nb_nodes; i++) free_node(tree->a_nodes[i], i, num_anno);
     for (i = 0; i < tree->nb_edges; i++) free_edge(tree->a_edges[i]);
     for (i = 0; i < tree->nb_taxa; i++) free(tree->taxa_names[i]);
-
     free(tree->taxa_names);
     free(tree->a_nodes);
     free(tree->a_edges);
@@ -194,7 +191,7 @@ int runpastml(char *annotation_name, char* tree_name, char *out_annotation_name,
         sum_freq = sum_freq + count[i];
     }
     sum_freq = sum_freq + count_miss;
-    printf("\n*** Frequency of each character in the MODEL %s ***\n\n", model);
+    printf("\n*** Frequency of %d character in the MODEL %s ***\n\n", num_anno, model);
     for (i = 0; i < num_anno; i++) {
         if (strcmp(model, "JC") == 0) {
             frequency[i] = (double) 1 / num_anno;

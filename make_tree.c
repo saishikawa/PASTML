@@ -391,7 +391,7 @@ int parse_substring_into_node(char *in_str, int begin, int end, Node *current_no
         return EXIT_FAILURE;
     }
 
-    int i;
+    int i, j;
     int pair[2]; /* to be the beginning and end points of the substrings describing the various nodes */
     int inner_pair[2]; /* to be the beginning and end points of the substrings after removing the name and branch length */
     int nb_commas = count_outer_commas(in_str, begin, end);
@@ -404,18 +404,25 @@ int parse_substring_into_node(char *in_str, int begin, int end, Node *current_no
     current_node->neigh = malloc(current_node->nneigh * sizeof(Node *));
     current_node->br = malloc(current_node->nneigh * sizeof(Edge *));
 
-    current_node->condlike = calloc(nbanno, sizeof(double));
-    current_node->condlike_mar = calloc(nbanno, sizeof(double));
-    current_node->up_like = calloc(nbanno, sizeof(double));
-    current_node->mar_prob = calloc(nbanno, sizeof(double));
+    current_node->condlike = calloc(nbanno, sizeof(double)); for (i = 0; i < nbanno; i++) current_node->condlike[i] = 0.0;
+    current_node->condlike_mar = calloc(nbanno, sizeof(double)); for (i = 0; i < nbanno; i++) current_node->condlike_mar[i] = 0.0;
+    current_node->up_like = calloc(nbanno, sizeof(double)); for (i = 0; i < nbanno; i++) current_node->up_like[i] = 0.0;
+    current_node->mar_prob = calloc(nbanno, sizeof(double)); for (i = 0; i < nbanno; i++) current_node->mar_prob[i] = 0.0;
     current_node->pij = calloc(nbanno, sizeof(double *));
     for (i = 0; i < nbanno; i++) current_node->pij[i] = calloc(nbanno, sizeof(double));
-    current_node->marginal = calloc(nbanno, sizeof(double));
-    current_node->tmp_best = calloc(nbanno, sizeof(int));
-    current_node->sum_down = calloc(nbanno, sizeof(double));
+    for (i = 0; i < nbanno; i++) {
+      for (j = 0; j < nbanno; j++) current_node->pij[i][j] = 0.0;
+    }
+
+    current_node->marginal = calloc(nbanno, sizeof(double)); for (i = 0; i < nbanno; i++) current_node->marginal[i] = 0.0;
+    current_node->tmp_best = calloc(nbanno, sizeof(int)); for (i = 0; i < nbanno; i++) current_node->tmp_best[i] = 0;
+    current_node->sum_down = calloc(nbanno, sizeof(double)); for (i = 0; i < nbanno; i++) current_node->sum_down[i] = 0.0;
 
     current_node->rootpij = calloc(nbanno, sizeof(double *));
     for (i = 0; i < nbanno; i++) current_node->rootpij[i] = calloc(nbanno, sizeof(double));
+    for (i = 0; i < nbanno; i++) {
+      for (j = 0; j < nbanno; j++) current_node->rootpij[i][j] = 0.0;
+    }
 
     current_node->local_flag = calloc(nbanno, sizeof(int));
     for (i = 0; i < nbanno; i++) current_node->local_flag[i] = 1;

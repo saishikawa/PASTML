@@ -9,17 +9,12 @@ double global_factor;
 
 void calc_lik_bfgs(Node *nd, char **tipnames, int *states, int nb, int nbanno, double mu, char *model, double *p,
                    double *likelihood) {
-    int i, j, ii;
+  int i, j, k, ii;
     double mul, expmul, sum = 0., prob_left = 0., prob_right = 0., bl, smallest, scaled_lk, logroot, prob_sons[MAXPOLY], sum_mu;
     static int factors = 0;
     double curr_scaler;
     int curr_scaler_pow, piecewise_scaler_pow, node_start;
 
-    sum_mu = 0.0;
-    for (i = 0; i < nbanno; i++) {
-        sum_mu += p[i] * p[i];
-    }
-    mu = 1 / (1 - sum_mu);
     sum = 0.;
     if (nd->nneigh == 1) { /*tips*/
         bl = nd->br[0]->brlen;
@@ -61,6 +56,7 @@ void calc_lik_bfgs(Node *nd, char **tipnames, int *states, int nb, int nbanno, d
 
     if (nd == root) {
         node_start = 0;
+
     } else {
         node_start = 1;
     }
@@ -130,6 +126,7 @@ void calc_lik_bfgs(Node *nd, char **tipnames, int *states, int nb, int nbanno, d
         return;
 
     } else {
+
         bl = nd->br[0]->brlen;
         if (bl == 0.0) {
             bl = (nd->br[0]->brlen + p[nbanno + 1]) * (s_tree->avgbl / (s_tree->avgbl + p[nbanno + 1]));
@@ -149,7 +146,7 @@ void calc_lik_bfgs(Node *nd, char **tipnames, int *states, int nb, int nbanno, d
                 }
             }
         }
-
+        /*
         for (i = 0; i < nbanno; i++) {
             for (ii = node_start; ii < nd->nneigh; ii++) {
                 prob_sons[ii] = 0.;
@@ -163,6 +160,37 @@ void calc_lik_bfgs(Node *nd, char **tipnames, int *states, int nb, int nbanno, d
                 }
             }
         }
+        */
+        for (ii = node_start; ii < nd->nneigh; ii++) {
+            for (i = 0; i < nbanno; i++) {
+	       if (ii==node_start) nd->condlike[i] = 1.0; 
+                prob_sons[ii] = 0.;
+                for (j = 0; j < nbanno; j++) {
+                    prob_sons[ii] += nd->neigh[ii]->pij[i][j] * nd->neigh[ii]->condlike[j];
+                }
+                nd->condlike[i]*=prob_sons[ii];
+            }
+            smallest = 1.0;
+            for (i = 0; i < nbanno; i++) {
+              if (nd->condlike[i] > 0.0) {
+                 if (nd->condlike[i] < smallest) smallest = nd->condlike[i];
+              } else {
+              }
+            }
+            if (smallest < LIM_P) {
+               curr_scaler_pow = (int) (POW * LOG2 - log(smallest)) / LOG2;
+               curr_scaler = ((unsigned long long) (1) << curr_scaler_pow);
+               factors += curr_scaler_pow;
+               do {
+                 piecewise_scaler_pow = MIN(curr_scaler_pow, 63);
+                 curr_scaler = ((unsigned long long) (1) << piecewise_scaler_pow);
+                 for (j = 0; j < nbanno; j++) {
+                   nd->condlike[j] *= curr_scaler;
+                 }
+                 curr_scaler_pow -= piecewise_scaler_pow;
+               } while (curr_scaler_pow != 0);
+           }
+        }     
 
         /*scaling*/
         smallest = 1.0;
@@ -188,9 +216,21 @@ void calc_lik_bfgs(Node *nd, char **tipnames, int *states, int nb, int nbanno, d
         nd->up_factor = factors;
         for (i = 0; i < nbanno; i++) {
             nd->up_like[i] = nd->condlike[i];
-            //printf("%s up_like%d = %.5e, ", nd->name, i, nd->up_like[i]);
         }
-        //printf("\n");
     }
+    /*for (i = 0; i < nbanno; i++) {
+      if(nd->condlike[i] == 0.0) {
+        if(i==0) {
+          printf("Current %s, Son: ", nd->name);
+          for (j = node_start; j < nd->nneigh; j++) {
+            printf("\n%s-%lf, ", nd->neigh[j]->name, nd->neigh[j]->br[0]->brlen);
+            for(k = 0; k < nbanno; k++) printf("%d = %.5e, ", k, nd->neigh[j]->condlike[k]);
+	  }
+          printf("\n");
+        }
+        printf("Cond%d = %.5e, ", i, nd->condlike[i]);
+        if(i==nbanno-1) printf("\n");
+      }
+      }*/
     return;
 }

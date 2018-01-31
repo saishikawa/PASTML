@@ -26,9 +26,8 @@
 #define SIGMA 1.0e-3
 
 #define MAXLNAME 255
-#define MAXLLINE 10000
 #define MAXNSP 50000
-#define MAXPOLY 10000
+#define MAXPOLY 50
 #define MAXCHAR 50
 #define MIN_BRLEN    1e-5
 #define MAX_TREELENGTH    10000000 /* more or less 10MB for a tree file in NH format */
@@ -38,7 +37,6 @@
 #define MAXNTREE 1
 #define TRUE 1
 #define FALSE 0
-#define SIMREP 50
 #define EPSILON 1e-10
 #define LIM_P pow(2,-50)
 #define POW -50

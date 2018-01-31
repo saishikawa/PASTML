@@ -43,9 +43,6 @@ void down_like_marginal(Node* nd, int nb, int nbanno, double mu, double scale, d
           for(i=node_start;i<father->nneigh;i++){
             if(i!=my_id){
               prob_down_son = 0.0;
-              tmp_br = (nd->br[0]->brlen + father->neigh[i]->br[0]->brlen) * scale;
-              mul=-1.*mu*tmp_br;
-              expmul=exp(mul);
               //assume other sons have ii
               for(ii=0;ii<nbanno;ii++){
                  //assume root has k
@@ -108,10 +105,12 @@ void down_like_marginal(Node* nd, int nb, int nbanno, double mu, double scale, d
       for(j=0;j<nbanno;j++){
         sum+=nd->condlike_mar[j];
       }
-      //printf("%s, SUM=%lf, factor=%d\n",nd->name,log(sum),nd->down_factor);
+      //printf("%s, SUM=%lf, factor=%d, ",nd->name,log(sum),nd->down_factor);
       for(j=0;j<nbanno;j++){
         nd->condlike_mar[j] = (nd->condlike_mar[j]) / sum;
+        //printf("%d=%lf, ", j, nd->condlike_mar[j]);
       }
+      //printf("\n");
 
   }
 

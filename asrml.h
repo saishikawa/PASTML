@@ -22,12 +22,12 @@
 #define STEP 1.0e-4
 #define STEP2 1.0e-4
 #define STEP3 1.0e-9
-#define SCAL_MIN 1.0e-4
+#define SCAL_MIN 1.0e-5
 #define SIGMA 1.0e-3
 
 #define MAXLNAME 255
 #define MAXNSP 50000
-#define MAXPOLY 50
+#define MAXPOLY 100
 #define MAXCHAR 50
 #define MIN_BRLEN    1e-5
 #define MAX_TREELENGTH    10000000 /* more or less 10MB for a tree file in NH format */

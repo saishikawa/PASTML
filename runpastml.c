@@ -85,10 +85,7 @@ void free_node(Node *node, int count, int num_anno) {
 
 void free_tree(Tree *tree, int num_anno) {
     int i;
-    printf("\nStart freeing tree\n\n");
     if (tree == NULL) return;
-    printf("\nThere is a tree to free with %d nodes\n\n", tree->nb_nodes);
-    printf("\nand %d annotations\n\n", num_anno);
     for (i = 0; i < tree->nb_nodes; i++) free_node(tree->a_nodes[i], i, num_anno);
     for (i = 0; i < tree->nb_edges; i++) free_edge(tree->a_edges[i]);
     for (i = 0; i < tree->nb_taxa; i++) free(tree->taxa_names[i]);

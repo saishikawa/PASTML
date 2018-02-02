@@ -57,7 +57,7 @@ static struct PyModuleDef cModPyDem =
 };
 
 PyMODINIT_FUNC
-PyInit_pastml_module(void)
+PyInit_pastml(void)
 {
     return PyModule_Create(&cModPyDem);
 }

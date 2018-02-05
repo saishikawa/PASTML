@@ -255,7 +255,7 @@ int runpastml(char *annotation_name, char* tree_name, char *out_annotation_name,
     }
     mu = 1 / (1 - sum);
     parameter[num_anno] = 1.0;
-    parameter[num_anno + 1] = s_tree->min_bl / 1.0e+3;
+    parameter[num_anno + 1] = MIN_BRLEN;
 
     calc_lik_bfgs(root, tips, states, num_tips, num_anno, mu, model, parameter, &lnl);
     printf("\n*** Initial likelihood of the tree ***\n\n %lf\n\n", lnl * (-1.0));

@@ -88,7 +88,7 @@ double f1dim(Node *nd, char** tipnames, int* states, int nb, int nbanno, double 
   xt[nbanno]=(pcom[nbanno]*exp1+x*xicom[nbanno])/exp1;
   xt[nbanno+1]=(pcom[nbanno+1]*exp2+x*xicom[nbanno+1])/exp2;
   if(xt[nbanno] >  scale_up || xt[nbanno] < scale_low) xt[nbanno] = pcom[nbanno];
-  if(fabs(xt[nbanno+1]) >  s_tree->min_bl || fabs(xt[nbanno+1]) < DBL_MIN || xt[nbanno+1] < 0.0) xt[nbanno+1] = pcom[nbanno+1];
+  if(fabs(xt[nbanno+1]) >  s_tree->min_bl || fabs(xt[nbanno+1]) < 1.0e-10 || xt[nbanno+1] < 0.0) xt[nbanno+1] = pcom[nbanno+1];
   
   calc_lik_bfgs(root, tipnames, states, nb, nbanno, mu, model, xt, &f);
   for(j=0;j<ncom;j++) {
@@ -253,7 +253,7 @@ routines mnbrak and brent .*/
     p[j]=best_p[j];
   }
   if(p[nbanno] >  scale_up || p[nbanno] < scale_low) p[nbanno] = pold[nbanno];
-  if(p[nbanno+1] >  s_tree->min_bl || p[nbanno+1] < DBL_MIN) p[nbanno+1] = pold[nbanno+1];
+  if(p[nbanno+1] >  s_tree->min_bl || p[nbanno+1] < 1.0e-10) p[nbanno+1] = pold[nbanno+1];
   calc_lik_bfgs(root, tipnames, states, nb, nbanno, mu, model, p, &f_check);
   free_vector(pcom,0,n-1); free_vector(xicom,0,n-1); free_vector(pold,0,n-1); free_vector(store_p,0,n-1); free_vector(best_p,0,n-1);
 }

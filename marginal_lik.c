@@ -8,9 +8,10 @@ void down_like_marginal(Node* nd, int nb, int nbanno, double mu, double scale, d
   int i,j,k, ii;
   double mul, expmul, sum=0., prob_up=0., prob_down=0., prob_down_son=0., smallest, scaled_lk=0., logroot, root_my_BL=0., bl, tmp_br, sum_mu;
   Node* father;
-  int factor=0, tmp_factor;
-  double curr_scaler, sumlog;
-  int curr_scaler_pow, piecewise_scaler_pow, my_id, node_start;
+  int factor=0;
+  double curr_scaler, sumlog, tmp_father_lik[nbanno];
+  int curr_scaler_pow, piecewise_scaler_pow, my_id, node_start, tmp_father_factor[nbanno], tmp_factor[nbanno], max_father_factor, max_factor;
+  static int count=0;
 
   sum_mu=0.0;
   for(i=0;i<nbanno;i++){
@@ -33,12 +34,12 @@ void down_like_marginal(Node* nd, int nb, int nbanno, double mu, double scale, d
           my_id=i;
         }
     }
-
     //currentNODE has j
      for(j=0;j<nbanno;j++){
         if(father==root) {
           node_start=0;
           nd->sum_down[j] =1.0;
+          tmp_factor[j]=0;
           prob_down = 1.0;
           for(i=node_start;i<father->nneigh;i++){
             if(i!=my_id){
@@ -58,25 +59,72 @@ void down_like_marginal(Node* nd, int nb, int nbanno, double mu, double scale, d
         } else {
           node_start=1;
           nd->sum_down[j] = 0.0;
+          tmp_factor[j] = 0;
+
           //assume father has k
           for(k=0;k<nbanno;k++){
-            prob_down = nd->pij[j][k] * father->sum_down[k];
+            tmp_father_lik[k] = nd->pij[j][k] * father->sum_down[k];
+            tmp_father_factor[k] = 0;
             for(i=node_start;i<father->nneigh;i++){
               if(i!=my_id){
                 prob_down_son = 0.0;
                 //assume other sons have ii
                 for(ii=0;ii<nbanno;ii++){
                   prob_down_son += father->neigh[i]->pij[k][ii] * father->neigh[i]->up_like[ii];
-                }
-                prob_down *= prob_down_son;
+		}
+                tmp_father_lik[k] *= prob_down_son;
 	      }
-            }
-            nd->sum_down[j] += prob_down;
+              if(tmp_father_lik[k] < LIM_P){
+                curr_scaler_pow = (int)(POW*LOG2-log(tmp_father_lik[k]))/LOG2;
+                curr_scaler     = ((unsigned long long)(1) << curr_scaler_pow);
+                tmp_father_factor[k]+=curr_scaler_pow;
+                do {
+                  piecewise_scaler_pow = MIN(curr_scaler_pow,63);
+                  curr_scaler = ((unsigned long long)(1) << piecewise_scaler_pow);
+                  tmp_father_lik[k] *= curr_scaler;
+                  curr_scaler_pow -= piecewise_scaler_pow;
+                } while(curr_scaler_pow != 0);
+	      }
+	    }
+	  }
+          max_father_factor = 0.0;
+          for(k=0;k<nbanno;k++){
+            if(max_father_factor < tmp_father_factor[k]) max_father_factor = tmp_father_factor[k];
           }
+          for(k=0;k<nbanno;k++){
+            curr_scaler_pow = max_father_factor - tmp_father_factor[k];
+            curr_scaler     = ((unsigned long long)(1) << curr_scaler_pow);
+            if(curr_scaler_pow != 0){
+              do {
+                  piecewise_scaler_pow = MIN(curr_scaler_pow,63);
+                  curr_scaler = ((unsigned long long)(1) << piecewise_scaler_pow);
+                  tmp_father_lik[k] *= curr_scaler;
+                  curr_scaler_pow -= piecewise_scaler_pow;
+              } while(curr_scaler_pow != 0);
+	    }
+            nd->sum_down[j] += tmp_father_lik[k];
+          }  
+          tmp_factor[j]=max_father_factor;        
         }
       }
-      
-      nd->down_factor=nd->up_factor;
+
+      max_factor=tmp_factor[0];
+      for(j=0;j<nbanno;j++){
+        if(max_factor < tmp_factor[j]) max_factor = tmp_factor[j];
+      }
+      for(j=0;j<nbanno;j++){
+        curr_scaler_pow = max_factor - tmp_factor[j];
+        curr_scaler     = ((unsigned long long)(1) << curr_scaler_pow);
+        if(curr_scaler_pow != 0){
+          do {
+             piecewise_scaler_pow = MIN(curr_scaler_pow,63);
+             curr_scaler = ((unsigned long long)(1) << piecewise_scaler_pow);
+             nd->sum_down[j] *= curr_scaler;
+             curr_scaler_pow -= piecewise_scaler_pow;
+          } while(curr_scaler_pow != 0);
+        }
+      }  
+      nd->down_factor=nd->up_factor+max_factor;
       for(j=0;j<nbanno;j++){
         nd->condlike_mar[j] = nd->sum_down[j] * nd->up_like[j] * frequency[j];
       }
@@ -101,14 +149,14 @@ void down_like_marginal(Node* nd, int nb, int nbanno, double mu, double scale, d
         } while(curr_scaler_pow != 0);
       }
  
-      sum=0.0;
+      sum=0.0;;
       for(j=0;j<nbanno;j++){
         sum+=nd->condlike_mar[j];
       }
       //printf("%s, SUM=%lf, factor=%d, ",nd->name,log(sum),nd->down_factor);
       for(j=0;j<nbanno;j++){
         nd->condlike_mar[j] = (nd->condlike_mar[j]) / sum;
-        //printf("%d=%lf, ", j, nd->condlike_mar[j]);
+        //printf("%d=%.5f, ", j, nd->condlike_mar[j]);
       }
       //printf("\n");
 
@@ -122,7 +170,7 @@ void down_like_marginal(Node* nd, int nb, int nbanno, double mu, double scale, d
   for(i=node_start;i<nd->nneigh;i++){
     down_like_marginal(nd->neigh[i], nb, nbanno, mu, scale, frequency);
   }
-
+  count++;
   return;
 }
 

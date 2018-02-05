@@ -27,7 +27,7 @@
 
 #define MAXLNAME 255
 #define MAXNSP 50000
-#define MAXPOLY 100
+#define MAXPOLY 50000
 #define MAXCHAR 50
 #define MIN_BRLEN    1e-5
 #define MAX_TREELENGTH    10000000 /* more or less 10MB for a tree file in NH format */
@@ -38,8 +38,8 @@
 #define TRUE 1
 #define FALSE 0
 #define EPSILON 1e-10
-#define LIM_P pow(2,-50)
-#define POW -50
+#define LIM_P pow(2,-500)
+#define POW -500
 #define MAX_TAX 10000
 #define LOG2 0.69314718055994528623
 #define MIN(a, b) ((a)<(b)?(a):(b))

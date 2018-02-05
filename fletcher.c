@@ -58,7 +58,6 @@ double f1dim(Node *nd, char** tipnames, int* states, int nb, int nbanno, double 
   double f,*xt,x_sum=0.0,tmp_x,sumfreq,e1,e2,exp1,exp2;
   
   xt=vector(0,ncom-1);
-  //printf("UPDATE ");
   sumfreq=0.0;
   x_sum=0.0;
   for(j=0;j<nbanno;j++) {

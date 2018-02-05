@@ -85,7 +85,10 @@ void free_node(Node *node, int count, int num_anno) {
 
 void free_tree(Tree *tree, int num_anno) {
     int i;
+    printf("\nStart freeing tree\n\n");
     if (tree == NULL) return;
+    printf("\nThere is a tree to free with %d nodes\n\n", tree->nb_nodes);
+    printf("\nand %d annotations\n\n", num_anno);
     for (i = 0; i < tree->nb_nodes; i++) free_node(tree->a_nodes[i], i, num_anno);
     for (i = 0; i < tree->nb_edges; i++) free_edge(tree->a_edges[i]);
     for (i = 0; i < tree->nb_taxa; i++) free(tree->taxa_names[i]);
@@ -252,7 +255,7 @@ int runpastml(char *annotation_name, char* tree_name, char *out_annotation_name,
     }
     mu = 1 / (1 - sum);
     parameter[num_anno] = 1.0;
-    parameter[num_anno + 1] = MIN_BRLEN;
+    parameter[num_anno + 1] = s_tree->min_bl / 1.0e+3;
 
     calc_lik_bfgs(root, tips, states, num_tips, num_anno, mu, model, parameter, &lnl);
     printf("\n*** Initial likelihood of the tree ***\n\n %lf\n\n", lnl * (-1.0));

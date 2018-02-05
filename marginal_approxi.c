@@ -152,38 +152,38 @@ void order_marginal(Node *nd, int nb, int nbanno) {
 int make_samples(char **tipnames, int *states, int num_tips, int num_anno, char **character, double *parameter,
                   char *out_annotation_file_name, char *out_tree_name) {
 
-    FILE *fp;
+    FILE *fptre, *fpanno;
     int true_count = 0;
 
     order_marginal(root, num_tips, num_anno);
     calc_correct(root, num_tips, num_anno, character);
 
 //    sprintf(fname, "Result_treeIDs.%d.taxa.%d.states.tre", num_tips, num_anno);
-    fp = fopen(out_tree_name, "w");
-    if (!fp) {
+    fptre = fopen(out_tree_name, "w");
+    if (!fptre) {
         fprintf(stderr, "Output tree file %s is impossible to access.", out_tree_name);
         fprintf(stderr, "Value of errno: %d\n", errno);
         fprintf(stderr, "Error opening the file: %s\n", strerror(errno));
         return ENOENT;
     }
     /*write_result_tree*/
-    if (EXIT_SUCCESS != write_nh_tree(s_tree, fp, parameter[num_anno], parameter[num_anno + 1])) {
+    if (EXIT_SUCCESS != write_nh_tree(s_tree, fptre, parameter[num_anno], parameter[num_anno + 1])) {
         return EXIT_FAILURE;
     }
-    fclose(fp);
+    fclose(fptre);
     printf("Scaled tree with internal node ids is written to %s\n", out_tree_name);
 
 //    sprintf(fname, "Result_states_probs.FULL.%d.taxa.%d.states.txt", num_tips, num_anno);
-    fp = fopen(out_annotation_file_name, "w");
-    if (!fp) {
+    fpanno = fopen(out_annotation_file_name, "w");
+    if (!fpanno) {
         fprintf(stderr, "Output annotation file %s is impossible to access.", out_annotation_file_name);
         fprintf(stderr, "Value of errno: %d\n", errno);
         fprintf(stderr, "Error opening the file: %s\n", strerror(errno));
         return ENOENT;
     }
-    output_state_anc_PP(root, num_tips, num_anno, character, fp);
-    output_state_tip_PP(root, num_tips, num_anno, character, fp);
-    fclose(fp);
+    output_state_anc_PP(root, num_tips, num_anno, character, fpanno);
+    output_state_tip_PP(root, num_tips, num_anno, character, fpanno);
+    fclose(fpanno);
     printf("Predictions for all internal nodes and the root are written to %s in csv format\n",
            out_annotation_file_name);
 

@@ -12,9 +12,11 @@ void calc_lik_bfgs(Node *nd, char **tipnames, int *states, int nb, int nbanno, d
   int i, j, k, ii;
     double mul, expmul, sum = 0., prob_left = 0., prob_right = 0., bl, smallest, scaled_lk, logroot, prob_sons[MAXPOLY], sum_mu;
     static int factors = 0;
+    static int count=0;
     double curr_scaler;
     int curr_scaler_pow, piecewise_scaler_pow, node_start;
-
+    
+    count++;
     sum = 0.;
     if (nd->nneigh == 1) { /*tips*/
         bl = nd->br[0]->brlen;
@@ -121,7 +123,6 @@ void calc_lik_bfgs(Node *nd, char **tipnames, int *states, int nb, int nbanno, d
             factors -= piecewise_scaler_pow;
         } while (factors != 0);
         factors = 0;
-        //printf("scaled lk = %.12e, log = %lf\n",scaled_lk,logroot);
         *likelihood = fabs(logroot);
         return;
 
@@ -146,21 +147,6 @@ void calc_lik_bfgs(Node *nd, char **tipnames, int *states, int nb, int nbanno, d
                 }
             }
         }
-        /*
-        for (i = 0; i < nbanno; i++) {
-            for (ii = node_start; ii < nd->nneigh; ii++) {
-                prob_sons[ii] = 0.;
-                for (j = 0; j < nbanno; j++) {
-                    prob_sons[ii] += nd->neigh[ii]->pij[i][j] * nd->neigh[ii]->condlike[j];
-                }
-                if (ii == node_start) {
-                    nd->condlike[i] = prob_sons[ii];
-                } else {
-                    nd->condlike[i] = nd->condlike[i] * prob_sons[ii];
-                }
-            }
-        }
-        */
         for (ii = node_start; ii < nd->nneigh; ii++) {
             for (i = 0; i < nbanno; i++) {
 	       if (ii==node_start) nd->condlike[i] = 1.0; 
@@ -218,6 +204,7 @@ void calc_lik_bfgs(Node *nd, char **tipnames, int *states, int nb, int nbanno, d
             nd->up_like[i] = nd->condlike[i];
         }
     }
+    //DEBUG
     /*for (i = 0; i < nbanno; i++) {
       if(nd->condlike[i] == 0.0) {
         if(i==0) {

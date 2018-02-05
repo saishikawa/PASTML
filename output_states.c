@@ -33,16 +33,20 @@ void output_state_anc_PP(Node *nd, int nb, int nbanno, char **character, FILE *o
         } else {
         }
     }
+
+    for (i = node_start; i < nd->nneigh; i++) {
+        output_state_anc_PP(nd->neigh[i], nb, nbanno, character, outfile);
+    }
+
+    //printf("%s", nd->name);
     for (i = 0; i < nbanno; i++) {
+      //printf(", %.5f", nd->marginal[j]);
         if (nd->local_flag[i] == 1) {
             nd->marginal[i] = (double) 1.0 / num;
         } else {
         }
     }
-
-    for (i = node_start; i < nd->nneigh; i++) {
-        output_state_anc_PP(nd->neigh[i], nb, nbanno, character, outfile);
-    }
+    //printf("\n");
 
     fprintf(outfile, "%s", nd->name);
         for (i = 0; i < nbanno; i++) {

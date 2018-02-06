@@ -34,6 +34,6 @@ setup(
     download_url='https://github.com/saishikawa/PASTML',
     keywords=['PASTML', 'phylogeny', 'ancestral state inference', 'likelihood'],
     ext_modules=[pastml_module],
-    headers=['asrml.h', 'runpastml.h', 'make_tree.h', 'lik.h', 'marginal_lik.h', 'marginal_approxi.h',
+    headers=['pastml.h', 'runpastml.h', 'make_tree.h', 'lik.h', 'marginal_lik.h', 'marginal_approxi.h',
              'output_tree.h', 'output_states.h', 'fletcher.h', 'nrutil.h', 'golden.h', 'fletcherJC.h']
 )

@@ -1,7 +1,7 @@
 from distutils.core import setup, Extension
 
 # the C extension module
-pastml_module = Extension('pastml_module', sources=['pastmlpymodule.c',
+pastml_module = Extension('pastml', sources=['pastmlpymodule.c',
                                                     'runpastml.c',
                                                     'make_tree.c',
                                                     'lik.c',
@@ -26,7 +26,7 @@ setup(
         'Topic :: Software Development',
         'Topic :: Software Development :: Libraries :: Python Modules',
     ],
-    version='0.3',
+    version='0.3.4',
     description='Python wrapper for PASTML.',
     maintainer='Anna Zhukova',
     maintainer_email='anna.zhukova@pasteur.fr',

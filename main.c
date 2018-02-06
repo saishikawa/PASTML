@@ -12,10 +12,13 @@ void *check_alloc(int nbrelt, int sizelt){
     return NULL;
 }
 
+
 int main(int argc, char **argv) {
-    char *annotation_name = "", *tree_name = "", *model = "JC";
-    char *out_annotation_name = "", *out_tree_name = "";
-    char def_out_annotation_name[256], def_out_tree_name[256];
+    char *model = "JC";
+    char *annotation_name = NULL;
+    char *tree_name = NULL;
+    char *out_annotation_name = NULL;
+    char *out_tree_name = NULL;
     int i, argnum;
     struct timespec;
     double *frequency;
@@ -99,13 +102,13 @@ int main(int argc, char **argv) {
     } while ((opt = getopt(argc, argv, "a:t:o:m:n:s:f:I:")) != -1);
 
     /* Make sure that the required arguments are set correctly */
-    if (strcmp(annotation_name, "") == 0) {
+    if (annotation_name == NULL) {
         snprintf(arg_error_string, 1024, "%s%s", "Annotation file (-a) must be specified.\n\n", help_string);
         printf(arg_error_string);
         free(arg_error_string);
         return EINVAL;
     }
-    if (strcmp(tree_name, "") == 0) {
+    if (tree_name == NULL) {
         snprintf(arg_error_string, 1024, "%s%s", "Tree file (-t) must be specified.\n\n", help_string);
         printf(arg_error_string);
         free(arg_error_string);
@@ -127,17 +130,16 @@ int main(int argc, char **argv) {
             return ENOMEM;
         }
     }
-    if (strcmp(out_annotation_name, "") == 0) {
-        sprintf(def_out_annotation_name, "%s.pastml.out.csv", annotation_name);
-        out_annotation_name = def_out_annotation_name;
+    if (out_annotation_name == NULL) {
+        out_annotation_name = calloc(256, sizeof(char));
+        sprintf(out_annotation_name, "%s.pastml.out.csv", annotation_name);
     }
-    if (strcmp(out_tree_name, "") == 0) {
-        sprintf(def_out_tree_name, "%s.pastml.out.nwk", tree_name);
-        out_tree_name = def_out_tree_name;
+    if (out_tree_name == NULL) {
+        out_tree_name = calloc(256, sizeof(char));
+        sprintf(out_tree_name, "%s.pastml.out.nwk", tree_name);
     }
     int res = runpastml(annotation_name, tree_name, out_annotation_name, out_tree_name, model, frequency, scaling, keep_ID);
 
     free(frequency);
-
     return res;
 }

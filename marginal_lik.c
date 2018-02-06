@@ -1,4 +1,4 @@
-#include "asrml.h"
+#include "pastml.h"
 
 extern Tree *s_tree;
 extern Node *root;
@@ -156,7 +156,7 @@ void down_like_marginal(Node* nd, int nb, int nbanno, double mu, double scale, d
       //printf("%s, SUM=%lf, factor=%d, ",nd->name,log(sum),nd->down_factor);
       for(j=0;j<nbanno;j++){
         nd->condlike_mar[j] = (nd->condlike_mar[j]) / sum;
-        //printf("%d=%.5f, ", j, nd->condlike_mar[j]);
+        //printf("%d=%.4f, ", j, nd->condlike_mar[j]);
       }
       //printf("\n");
 

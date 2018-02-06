@@ -1,4 +1,4 @@
-#include "asrml.h"
+#include "pastml.h"
 
 extern int have_miss;
 extern Tree *s_tree;
@@ -22,8 +22,10 @@ void calc_lik_bfgs(Node *nd, char **tipnames, int *states, int nb, int nbanno, d
         bl = nd->br[0]->brlen;
         if (bl == 0.0) {
             bl = (nd->br[0]->brlen + p[nbanno + 1]) * (s_tree->avgbl / (s_tree->avgbl + p[nbanno + 1]));
+            bl = bl * p[nbanno];
         } else {
-            bl = nd->br[0]->brlen * p[nbanno];
+            bl = (nd->br[0]->brlen + p[nbanno + 1]) * (s_tree->avgbl / (s_tree->avgbl + p[nbanno + 1]));
+            bl = bl * p[nbanno];
         }
         mul = -1. * mu * bl;
         expmul = exp(mul);
@@ -131,8 +133,10 @@ void calc_lik_bfgs(Node *nd, char **tipnames, int *states, int nb, int nbanno, d
         bl = nd->br[0]->brlen;
         if (bl == 0.0) {
             bl = (nd->br[0]->brlen + p[nbanno + 1]) * (s_tree->avgbl / (s_tree->avgbl + p[nbanno + 1]));
+            bl = bl * p[nbanno];
         } else {
-            bl = nd->br[0]->brlen * p[nbanno];
+            bl = (nd->br[0]->brlen + p[nbanno + 1]) * (s_tree->avgbl / (s_tree->avgbl + p[nbanno + 1]));
+            bl = bl * p[nbanno];
         }
         mul = -1. * mu * bl;
         expmul = exp(mul);

@@ -5,7 +5,7 @@
 #ifndef PASTML_MARGINAL_LIK_H_H
 #define PASTML_MARGINAL_LIK_H_H
 
-#include "asrml.h"
+#include "pastml.h"
 
 void down_like_marginal(Node *nd, int nb, int nbanno, double mu, double scale, double *frequency);
 

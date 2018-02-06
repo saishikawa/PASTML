@@ -147,8 +147,9 @@ int runpastml(char *annotation_name, char* tree_name, char *out_annotation_name,
     states[0] = 0;
     while (fgets(anno_line, MAXLNAME, annotationfile)) {
         sscanf(anno_line, "%[^\n,],%[^\n\r]", tips[line], annotations[line]);
-        if (strcmp(annotations[line], "") == 0) sprintf(annotations[line], "?");
-        if (strcmp(annotations[line], "?") == 0) {
+        char *annotation_value = annotations[line];
+        if (strcmp(annotation_value, "") == 0) sprintf(annotation_value, "?");
+        if (strcmp(annotation_value, "?") == 0) {
             count_miss++;
             states[line] = -1;
         } else {
@@ -156,9 +157,9 @@ int runpastml(char *annotation_name, char* tree_name, char *out_annotation_name,
             for (i = 0; i < line; i++) {
                 if (strcmp(annotations[i], "?") == 0) {
                 } else {
-                    if (strcmp(annotations[line], annotations[i]) == 0) {
+                    if (strcmp(annotation_value, annotations[i]) == 0) {
                         states[line] = states[i];
-                        strcpy(character[states[line]], annotations[line]);
+                        strcpy(character[states[line]], annotation_value);
                         check = 1;
                         break;
                     }
@@ -167,7 +168,15 @@ int runpastml(char *annotation_name, char* tree_name, char *out_annotation_name,
             if (check == 0) {
                 num_anno++;
                 states[line] = num_anno;
-                strcpy(character[num_anno], annotations[line]);
+                if (num_anno >= MAXCHAR) {
+                    fprintf(stderr, "Maximal number of annotations (%d) is exceeded:", MAXCHAR);
+                    for (i = 0; i < num_anno; i++) {
+                        fprintf(stderr, " %s, ", character[i]);
+                    }
+                    fprintf(stderr, " %s, etc.", annotation_value);
+                    return EINVAL;
+                }
+                strcpy(character[num_anno], annotation_value);
             }
         }
         line++;

@@ -1,4 +1,4 @@
-#include "asrml.h"
+#include "pastml.h"
 #include "marginal_lik.h"
 #include "lik.h"
 #include "marginal_approxi.h"
@@ -255,7 +255,7 @@ int runpastml(char *annotation_name, char* tree_name, char *out_annotation_name,
     }
     mu = 1 / (1 - sum);
     parameter[num_anno] = 1.0;
-    parameter[num_anno + 1] = MIN_BRLEN;
+    parameter[num_anno + 1] = 1.0e-3;
 
     calc_lik_bfgs(root, tips, states, num_tips, num_anno, mu, model, parameter, &lnl);
     printf("\n*** Initial likelihood of the tree ***\n\n %lf\n\n", lnl * (-1.0));
@@ -288,7 +288,7 @@ int runpastml(char *annotation_name, char* tree_name, char *out_annotation_name,
     for (i = 0; i < num_anno; i++) {
         printf("%s = %.5f\n", character[i], parameter[i]);
     }
-    printf("\n*** Tree scaling factor ***\n\n %.5f \n\n*** Epsilon for zero branch length ***\n\n %.5e",
+    printf("\n*** Tree scaling factor ***\n\n %.5f \n\n*** Epsilon for approximating branch lengths ***\n\n %.5e",
            parameter[num_anno], parameter[num_anno + 1]);
     calc_lik_bfgs(root, tips, states, num_tips, num_anno, mu, model, parameter, optlnl);
     printf("\n\n*** Optimised likelihood ***\n\n %lf\n", (*optlnl)*(-1.0));

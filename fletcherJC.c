@@ -1,4 +1,4 @@
-#include "asrml.h"
+#include "pastml.h"
 #include "nrutil.h"
 #include "lik.h"
 
@@ -73,7 +73,7 @@ double f1dimJC(Node *nd, char** tipnames, int* states, int nb, int nbanno, doubl
   xt[0]=(pcomjc[0]*exp1+x*xicomjc[0])/exp1;
   xt[1]=(pcomjc[1]*exp2+x*xicomjc[1])/exp2;
   if(xt[0] >  scale_upjc || xt[0] < scale_lowjc) xt[0] = pcomjc[0];
-  if(fabs(xt[1]) >  s_tree->min_bl || fabs(xt[1]) < DBL_MIN || xt[1] < 0.0) xt[1] = pcomjc[1];
+  if(fabs(xt[1]) >  1.0 || fabs(xt[1]) < SCAL_MIN || xt[1] < 0.0) xt[1] = pcomjc[1];
 
   for(i=0;i<nbanno;i++){
     likp[i] = frequency[i]; 
@@ -246,7 +246,7 @@ routines mnbrak and brent .*/
     p[j]=best_pjc[j];
   }
   if(p[0] >  scale_upjc || p[0] < scale_lowjc) p[0] = pold[0];
-  if(p[1] >  s_tree->min_bl || p[1] < DBL_MIN) p[1] = pold[1];
+  if(p[1] >  1.0 || p[1] < SCAL_MIN) p[1] = pold[1];
   for(i=0;i<nbanno;i++){
     likp[i] = frequency[i]; 
    }
@@ -276,9 +276,9 @@ function). The routine linmin is called to perform line minimizations.*/
   likp=vector(0,nbanno+1);
   for(i=0;i<nbanno;i++){
     likp[i] = frequency[i]; 
-   }
-   likp[nbanno]=p[0];
-   likp[nbanno+1]=p[1];
+  }
+  likp[nbanno]=p[0];
+  likp[nbanno+1]=p[1];
   calc_lik_bfgs(root, tipnames, states, nb, nbanno, mu, model, likp, &fp);
   gradientJC(root, tipnames, states, nb, nbanno, mu, model, p, xi, n, frequency);
   for (j=0;j<n;j++) {
@@ -294,18 +294,18 @@ function). The routine linmin is called to perform line minimizations.*/
       if(i == 0) printf("Scaling=%.6e, ",p[i]);
       if(i == 1) printf("Epsilon=%.6e, ",p[i]);
     }
-  for(i=0;i<nbanno;i++){
-    likp[i] = frequency[i]; 
-   }
-   likp[nbanno]=p[0];
-   likp[nbanno+1]=p[1];
+    for(i=0;i<nbanno;i++){
+      likp[i] = frequency[i]; 
+    }
+    likp[nbanno]=p[0];
+    likp[nbanno+1]=p[1];
     calc_lik_bfgs(root, tipnames, states, nb, nbanno, mu, model, likp, &fl);
     printf("lnL = %lf\n",fl);
-    if (fabs(*fret-fp) <= ftol) {
+    if (fabs(fl-fp) <= ftol) {
       free_vector(g,0,n-1); free_vector(h,0,n-1); free_vector(xi,0,n-1); free_vector(likp,0,nbanno+1);
       return;
     }
-    fp= *fret;
+    fp = fl;
     gradientJC(root, tipnames, states, nb, nbanno, mu, model, p, xi, n, frequency);
     dgg=gg=0.0;
     for (j=0;j<n;j++) {

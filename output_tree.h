@@ -5,7 +5,7 @@
 #ifndef PASTML_OUTPUT_TREE_H
 #define PASTML_OUTPUT_TREE_H
 
-#include "asrml.h"
+#include "pastml.h"
 
 int write_nh_tree(Tree *tree, FILE *stream, double epsilon, double scaling);
 

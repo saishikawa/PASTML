@@ -5,7 +5,7 @@
 #ifndef PASTML_FLETCHER_H
 #define PASTML_FLETCHER_H
 
-#include "asrml.h"
+#include "pastml.h"
 
 void frprmn(Node *nd, char **tipnames, int *states, int nb, int nbanno, double mu, char *model, double *p, int n,
             double ftol, int *iter, double *fret, char **character);

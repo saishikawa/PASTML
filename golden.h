@@ -5,7 +5,7 @@
 #ifndef PASTML_GOLDEN_H
 #define PASTML_GOLDEN_H
 
-#include "asrml.h"
+#include "pastml.h"
 
 void golden(Node *nd, char **tipnames, int *states, int nb, int nbanno, double mu, char *model, double *p, double ub);
 

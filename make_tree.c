@@ -582,6 +582,7 @@ Tree *parse_nh_string(char *in_str, int nbanno, char *keep_ID) {
     }
     BL_avg = (double) BL_sum / (double) t->nb_edges;
     t->avgbl = BL_avg;
+    //printf("Tree Length = %lf\n", BL_sum);
 
     printf("\n*** BASIC STATISTICS ***\n\n", in_str);
     printf("Number of taxa in the tree read: %d\n", t->nb_taxa);

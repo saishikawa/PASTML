@@ -106,11 +106,11 @@ void calc_lik_bfgs(Node *nd, char **tipnames, int *states, int nb, int nbanno, d
         }
         scaled_lk = 0.;
         for (i = 0; i < nbanno; i++) {
-            sum += nd->condlike[i] * p[i];
+            sum += nd->condlike[i];
             scaled_lk += nd->condlike[i];
         }
         for (i = 0; i < nbanno; i++) {
-            nd->mar_prob[i] = nd->condlike[i] * p[i] / sum;
+            nd->mar_prob[i] = nd->condlike[i] / sum;
         }
         global_like = scaled_lk;
         global_factor = factors;
@@ -118,7 +118,7 @@ void calc_lik_bfgs(Node *nd, char **tipnames, int *states, int nb, int nbanno, d
         for (i = 0; i < nbanno; i++) {
             nd->up_like[i] = nd->condlike[i];
         }
-        logroot = log(scaled_lk);;
+        logroot = log(scaled_lk);
         do {
             piecewise_scaler_pow = MIN(factors, 63);
             curr_scaler = ((unsigned long long) (1) << piecewise_scaler_pow);

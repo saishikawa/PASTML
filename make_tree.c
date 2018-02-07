@@ -326,8 +326,6 @@ Node *create_son_and_connect_to_father(Node *current_node, Tree *current_tree, i
     edge->right = son;
     edge->left = current_node;
 
-    edge->has_branch_support = 0;
-
     current_node->neigh[direction] = son;
     current_node->br[direction] = edge;
 

@@ -6,7 +6,6 @@ int ncomjc;
 double *pcomjc, *xicomjc, scale_upjc, scale_lowjc, *store_pjc, *best_pjc;
 extern Tree* s_tree;
 extern Node* root;
-extern double opt_param[MAXCHAR+2];
 
 void SHFT2(double* a, double* b, double* c, double* d){
 
@@ -290,7 +289,6 @@ function). The routine linmin is called to perform line minimizations.*/
     printf("Step%d, ",its);
     linminJC(root, tipnames, states, nb, nbanno, mu, model, p,xi,n,fret, frequency);
     for (i=0;i<n;i++) {
-      opt_param[i]=p[i];
       if(i == 0) printf("Scaling=%.6e, ",p[i]);
       if(i == 1) printf("Epsilon=%.6e, ",p[i]);
     }

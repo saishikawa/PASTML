@@ -6,7 +6,6 @@ int ncom;
 double *pcom, *xicom, scale_up, scale_low, *store_p, *best_p;
 extern Tree* s_tree;
 extern Node* root;
-extern double opt_param[MAXCHAR+2];
 
 void SHFT(double* a, double* b, double* c, double* d){
 
@@ -286,7 +285,6 @@ function). The routine linmin is called to perform line minimizations.*/
     printf("Step%d, ",its);
     linmin(root, tipnames, states, nb, nbanno, mu, model, p,xi,n,fret);
     for (i=0;i<n;i++) {
-      opt_param[i]=p[i];
       if(i < nbanno) printf("%s=%.6e, ",character[i],p[i]);
       if(i == nbanno) printf("Scaling=%.6e, ",p[i]);
       if(i == nbanno+1) printf("Epsilon=%.6e, ",p[i]);

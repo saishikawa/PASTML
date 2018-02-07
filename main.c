@@ -21,9 +21,8 @@ int main(int argc, char **argv) {
     char *out_tree_name = NULL;
     int i, argnum;
     struct timespec;
-    double *frequency;
+    double *frequency = NULL;
     int opt;
-    int check_freq = 0;
     char *scaling = "T", *keep_ID = "T";
     char *arg_error_string = malloc(sizeof(char) * 1024);
 
@@ -82,7 +81,6 @@ int main(int argc, char **argv) {
                     frequency[i - 1] = atof(argv[optind - 1 + i]);
                     printf("Input Frequency No.%d = %lf\n", i, frequency[i]);
                 }
-                check_freq = 1;
                 break;
 
             case 's':
@@ -123,13 +121,6 @@ int main(int argc, char **argv) {
     /* No error in arguments */
     free(arg_error_string);
 
-    /* Initialise optional arguments is needed */
-    if (check_freq == 0) {
-        frequency = calloc(MAXCHAR, sizeof(double));
-        if (frequency == NULL) {
-            return ENOMEM;
-        }
-    }
     if (out_annotation_name == NULL) {
         out_annotation_name = calloc(256, sizeof(char));
         sprintf(out_annotation_name, "%s.pastml.out.csv", annotation_name);
@@ -138,8 +129,5 @@ int main(int argc, char **argv) {
         out_tree_name = calloc(256, sizeof(char));
         sprintf(out_tree_name, "%s.pastml.out.nwk", tree_name);
     }
-    int res = runpastml(annotation_name, tree_name, out_annotation_name, out_tree_name, model, frequency, scaling, keep_ID);
-
-    free(frequency);
-    return res;
+    return runpastml(annotation_name, tree_name, out_annotation_name, out_tree_name, model, frequency, scaling, keep_ID);
 }

@@ -3,7 +3,6 @@
 //
 #include <Python.h>
 #include "runpastml.h"
-#define MAXCHAR 500
 
 /*  wrapped pastml function */
 static PyObject *infer_ancestral_states(PyObject *self, PyObject *args) {
@@ -19,7 +18,6 @@ static PyObject *infer_ancestral_states(PyObject *self, PyObject *args) {
         return NULL;
     }
 
-    frequency = calloc(MAXCHAR, sizeof(double));
     sts = runpastml(annotation_name, tree_name, out_annotation_name, out_tree_name, model, frequency, "T", "T");
     if (sts != EXIT_SUCCESS) {
         if (errno) {

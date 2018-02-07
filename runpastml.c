@@ -260,8 +260,8 @@ int runpastml(char *annotation_name, char* tree_name, char *out_annotation_name,
         sum += frequency[i] * frequency[i];
     }
     mu = 1 / (1 - sum);
-    parameter[num_anno] = 1.0;
-    parameter[num_anno + 1] = 1.0e-3;
+    parameter[num_anno] = 0.005;
+    parameter[num_anno + 1] = 0.0;
 
     calc_lik_bfgs(root, tips, states, num_tips, num_anno, mu, model, parameter, &lnl);
     printf("\n*** Initial likelihood of the tree ***\n\n %lf\n\n", lnl * (-1.0));
@@ -313,7 +313,6 @@ int runpastml(char *annotation_name, char* tree_name, char *out_annotation_name,
     free(annotations);
     free(tips);
     free(character);
-    //free(frequency);
     free(states);
     free(count);
     free_tree(s_tree, num_anno);

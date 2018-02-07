@@ -484,7 +484,7 @@ Tree *parse_nh_string(char *in_str, int nbanno, char *keep_ID) {
     int begin, end; /* to delimitate the string to further process */
     int n_otu = 0, nodecount = 0;
     char str[MAXLNAME];
-    int collapsed_one = 0, uncollapsed_terminal = 0, collapsed_internal = 0;
+    int collapsed_one = 0, uncollapsed_terminal = 0, collapsed_internal = 0, maxpoly;
 
     /* SYNTACTIC CHECKS on the input string */
     i = 0;
@@ -560,12 +560,14 @@ Tree *parse_nh_string(char *in_str, int nbanno, char *keep_ID) {
         }
     }
     t->min_bl = DBL_MAX;
+    maxpoly=0;
     for (i = 0; i < t->nb_nodes; i++) {
         if (t->a_nodes[i]->nneigh > MAXPOLY) {
             fprintf(stderr, "Fatal error: too many polytomy more than %d at the node %s.\n", MAXPOLY,
                     t->a_nodes[i]->name);
             return NULL;
         }
+        if(maxpoly < t->a_nodes[i]->nneigh) maxpoly = t->a_nodes[i]->nneigh;
         if (t->min_bl > t->a_nodes[i]->br[0]->brlen && t->a_nodes[i]->br[0]->brlen != 0.0)
             t->min_bl = t->a_nodes[i]->br[0]->brlen;
         for (j = 0; j < t->a_nodes[i]->nneigh; j++) {
@@ -587,12 +589,13 @@ Tree *parse_nh_string(char *in_str, int nbanno, char *keep_ID) {
         fprintf(stderr, "Fatal error: too many taxa: more than %d.\n", MAXNSP);
         return NULL;
     }
+    //printf("Number of leaves according to the tree structure: %d\n", count_leaves(t));
     printf("Number of nodes in the tree read: %d\n", t->nb_nodes - t->nb_taxa);
     printf("Number of edges in the tree read: %d\n", t->nb_edges);
-    printf("Average of branch lengths in the tree: %lf\n", t->avgbl);
+    printf("Average branch lengths of the tree: %lf\n", t->avgbl);
     printf("Minimum branch length in the tree: %lf\n", t->min_bl);
-    printf("Number of leaves according to the tree structure: %d\n", count_leaves(t));
     printf("Number of edges with zero length: %d\n", count_zero_length_branches(t));
+    printf("The maximum number of multifurcations at a single node of the input tree: %d\n", maxpoly-1);
 
     return t;
 

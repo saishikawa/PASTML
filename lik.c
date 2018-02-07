@@ -21,11 +21,12 @@ void calc_lik_bfgs(Node *nd, char **tipnames, int *states, int nb, int nbanno, d
     if (nd->nneigh == 1) { /*tips*/
         bl = nd->br[0]->brlen;
         if (bl == 0.0) {
-            bl = (nd->br[0]->brlen + p[nbanno + 1]) * (s_tree->avgbl / (s_tree->avgbl + p[nbanno + 1]));
-            bl = bl * p[nbanno];
+	  //bl = (bl + p[nbanno + 1]) * (s_tree->avgbl / (s_tree->avgbl + p[nbanno + 1]));
+	  //bl = bl * p[nbanno];
+          bl=0.0;
         } else {
-            bl = (nd->br[0]->brlen + p[nbanno + 1]) * (s_tree->avgbl / (s_tree->avgbl + p[nbanno + 1]));
-            bl = bl * p[nbanno];
+	    bl = (bl + p[nbanno + 1]) * (s_tree->avgbl / (s_tree->avgbl + p[nbanno + 1]));
+            bl = bl * p[nbanno];;
         }
         mul = -1. * mu * bl;
         expmul = exp(mul);
@@ -132,10 +133,11 @@ void calc_lik_bfgs(Node *nd, char **tipnames, int *states, int nb, int nbanno, d
 
         bl = nd->br[0]->brlen;
         if (bl == 0.0) {
-            bl = (nd->br[0]->brlen + p[nbanno + 1]) * (s_tree->avgbl / (s_tree->avgbl + p[nbanno + 1]));
-            bl = bl * p[nbanno];
+	  //bl = (bl + p[nbanno + 1]) * (s_tree->avgbl / (s_tree->avgbl + p[nbanno + 1]));
+	  //bl = bl * p[nbanno];
+          bl=0.0;
         } else {
-            bl = (nd->br[0]->brlen + p[nbanno + 1]) * (s_tree->avgbl / (s_tree->avgbl + p[nbanno + 1]));
+	    bl = (bl + p[nbanno + 1]) * (s_tree->avgbl / (s_tree->avgbl + p[nbanno + 1]));
             bl = bl * p[nbanno];
         }
         mul = -1. * mu * bl;

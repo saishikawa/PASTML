@@ -162,11 +162,13 @@ void down_like_marginal(Node* nd, int nb, int nbanno, double mu, double scale, d
 
   }
 
+
   if(nd==root) {
     node_start=0;
   } else {
     node_start=1;
   }
+
   for(i=node_start;i<nd->nneigh;i++){
     down_like_marginal(nd->neigh[i], nb, nbanno, mu, scale, frequency);
   }

@@ -21,8 +21,9 @@ int main(int argc, char **argv) {
     char *out_tree_name = NULL;
     int i, argnum;
     struct timespec;
-    double *frequency = NULL;
+    double *frequency, collapse_BRLEN= -1.0;
     int opt;
+    int check_freq = 0;
     char *scaling = "T", *keep_ID = "T";
     char *arg_error_string = malloc(sizeof(char) * 1024);
 
@@ -30,7 +31,7 @@ int main(int argc, char **argv) {
 
     const char *help_string = "usage: PASTML -a ANNOTATION_FILE -t TREE_NWK [-m MODEL] "
             "[-o OUTPUT_ANNOTATION_FILE] [-n OUTPUT_TREE_NWK] "
-            "[-s SCALING_ON_OFF] [-I KEEP_INTERNAL_NODE_IDS_ON_OFF] [-f USER_DEFINED_CHAR_FREQUENCES]\n"
+            "[-s SCALING_ON_OFF] [-I KEEP_INTERNAL_NODE_IDS_ON_OFF] [-B THRETHOLD_OF_BRANCH_COLLAPSE]\n"
             "\n"
             "required arguments:\n"
             "   -a ANNOTATION_FILE                  path to the annotation csv file containing tip states\n"
@@ -40,11 +41,13 @@ int main(int argc, char **argv) {
             "   -o OUTPUT_ANNOTATION_FILE           path where the output annotation csv file containing node states will be created\n"
             "   -n OUTPUT_TREE_NWK                  path where the output tree file will be created (in newick format)\n"
             "   -m MODEL                            state evolution model (JC or F81)\n"
-            "   -f USER_DEFINED_FREQUENCY           state frequencies, the sum must be 1.0 (e.g. -f 0.1 0.2 0.3 ... 0.4)\n"
             "   -s SCALING_ON_OFF                   branch length scaling on (T, by default) or off (F)\n"
-            "   -I KEEP_INTERNAL_NODE_IDS_ON_OFF    keep internal node ids from the input tree: T (true) or F (false)\n";
+            "   -I KEEP_INTERNAL_NODE_IDS_ON_OFF    keep internal node ids from the input tree: T (true) or F (false)\n"
+            "   -B THRETHOLD_OF_BRANCH_COLLAPSE     define X to collapse branches shorter than 1.0e-X (default: no collapse)\n";
 
-    opt = getopt(argc, argv, "a:t:o:m:n:s:f:I:");
+    //            "   -f USER_DEFINED_FREQUENCY           set number of state and each state frequencies, the sum must be 1.0 (e.g. -f 4 0.1 0.2 0.3 0.4)\n"
+
+    opt = getopt(argc, argv, "a:t:o:m:n:s:B:I:");
     do {
         switch (opt) {
             case -1:
@@ -71,7 +74,7 @@ int main(int argc, char **argv) {
                 model = optarg;
                 break;
 
-            case 'f':
+		/*case 'f':
                 argnum = atoi(argv[optind-1]);
                 frequency = check_alloc(argnum, sizeof(double));
                 if (frequency == NULL) {
@@ -79,12 +82,19 @@ int main(int argc, char **argv) {
                 }
                 for (i = 1; i <= argnum; i++) {
                     frequency[i - 1] = atof(argv[optind - 1 + i]);
-                    printf("Input Frequency No.%d = %lf\n", i, frequency[i]);
+                    printf("Input Frequency No.%d = %lf\n", i, frequency[i-1]);
                 }
-                break;
+                check_freq = 1;
+                break;*/
 
             case 's':
                 scaling=optarg;
+                break;
+
+
+            case 'B':
+	      collapse_BRLEN = pow(0.1, atof(optarg));
+	      //printf("Branches shorter than %lf will be collapsed into a polytomy\n",collapse_BRLEN);
                 break;
 
             case 'I':
@@ -97,8 +107,7 @@ int main(int argc, char **argv) {
                 free(arg_error_string);
                 return EINVAL;
         }
-    } while ((opt = getopt(argc, argv, "a:t:o:m:n:s:f:I:")) != -1);
-
+    } while ((opt = getopt(argc, argv, "a:t:o:m:n:s:B:I:")) != -1);
     /* Make sure that the required arguments are set correctly */
     if (annotation_name == NULL) {
         snprintf(arg_error_string, 1024, "%s%s", "Annotation file (-a) must be specified.\n\n", help_string);
@@ -121,6 +130,13 @@ int main(int argc, char **argv) {
     /* No error in arguments */
     free(arg_error_string);
 
+    /* Initialise optional arguments is needed */
+    if (check_freq == 0) {
+        frequency = calloc(MAXCHAR, sizeof(double));
+        if (frequency == NULL) {
+            return ENOMEM;
+        }
+    }
     if (out_annotation_name == NULL) {
         out_annotation_name = calloc(256, sizeof(char));
         sprintf(out_annotation_name, "%s.pastml.out.csv", annotation_name);
@@ -129,5 +145,8 @@ int main(int argc, char **argv) {
         out_tree_name = calloc(256, sizeof(char));
         sprintf(out_tree_name, "%s.pastml.out.nwk", tree_name);
     }
-    return runpastml(annotation_name, tree_name, out_annotation_name, out_tree_name, model, frequency, scaling, keep_ID);
+    int res = runpastml(annotation_name, tree_name, out_annotation_name, out_tree_name, model, frequency, scaling, keep_ID, collapse_BRLEN);
+
+    free(frequency);
+    return res;
 }

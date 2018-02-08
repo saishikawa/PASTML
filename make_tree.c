@@ -14,7 +14,7 @@ int min_int(int a, int b) {
 
 
 /* collapsing a branch */
-void collapse_branch(Edge *branch, Tree *tree, int count, int nbanno) {
+void collapse_branch(Edge *branch, Tree *tree, int nbanno) {
     /* this function collapses the said branch and creates a higher-order multifurcation (n1 + n2 - 2 neighbours for the resulting node).
        We also have to remove the extra node from tree->a_nodes and the extra edge from t->a_edges.
        to be done:
@@ -45,6 +45,32 @@ void collapse_branch(Edge *branch, Tree *tree, int count, int nbanno) {
     new->name = strdup("collapsed");
     new->comment = NULL;
     new->depth = min_int(node1->depth, node2->depth);
+
+    new->neigh = malloc(new->nneigh * sizeof(Node *));
+    new->br = malloc(new->nneigh * sizeof(Edge *));
+
+    new->condlike = calloc(nbanno, sizeof(double)); for (i = 0; i < nbanno; i++) new->condlike[i] = 0.0;
+    new->condlike_mar = calloc(nbanno, sizeof(double)); for (i = 0; i < nbanno; i++) new->condlike_mar[i] = 0.0;
+    new->up_like = calloc(nbanno, sizeof(double)); for (i = 0; i < nbanno; i++) new->up_like[i] = 0.0;
+    new->mar_prob = calloc(nbanno, sizeof(double)); for (i = 0; i < nbanno; i++) new->mar_prob[i] = 0.0;
+    new->pij = calloc(nbanno, sizeof(double *));
+    for (i = 0; i < nbanno; i++) new->pij[i] = calloc(nbanno, sizeof(double));
+    for (i = 0; i < nbanno; i++) {
+      for (j = 0; j < nbanno; j++) new->pij[i][j] = 0.0;
+    }
+
+    new->marginal = calloc(nbanno, sizeof(double)); for (i = 0; i < nbanno; i++) new->marginal[i] = 0.0;
+    new->tmp_best = calloc(nbanno, sizeof(int)); for (i = 0; i < nbanno; i++) new->tmp_best[i] = 0;
+    new->sum_down = calloc(nbanno, sizeof(double)); for (i = 0; i < nbanno; i++) new->sum_down[i] = 0.0;
+
+    new->rootpij = calloc(nbanno, sizeof(double *));
+    for (i = 0; i < nbanno; i++) new->rootpij[i] = calloc(nbanno, sizeof(double));
+    for (i = 0; i < nbanno; i++) {
+      for (j = 0; j < nbanno; j++) new->rootpij[i][j] = 0.0;
+    }
+
+    new->local_flag = calloc(nbanno, sizeof(int));
+    for (i = 0; i < nbanno; i++) new->local_flag[i] = 1;
 
     /* very important: set tree->node0 to new in case it was either node1 or node2 */
     if (tree->node0 == node1 || tree->node0 == node2) tree->node0 = new;
@@ -476,7 +502,7 @@ int parse_substring_into_node(char *in_str, int begin, int end, Node *current_no
 
 
 
-Tree *parse_nh_string(char *in_str, int nbanno, char *keep_ID) {
+Tree *parse_nh_string(char *in_str, int nbanno, char *keep_ID, double collapse_BRLEN) {
     /* this function allocates, populates and returns a new tree. */
     /* returns NULL if the file doesn't correspond to NH format */
     int in_length = (int) strlen(in_str);
@@ -602,6 +628,27 @@ Tree *parse_nh_string(char *in_str, int nbanno, char *keep_ID) {
     printf("Number of edges with zero length: %d\n", count_zero_length_branches(t));
     printf("The maximum number of multifurcations at a single node of the input tree: %d\n", maxpoly-1);
 
+
+    /* Collapse branches */
+    collapsed_internal = 0;
+    do {
+      collapsed_one = 0; /* flag that will be set to one as soon as we collapse one branch */
+      uncollapsed_terminal = 0;
+      for(i=0; i < t->nb_edges; i++) {
+	if (t->a_edges[i]->brlen <= collapse_BRLEN) {
+	  if (t->a_edges[i]->right->nneigh == 1) { /* don't collapse terminal edges */
+	    uncollapsed_terminal++;
+	  }else{
+	    collapse_branch(t->a_edges[i], t, nbanno);
+	    collapsed_one = 1;
+	    collapsed_internal++;
+	    break; /* breaking the for so that we start again from the beginning because tree->a_edges has changed */
+	  }
+	}
+      } /* end for */
+    } while (collapsed_one);
+    if(collapsed_internal > 0) printf("\n*** Collapsing tree ... Collapsed %d branches\n",collapsed_internal);
+
     return t;
 
 } /* end parse_nh_string */
@@ -609,9 +656,9 @@ Tree *parse_nh_string(char *in_str, int nbanno, char *keep_ID) {
 
 
 
-Tree *complete_parse_nh(char *big_string, int nbanno, char *keep_ID) {
+Tree *complete_parse_nh(char *big_string, int nbanno, char *keep_ID, double collapse_BRLEN) {
     int i;
-    Tree *mytree = parse_nh_string(big_string, nbanno, keep_ID);
+    Tree *mytree = parse_nh_string(big_string, nbanno, keep_ID, collapse_BRLEN);
     if (mytree == NULL) {
         fprintf(stderr, "Not a syntactically correct NH tree.\n");
         return NULL;

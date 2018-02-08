@@ -13,6 +13,7 @@
 Tree *s_tree;
 Node *root;
 int have_miss = -1;
+double opt_param[MAXCHAR + 2];
 
 unsigned int tell_size_of_one_tree(char *filename) {
     /* the only purpose of this is to know about the size of a treefile (NH format) in order to save memspace in allocating the string later on */
@@ -96,21 +97,18 @@ void free_tree(Tree *tree, int num_anno) {
 }
 
 int runpastml(char *annotation_name, char* tree_name, char *out_annotation_name, char *out_tree_name,
-              char *model, double *frequency, char* scaling, char* keep_ID) {
-    int i, line = 0, check, sum_freq = 0, count_miss = 0;
-    int *states;
-    int *count_array;
+              char *model, double *frequency, char* scaling, char* keep_ID, double collapse_BRLEN) {
+    int i, line = 0, check, sum_freq = 0, count_miss;
+    int *states, *count;
     double sum = 0., mu, lnl = 0., scale, maxlnl = 0., nano, sec;
     double *parameter;
     char **annotations, **character, **tips, *c_tree;
-    int num_anno = -1, num_tips = 0;
+    int num_anno = 0, num_tips = 0;
     FILE *treefile, *annotationfile;
     struct timespec samp_ini, samp_fin;
     char anno_line[MAXLNAME];
     int *iteration, ite;
     double *optlnl, scaleup;
-    int max_characters = MAXCHAR;
-    int allocated_frequences = FALSE;
 
     if ((strcmp(model, "JC") != 0) && (strcmp(model, "F81") != 0)) {
         sprintf(stderr, "Model must be either JC or F81, not %s", model);
@@ -118,12 +116,18 @@ int runpastml(char *annotation_name, char* tree_name, char *out_annotation_name,
     }
 
     opterr = 0;
+    parameter = calloc(MAXCHAR + 2, sizeof(double));
     states = calloc(MAXNSP, sizeof(int));
+    count = calloc(MAXCHAR, sizeof(int));
     annotations = calloc(MAXNSP, sizeof(char *));
     tips = calloc(MAXNSP, sizeof(char *));
     for (i = 0; i < MAXNSP; i++) {
         annotations[i] = calloc(MAXLNAME, sizeof(char));
         tips[i] = calloc(MAXLNAME, sizeof(char));
+    }
+    character = calloc(MAXCHAR, sizeof(char *));
+    for (i = 0; i < MAXCHAR; i++) {
+        character[i] = calloc(MAXLNAME, sizeof(char));
     }
     clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &samp_ini);
     srand((unsigned) time(NULL));
@@ -137,13 +141,10 @@ int runpastml(char *annotation_name, char* tree_name, char *out_annotation_name,
         fprintf(stderr, "Error opening the file: %s\n", strerror(errno));
         return ENOENT;
     }
-
+    num_anno = -1;
+    count_miss = 0;
+    line = 0;
     states[0] = 0;
-    character = calloc(max_characters, sizeof(char *));
-    for (i = 0; i < max_characters; i++) {
-        character[i] = calloc(MAXLNAME, sizeof(char));
-    }
-
     while (fgets(anno_line, MAXLNAME, annotationfile)) {
         sscanf(anno_line, "%[^\n,],%[^\n\r]", tips[line], annotations[line]);
         char *annotation_value = annotations[line];
@@ -167,17 +168,13 @@ int runpastml(char *annotation_name, char* tree_name, char *out_annotation_name,
             if (check == 0) {
                 num_anno++;
                 states[line] = num_anno;
-                if (num_anno >= max_characters) {
-                    /* Annotations do not fit in the character array (of size max_characters) anymore,
-                     * so we gonna double reallocate the memory for the array (of double size) and copy data there */
-                    max_characters *= 2;
-                    character = realloc(character, max_characters * sizeof(char *));
-                    if (character == NULL) {
-                        return ENOMEM;
+                if (num_anno >= MAXCHAR) {
+                    fprintf(stderr, "Maximal number of annotations (%d) is exceeded:", MAXCHAR);
+                    for (i = 0; i < num_anno; i++) {
+                        fprintf(stderr, " %s, ", character[i]);
                     }
-                    for (i = num_anno; i < max_characters; i++) {
-                        character[i] = calloc(MAXLNAME, sizeof(char));
-                    }
+                    fprintf(stderr, " %s, etc.", annotation_value);
+                    return EINVAL;
                 }
                 strcpy(character[num_anno], annotation_value);
             }
@@ -185,54 +182,38 @@ int runpastml(char *annotation_name, char* tree_name, char *out_annotation_name,
         line++;
     }
     fclose(annotationfile);
-
-    free(annotations);
-
     num_anno++;
-
-    /* Initialise frequency if needed */
-    if (frequency == NULL) {
-        allocated_frequences = TRUE;
-        frequency = calloc(num_anno, sizeof(double));
-        if (frequency == NULL) {
-            return ENOMEM;
-        }
-    }
-
-    /* we would need an additional spot in the count array for the missing data,
-     * therefore num_anno + 1*/
-    count_array = calloc(num_anno + 1, sizeof(int));
 
     for (i = 0; i < line; i++) {
         if (states[i] == -1) {
             states[i] = num_anno;
             sprintf(character[num_anno], "?");
         }
-        count_array[states[i]]++;
+        count[states[i]]++;
     }
     have_miss = num_anno;
 
     for (i = 0; i < num_anno; i++) {
-        sum_freq = sum_freq + count_array[i];
+        sum_freq = sum_freq + count[i];
     }
     sum_freq = sum_freq + count_miss;
-    printf("\n*** Frequency of %d characters in the MODEL %s ***\n\n", num_anno, model);
+    printf("\n*** Frequency of %d character in the MODEL %s ***\n\n", num_anno, model);
     for (i = 0; i < num_anno; i++) {
         if (strcmp(model, "JC") == 0) {
-            frequency[i] = ((double) 1) / num_anno;
+            frequency[i] = (double) 1 / num_anno;
         } else if (strcmp(model, "F81") == 0) {
-            frequency[i] = ((double) count_array[i]) / sum_freq;
+            frequency[i] = (double) count[i] / sum_freq;
         }
         printf("%s = %lf\n", character[i], frequency[i]);
+        if (strcmp(character[i], character[i + 1]) == 0) {
+            fprintf(stderr,
+                    "PASTML cannot recognize the characters in the input annotation file.\n"
+                            "Check your file format (must be csv), character encoding (must be UTF-8), "
+                            "and newline encoding (must be Unix/Linux)\n");
+            return EINVAL;
+        }
     }
-
-    free(count_array);
-
     printf("Frequency of Missing data %s = %lf\n", character[num_anno], (double) count_miss / (double) sum_freq);
-
-    /* we would need two additional spots in the parameter array,
-     * therefore num_anno + 2*/
-    parameter = calloc(num_anno + 2, sizeof(double));
     for (i = 0; i < num_anno; i++) {
         parameter[i] = frequency[i];
     }
@@ -268,7 +249,7 @@ int runpastml(char *annotation_name, char* tree_name, char *out_annotation_name,
     fclose(treefile);
 
     /*Make Tree structure*/
-    s_tree = complete_parse_nh(c_tree, num_anno, keep_ID); /* sets taxname_lookup_table en passant */
+    s_tree = complete_parse_nh(c_tree, num_anno, keep_ID, collapse_BRLEN); /* sets taxname_lookup_table en passant */
     if (NULL == s_tree) {
         fprintf(stderr, "A problem occurred while parsing the reference tree.\n");
         return EINVAL;
@@ -329,12 +310,11 @@ int runpastml(char *annotation_name, char* tree_name, char *out_annotation_name,
     }
 
     //free all
+    free(annotations);
     free(tips);
     free(character);
-    if (allocated_frequences == TRUE) {
-        free(frequency);
-    }
     free(states);
+    free(count);
     free_tree(s_tree, num_anno);
 
     clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &samp_fin);

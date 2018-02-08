@@ -326,6 +326,8 @@ Node *create_son_and_connect_to_father(Node *current_node, Tree *current_tree, i
     edge->right = son;
     edge->left = current_node;
 
+    edge->has_branch_support = 0;
+
     current_node->neigh[direction] = son;
     current_node->br[direction] = edge;
 
@@ -483,6 +485,7 @@ Tree *parse_nh_string(char *in_str, int nbanno, char *keep_ID) {
     int n_otu = 0, nodecount = 0;
     char str[MAXLNAME];
     int collapsed_one = 0, uncollapsed_terminal = 0, collapsed_internal = 0, maxpoly;
+    double ex_sum=0.0;
 
     /* SYNTACTIC CHECKS on the input string */
     i = 0;
@@ -560,7 +563,10 @@ Tree *parse_nh_string(char *in_str, int nbanno, char *keep_ID) {
     t->min_bl = DBL_MAX;
     maxpoly=0;
     for (i = 0; i < t->nb_nodes; i++) {
-        if (t->a_nodes[i]->nneigh > MAXPOLY) {
+        if(t->a_nodes[i]->nneigh == 1){ //tips
+          ex_sum+=t->a_nodes[i]->br[0]->brlen;
+        }
+        if (t->a_nodes[i]->nneigh - 1 > MAXPOLY) {
             fprintf(stderr, "Fatal error: too many polytomy more than %d at the node %s.\n", MAXPOLY,
                     t->a_nodes[i]->name);
             return NULL;
@@ -578,9 +584,9 @@ Tree *parse_nh_string(char *in_str, int nbanno, char *keep_ID) {
             }
         }
     }
+    t->ex_avgbl = ex_sum / (double) t->nb_taxa;
     BL_avg = (double) BL_sum / (double) t->nb_edges;
     t->avgbl = BL_avg;
-    //printf("Tree Length = %lf\n", BL_sum);
 
     printf("\n*** BASIC STATISTICS ***\n\n", in_str);
     printf("Number of taxa in the tree read: %d\n", t->nb_taxa);

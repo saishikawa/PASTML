@@ -2,10 +2,10 @@
 #include "marginal_lik.h"
 #include "lik.h"
 #include "marginal_approxi.h"
-#include "golden.h"
 #include "fletcher.h"
 #include "fletcherJC.h"
 #include "make_tree.h"
+#include "golden.h"
 #include <time.h>
 #include <unistd.h>
 #include <errno.h>
@@ -96,7 +96,7 @@ void free_tree(Tree *tree, int num_anno) {
 }
 
 int runpastml(char *annotation_name, char* tree_name, char *out_annotation_name, char *out_tree_name,
-              char *model, double *frequency, char* scaling, char* keep_ID, double collapse_BRLEN) {
+              char *model, char* scaling, char* keep_ID, double collapse_BRLEN) {
     int i, line = 0, check, sum_freq = 0, count_miss = 0;
     int *states;
     int *count_array;
@@ -110,7 +110,7 @@ int runpastml(char *annotation_name, char* tree_name, char *out_annotation_name,
     int *iteration, ite;
     double *optlnl, scaleup;
     int max_characters = MAXCHAR;
-    int allocated_frequences = FALSE;
+    double *frequency = NULL;
 
     if ((strcmp(model, "JC") != 0) && (strcmp(model, "F81") != 0)) {
         sprintf(stderr, "Model must be either JC or F81, not %s", model);
@@ -190,13 +190,9 @@ int runpastml(char *annotation_name, char* tree_name, char *out_annotation_name,
 
     num_anno++;
 
-    /* Initialise frequency if needed */
+    frequency = calloc(num_anno, sizeof(double));
     if (frequency == NULL) {
-        allocated_frequences = TRUE;
-        frequency = calloc(num_anno, sizeof(double));
-        if (frequency == NULL) {
-            return ENOMEM;
-        }
+        return ENOMEM;
     }
 
     /* we would need an additional spot in the count array for the missing data,
@@ -268,7 +264,7 @@ int runpastml(char *annotation_name, char* tree_name, char *out_annotation_name,
     fclose(treefile);
 
     /*Make Tree structure*/
-    s_tree = complete_parse_nh(c_tree, num_anno, keep_ID, collapse_BRLEN); /* sets taxname_lookup_table en passant */
+    s_tree = complete_parse_nh(c_tree, num_anno, keep_ID, collapse_BRLEN); 
     if (NULL == s_tree) {
         fprintf(stderr, "A problem occurred while parsing the reference tree.\n");
         return EINVAL;
@@ -291,16 +287,15 @@ int runpastml(char *annotation_name, char* tree_name, char *out_annotation_name,
     optlnl = &maxlnl;
     scaleup = 5.0 / s_tree->avgbl;
     if (strcmp(scaling, "T") == 0) {
-        golden(root, tips, states, num_tips, num_anno, mu, model, parameter, scaleup);
+        golden(tips, states, num_tips, num_anno, mu, model, parameter, scaleup);
         printf("Scaling factor is roughly optimized by GSS\n");
         if (strcmp(model, "F81") == 0) {
-            frprmn(root, tips, states, num_tips, num_anno, mu, model, parameter, num_anno + 2, 1.0e-3, iteration,
-                   optlnl, character);
+            frprmn(tips, states, num_tips, num_anno, mu, model, parameter, num_anno + 2, 1.0e-3, iteration, optlnl,
+                   character);
         } else if (strcmp(model, "JC") == 0) {
             parameter[0] = parameter[num_anno];
             parameter[1] = parameter[num_anno + 1];
-            frprmnJC(root, tips, states, num_tips, num_anno, mu, model, parameter, 2, 1.0e-3, iteration, optlnl,
-                     character, frequency);
+            frprmnJC(tips, states, num_tips, num_anno, mu, model, parameter, 2, 1.0e-3, iteration, optlnl, frequency);
             parameter[num_anno] = parameter[0];
             parameter[num_anno + 1] = parameter[1];
             for (i = 0; i < num_anno; i++) {
@@ -323,7 +318,7 @@ int runpastml(char *annotation_name, char* tree_name, char *out_annotation_name,
     down_like_marginal(root, num_tips, num_anno, mu, scale, parameter);
 
     printf("\n*** Predicting likely ancestral statesby the Marginal Approximation method...\n\n");
-    int res_code = make_samples(tips, states, num_tips, num_anno, character, parameter, out_annotation_name, out_tree_name);
+    int res_code = make_samples(num_tips, num_anno, character, parameter, out_annotation_name, out_tree_name);
     if (EXIT_SUCCESS != res_code) {
         return res_code;
     }
@@ -331,9 +326,7 @@ int runpastml(char *annotation_name, char* tree_name, char *out_annotation_name,
     //free all
     free(tips);
     free(character);
-    if (allocated_frequences == TRUE) {
-        free(frequency);
-    }
+    free(frequency);
     free(states);
     free_tree(s_tree, num_anno);
 

@@ -12,7 +12,7 @@ int dir_a_to_b(Node *a, Node *b) {
 
 int write_subtree_to_stream(Node *node, Node *node_from, FILE *stream, double epsilon, double scaling) {
     int i, direction_to_exclude, n = node->nneigh;
-    if (node == NULL || node_from == NULL) return EXIT_SUCCESS;
+    if (node_from == NULL) return EXIT_SUCCESS;
 
     if (n == 1) {
         /* terminal node */

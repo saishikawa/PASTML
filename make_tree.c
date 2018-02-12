@@ -1,7 +1,6 @@
 #include "pastml.h"
 #include <assert.h>
 
-int ntax;
 double BL_sum = 0., BL_avg = 0.;
 
 void free_node(Node *node, int count, int num_anno);
@@ -122,7 +121,6 @@ void collapse_branch(Edge *branch, Tree *tree, int nbanno) {
     tree->a_nodes[id2]->id = id2;                    /* and changing its id accordingly */
     tree->a_nodes[tree->next_avail_node_id] = NULL; /* not strictly necessary, but... */
     tree->nb_nodes--;
-    //printf("finished before free");
     free_node(node1, 1, nbanno);
     free_node(node2, 1, nbanno);
 
@@ -160,7 +158,7 @@ int parse_double(char *in_str, int begin, int end, double *location) {
         fprintf(stderr, "Missing branch length at offset %d in the New Hampshire string. Branch length set to 0.\n",
                 begin);
         sscanf("0.0", "%lg", location);
-        return;
+        return EXIT_FAILURE;
     }
     char numerical_string[52] = {'\0'};
     strncpy(numerical_string, in_str + begin, end - begin + 1);
@@ -177,24 +175,6 @@ int count_zero_length_branches(Tree *tree) {
     int count = 0;
     int i, n = tree->nb_edges;
     for (i = 0; i < n; i++) if (tree->a_edges[i]->had_zero_length) count++;
-    return count;
-}
-
-int count_leaves(Tree *tree) {
-    int count = 0;
-    int i, n = tree->nb_nodes;
-    for (i = 0; i < n; i++) if (tree->a_nodes[i]->nneigh == 1) count++;
-    return count;
-}
-
-int count_roots(Tree *tree) { /* to ensure there is exactly zero or one root */
-    int count = 0;
-    int i, n = tree->nb_nodes;
-    for (i = 0; i < n; i++) {
-        if (tree->a_nodes[i]->nneigh > 1) {
-            if (strcmp(tree->a_nodes[i]->neigh[1]->name, "Node2") == 0) count++;
-        }
-    }
     return count;
 }
 
@@ -275,7 +255,6 @@ int process_name_and_brlen(Node *son_node, Edge *edge, Tree *current_tree, char 
         }
         edge->had_zero_length = (brlen == 0.0);
         edge->brlen = brlen;
-        //edge->brlen = (brlen < MIN_BRLEN ? MIN_BRLEN : brlen);
     }
 
     /* then scan backwards from the colon (or from the end if no branch length) to get the NODE NAME,
@@ -346,13 +325,10 @@ Node *create_son_and_connect_to_father(Node *current_node, Tree *current_tree, i
     current_tree->a_edges[edge->id] = edge;
     current_tree->nb_edges++;
 
-    // for (i=0; i<2; i++) edge->subtype_counts[i] = (int*) calloc(NUM_SUBTYPES, sizeof(int));
     for (i = 0; i < 2; i++) edge->subtype_counts[i] = NULL; /* subtypes.c will have to create that space */
 
     edge->right = son;
     edge->left = current_node;
-
-    edge->has_branch_support = 0;
 
     current_node->neigh[direction] = son;
     current_node->br[direction] = edge;
@@ -539,7 +515,6 @@ Tree *parse_nh_string(char *in_str, int nbanno, char *keep_ID, double collapse_B
     n_otu++;
 
     /* immediately, we set the global variable ntax. TODO: see if we can simply get rid of this global var. */
-    ntax = n_otu;
 
 
 
@@ -611,7 +586,7 @@ Tree *parse_nh_string(char *in_str, int nbanno, char *keep_ID, double collapse_B
         }
     }
     t->ex_avgbl = ex_sum / (double) t->nb_taxa;
-    BL_avg = (double) BL_sum / (double) t->nb_edges;
+    BL_avg = BL_sum / (double) t->nb_edges;
     t->avgbl = BL_avg;
 
     printf("\n*** BASIC STATISTICS ***\n\n", in_str);
@@ -620,7 +595,6 @@ Tree *parse_nh_string(char *in_str, int nbanno, char *keep_ID, double collapse_B
         fprintf(stderr, "Fatal error: too many taxa: more than %d.\n", MAXNSP);
         return NULL;
     }
-    //printf("Number of leaves according to the tree structure: %d\n", count_leaves(t));
     printf("Number of nodes in the tree read: %d\n", t->nb_nodes - t->nb_taxa);
     printf("Number of edges in the tree read: %d\n", t->nb_edges);
     printf("Average branch lengths of the tree: %lf\n", t->avgbl);
@@ -657,7 +631,6 @@ Tree *parse_nh_string(char *in_str, int nbanno, char *keep_ID, double collapse_B
 
 
 Tree *complete_parse_nh(char *big_string, int nbanno, char *keep_ID, double collapse_BRLEN) {
-    int i;
     Tree *mytree = parse_nh_string(big_string, nbanno, keep_ID, collapse_BRLEN);
     if (mytree == NULL) {
         fprintf(stderr, "Not a syntactically correct NH tree.\n");

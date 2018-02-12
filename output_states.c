@@ -1,14 +1,11 @@
 #include "pastml.h"
 
-extern double global_like;
-extern double global_factor;
 extern Tree *s_tree;
 extern Node *root;
 
 
 void output_state_anc_PP(Node *nd, int nb, int nbanno, char **character, FILE *outfile) {
-    int i, j, count = 0, node_start, num = 0;
-    double sum = 0.0;
+    int i, j, node_start, num = 0;
 
     if (nd == root) {
         fprintf(outfile, "Internal NodeID");
@@ -38,15 +35,12 @@ void output_state_anc_PP(Node *nd, int nb, int nbanno, char **character, FILE *o
         output_state_anc_PP(nd->neigh[i], nb, nbanno, character, outfile);
     }
 
-    //printf("%s", nd->name);
     for (i = 0; i < nbanno; i++) {
-      //printf(", %.5f", nd->marginal[j]);
         if (nd->local_flag[i] == 1) {
             nd->marginal[i] = (double) 1.0 / num;
         } else {
         }
     }
-    //printf("\n");
 
     fprintf(outfile, "%s", nd->name);
         for (i = 0; i < nbanno; i++) {
@@ -62,8 +56,6 @@ void output_state_anc_PP(Node *nd, int nb, int nbanno, char **character, FILE *o
             }
         }
     fprintf(outfile, "\n");
-
-    return;
 }
 
 void output_state_tip_PP(Node *nd, int nb, int nbanno, char **character, FILE *outfile) {
@@ -91,7 +83,5 @@ void output_state_tip_PP(Node *nd, int nb, int nbanno, char **character, FILE *o
     for (i = node_start; i < nd->nneigh; i++) {
         output_state_tip_PP(nd->neigh[i], nb, nbanno, character, outfile);
     }
-
-    return;
 }
 

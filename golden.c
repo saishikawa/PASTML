@@ -2,7 +2,6 @@
 #include "lik.h"
 
 #define SIGMA 1e-5
-#define sqrt5 2.236067977499789696
 #define ALPHA 1e-5
 #define gratio 1.6180339887498948482045868343656
 
@@ -27,7 +26,7 @@ int Stopping_Rule(double x0, double x1) {
     }
 }
 
-void golden(Node *nd, char **tipnames, int *states, int nb, int nbanno, double mu, char *model, double *p, double ub) {
+void golden(char **tipnames, int *states, int nb, int nbanno, double mu, char *model, double *p, double ub) {
     double lb = 0.05 / s_tree->avgbl, x1, x2, fx1 = 0., fx2 = 0., diff;
     int count = 0;
 
@@ -65,5 +64,4 @@ void golden(Node *nd, char **tipnames, int *states, int nb, int nbanno, double m
         count++;
     }
     p[nbanno] = (x1 + x2) / 2.0;
-    //printf("fx1 = %lf, fx2 = %lf\n",fx1, fx2);
 }

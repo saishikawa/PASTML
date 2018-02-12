@@ -12,13 +12,12 @@ static PyObject *infer_ancestral_states(PyObject *self, PyObject *args) {
     char *out_tree_name;
     char *model;
     int sts;
-    double *frequency;
 
     if (!PyArg_ParseTuple(args, "sssss", &annotation_name, &tree_name, &out_annotation_name, &out_tree_name, &model)) {
         return NULL;
     }
 
-    sts = runpastml(annotation_name, tree_name, out_annotation_name, out_tree_name, model, frequency, "T", "T", -1.0);
+    sts = runpastml(annotation_name, tree_name, out_annotation_name, out_tree_name, model, "T", "T", -1.0);
     if (sts != EXIT_SUCCESS) {
         if (errno) {
             return PyErr_SetFromErrno(PyErr_NewException("pastml.error", NULL, NULL));

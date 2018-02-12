@@ -3,15 +3,6 @@
 #include <getopt.h>
 #include <errno.h>
 
-void *check_alloc(int nbrelt, int sizelt){
-    void *retval;
-    if( (retval=calloc(nbrelt,sizelt)) != NULL ) {
-        return retval;
-    }
-    sprintf(stderr, "Not enough memory\n");
-    return NULL;
-}
-
 
 int main(int argc, char **argv) {
     char *model = "JC";
@@ -19,12 +10,9 @@ int main(int argc, char **argv) {
     char *tree_name = NULL;
     char *out_annotation_name = NULL;
     char *out_tree_name = NULL;
-    int i, argnum;
     struct timespec;
-    double *frequency = NULL;
     double collapse_BRLEN = -1.0;
     int opt;
-    int check_freq = 0;
     char *scaling = "T", *keep_ID = "T";
     char *arg_error_string = malloc(sizeof(char) * 1024);
 
@@ -45,8 +33,6 @@ int main(int argc, char **argv) {
             "   -s SCALING_ON_OFF                   branch length scaling on (T, by default) or off (F)\n"
             "   -I KEEP_INTERNAL_NODE_IDS_ON_OFF    keep internal node ids from the input tree: T (true) or F (false)\n"
             "   -B THRETHOLD_OF_BRANCH_COLLAPSE     define X to collapse branches shorter than 1.0e-X (default: no collapse)\n";
-
-    //            "   -f USER_DEFINED_FREQUENCY           set number of state and each state frequencies, the sum must be 1.0 (e.g. -f 4 0.1 0.2 0.3 0.4)\n"
 
     opt = getopt(argc, argv, "a:t:o:m:n:s:B:I:");
     do {
@@ -125,6 +111,5 @@ int main(int argc, char **argv) {
         out_tree_name = calloc(256, sizeof(char));
         sprintf(out_tree_name, "%s.pastml.out.nwk", tree_name);
     }
-    return runpastml(annotation_name, tree_name, out_annotation_name, out_tree_name, model, frequency, 
-                     scaling, keep_ID, collapse_BRLEN);
+    return runpastml(annotation_name, tree_name, out_annotation_name, out_tree_name, model, scaling, keep_ID, collapse_BRLEN);
 }

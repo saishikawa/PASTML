@@ -7,10 +7,7 @@
 void nrerror(char error_text[])
 /* Numerical Recipes standard error handler */
 {
-    //fprintf(stderr,"BFGS optimization warning...\n");
     fprintf(stderr, "%s\n", error_text);
-    //fprintf(stderr,"...now exiting to system...\n");
-    //exit(1);
 }
 
 double *vector(long nl, long nh)
@@ -19,7 +16,6 @@ double *vector(long nl, long nh)
     double *v;
     v = (double *) malloc((size_t) ((nh - nl + 1 + NR_END) * sizeof(double)));
     if (!v) nrerror("allocation failure in vector()");
-    //printf("allocating\n");
     return v - nl + NR_END;
 }
 
@@ -51,12 +47,5 @@ void free_vector(double *v, long nl, long nh)
 /* free a double vector allocated with vector() */
 {
     free((FREE_ARG) (v + nl - NR_END));
-}
-
-void free_matrix(double **m, long nrl, long nrh, long ncl, long nch)
-/* free a double matrix allocated by matrix() */
-{
-    free((FREE_ARG) (m[nrl] + ncl - NR_END));
-    free((FREE_ARG) (m + nrl - NR_END));
 }
 

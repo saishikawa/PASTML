@@ -4,13 +4,10 @@ extern int have_miss;
 extern Tree *s_tree;
 extern Node *root;
 
-double global_like;
-double global_factor;
-
 void calc_lik_bfgs(Node *nd, char **tipnames, int *states, int nb, int nbanno, double mu, char *model, double *p,
                    double *likelihood) {
-  int i, j, k, ii;
-    double mul, expmul, sum = 0., prob_left = 0., prob_right = 0., bl, smallest, scaled_lk, logroot, prob_sons[MAXPOLY], sum_mu;
+  int i, j, ii;
+    double mul, expmul, sum, bl, smallest, scaled_lk, logroot, prob_sons[MAXPOLY];
     static int factors = 0;
     static int count=0;
     double curr_scaler;
@@ -20,13 +17,8 @@ void calc_lik_bfgs(Node *nd, char **tipnames, int *states, int nb, int nbanno, d
     sum = 0.;
     if (nd->nneigh == 1) { /*tips*/
         bl = nd->br[0]->brlen;
-        if (bl == 0.0) {
 	    bl = (bl + p[nbanno + 1]) * (s_tree->ex_avgbl / (s_tree->ex_avgbl + p[nbanno + 1]));
-            bl = bl * p[nbanno];           
-        } else {
-	    bl = (bl + p[nbanno + 1]) * (s_tree->ex_avgbl / (s_tree->ex_avgbl + p[nbanno + 1]));
-            bl = bl * p[nbanno];
-        }
+        bl = bl * p[nbanno];
         mul = -1. * mu * bl;
         expmul = exp(mul);
         /*tip probability*/
@@ -92,7 +84,6 @@ void calc_lik_bfgs(Node *nd, char **tipnames, int *states, int nb, int nbanno, d
         }
         if (smallest < LIM_P) {
             curr_scaler_pow = (int) (POW * LOG2 - log(smallest)) / LOG2;
-            curr_scaler = ((unsigned long long) (1) << curr_scaler_pow);
             factors += curr_scaler_pow;
             do {
                 piecewise_scaler_pow = MIN(curr_scaler_pow, 63);
@@ -111,8 +102,6 @@ void calc_lik_bfgs(Node *nd, char **tipnames, int *states, int nb, int nbanno, d
         for (i = 0; i < nbanno; i++) {
             nd->mar_prob[i] = nd->condlike[i] / sum;
         }
-        global_like = scaled_lk;
-        global_factor = factors;
         nd->up_factor = factors;
         for (i = 0; i < nbanno; i++) {
             nd->up_like[i] = nd->condlike[i];
@@ -120,7 +109,6 @@ void calc_lik_bfgs(Node *nd, char **tipnames, int *states, int nb, int nbanno, d
         logroot = log(scaled_lk);
         do {
             piecewise_scaler_pow = MIN(factors, 63);
-            curr_scaler = ((unsigned long long) (1) << piecewise_scaler_pow);
             logroot = logroot - LOG2 * piecewise_scaler_pow;
             factors -= piecewise_scaler_pow;
         } while (factors != 0);
@@ -132,10 +120,8 @@ void calc_lik_bfgs(Node *nd, char **tipnames, int *states, int nb, int nbanno, d
 
         bl = nd->br[0]->brlen;
         if (bl == 0.0) {
-	  //bl = (bl + p[nbanno + 1]) * (s_tree->avgbl / (s_tree->avgbl + p[nbanno + 1]));
 	  bl = bl * p[nbanno];
         } else {
-	  //bl = (bl + p[nbanno + 1]) * (s_tree->avgbl / (s_tree->avgbl + p[nbanno + 1]));
           bl = bl * p[nbanno];
         }
         mul = -1. * mu * bl;
@@ -169,8 +155,7 @@ void calc_lik_bfgs(Node *nd, char **tipnames, int *states, int nb, int nbanno, d
             }
             if (smallest < LIM_P) {
                curr_scaler_pow = (int) (POW * LOG2 - log(smallest)) / LOG2;
-               curr_scaler = ((unsigned long long) (1) << curr_scaler_pow);
-               factors += curr_scaler_pow;
+                factors += curr_scaler_pow;
                do {
                  piecewise_scaler_pow = MIN(curr_scaler_pow, 63);
                  curr_scaler = ((unsigned long long) (1) << piecewise_scaler_pow);
@@ -192,7 +177,6 @@ void calc_lik_bfgs(Node *nd, char **tipnames, int *states, int nb, int nbanno, d
         }
         if (smallest < LIM_P) {
             curr_scaler_pow = (int) (POW * LOG2 - log(smallest)) / LOG2;
-            curr_scaler = ((unsigned long long) (1) << curr_scaler_pow);
             factors += curr_scaler_pow;
             do {
                 piecewise_scaler_pow = MIN(curr_scaler_pow, 63);
@@ -208,20 +192,4 @@ void calc_lik_bfgs(Node *nd, char **tipnames, int *states, int nb, int nbanno, d
             nd->up_like[i] = nd->condlike[i];
         }
     }
-    //DEBUG
-    /*for (i = 0; i < nbanno; i++) {
-      if(nd->condlike[i] == 0.0) {
-        if(i==0) {
-          printf("Current %s, Son: ", nd->name);
-          for (j = node_start; j < nd->nneigh; j++) {
-            printf("\n%s-%lf, ", nd->neigh[j]->name, nd->neigh[j]->br[0]->brlen);
-            for(k = 0; k < nbanno; k++) printf("%d = %.5e, ", k, nd->neigh[j]->condlike[k]);
-	  }
-          printf("\n");
-        }
-        printf("Cond%d = %.5e, ", i, nd->condlike[i]);
-        if(i==nbanno-1) printf("\n");
-      }
-      }*/
-    return;
 }

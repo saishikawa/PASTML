@@ -1,5 +1,8 @@
 #include "pastml.h"
 
+extern Tree *s_tree;
+extern Node *root;
+
 int dir_a_to_b(Node *a, Node *b) {
     /* this returns the direction from a to b when a and b are two neighbours, otherwise return -1 */
     int i, n = a->nneigh;
@@ -11,14 +14,16 @@ int dir_a_to_b(Node *a, Node *b) {
 } /* end dir_a_to_b */
 
 int write_subtree_to_stream(Node *node, Node *node_from, FILE *stream, double epsilon, double scaling) {
-    int i, direction_to_exclude, n = node->nneigh;
+  int i, direction_to_exclude, n = node->nneigh, bl = node->br[0]->brlen;
     if (node == NULL || node_from == NULL) return EXIT_SUCCESS;
 
     if (n == 1) {
         /* terminal node */
-        if (node->br[0]->brlen == 0.0) {
+        if (bl == 0.0) {
+	    bl = (bl + epsilon) * (s_tree->ex_avgbl / (s_tree->ex_avgbl + epsilon));
+            bl = bl * scaling;           
             fprintf(stream, "%s:%f", (node->name ? node->name : ""),
-                    node->br[0]->brlen + epsilon); /* distance to father */
+                    bl); /* distance to father */
         } else {
             fprintf(stream, "%s:%f", (node->name ? node->name : ""),
                     node->br[0]->brlen * scaling); /* distance to father */
@@ -44,13 +49,8 @@ int write_subtree_to_stream(Node *node, Node *node_from, FILE *stream, double ep
             return EXIT_FAILURE;
         } /* last son */
         putc(')', stream);
-        if (node->br[0]->brlen == 0.0) {
-            fprintf(stream, "%s:%f", (node->name ? node->name : ""),
-                    node->br[0]->brlen + epsilon); /* distance to father */
-        } else {
-            fprintf(stream, "%s:%f", (node->name ? node->name : ""),
-                    node->br[0]->brlen * scaling); /* distance to father */
-        }
+        fprintf(stream, "%s:%f", (node->name ? node->name : ""),
+                bl * scaling); /* distance to father */
     }
     return EXIT_SUCCESS;
 

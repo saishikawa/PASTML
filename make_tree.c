@@ -136,6 +136,7 @@ void collapse_branch(Edge *branch, Tree *tree, int nbanno) {
 
 } /* end collapse_branch */
 
+
 int index_toplevel_colon(char *in_str, int begin, int end) {
     /* returns the index of the (first) toplevel colon only, -1 if not found */
     int level = 0, i;
@@ -191,8 +192,8 @@ int count_roots(Tree *tree) { /* to ensure there is exactly zero or one root */
     int count = 0;
     int i, n = tree->nb_nodes;
     for (i = 0; i < n; i++) {
-        if (tree->a_nodes[i]->nneigh > 1) {
-            if (strcmp(tree->a_nodes[i]->neigh[1]->name, "Node2") == 0) count++;
+        if (tree->a_nodes[i]->neigh[0] == NULL) {
+	  count++;
         }
     }
     return count;
@@ -508,7 +509,7 @@ Tree *parse_nh_string(char *in_str, int nbanno, char *keep_ID, double collapse_B
     int in_length = (int) strlen(in_str);
     int i, j; /* loop counter */
     int begin, end; /* to delimitate the string to further process */
-    int n_otu = 0, nodecount = 0;
+    int n_otu = 0, nodecount = 1, rootcount=-1;
     char str[MAXLNAME];
     int collapsed_one = 0, uncollapsed_terminal = 0, collapsed_internal = 0, maxpoly;
     double ex_sum=0.0;
@@ -576,16 +577,50 @@ Tree *parse_nh_string(char *in_str, int nbanno, char *keep_ID, double collapse_B
         return NULL;
     }
 
+    if(t->a_nodes[0]->nneigh != 2){
+        fprintf(stderr, "The input tree is NOT rooted.\n");
+        return NULL;
+    }
+
     /* SANITY CHECKS AFTER READING THE TREE */
+
+    /* Collapse branches */
+    collapsed_internal = 0;
+    do {
+      collapsed_one = 0; /* flag that will be set to one as soon as we collapse one branch */
+      uncollapsed_terminal = 0;
+      for(i=0; i < t->nb_edges; i++) {
+	if (t->a_edges[i]->brlen <= collapse_BRLEN) {
+	  if (t->a_edges[i]->right->nneigh == 1) { /* don't collapse terminal edges */
+	    uncollapsed_terminal++;
+	  }else{
+	    collapse_branch(t->a_edges[i], t, nbanno);
+	    collapsed_one = 1;
+	    collapsed_internal++;
+	    break; /* breaking the for so that we start again from the beginning because tree->a_edges has changed */
+	  }
+	}
+      } /* end for */
+    } while (collapsed_one);
+    if(collapsed_internal > 0) printf("\n*** Collapsed %d branches according to the threshold of the branch length: %.1e\n",collapsed_internal, collapse_BRLEN);
+    
 
     if (strcmp(keep_ID, "F") == 0) {
         for (i = 0; i < t->nb_nodes; i++) {
             if (t->a_nodes[i]->nneigh > 1 && i > 0) {
-                nodecount++;
                 sprintf(t->a_nodes[i]->name, "%s%d", "Node", nodecount);
+                nodecount++;
             }
         }
+        /* DEBUG
+        for (i = 0; i < t->nb_nodes; i++) {
+          printf("%s is assined, connected to", t->a_nodes[i]->name);
+          for(j=0; j<t->a_nodes[i]->nneigh; j++) printf(", %s",t->a_nodes[i]->neigh[j]->name);
+          printf("\n");
+        }
+        */
     }
+
     t->min_bl = DBL_MAX;
     maxpoly=0;
     for (i = 0; i < t->nb_nodes; i++) {
@@ -615,40 +650,18 @@ Tree *parse_nh_string(char *in_str, int nbanno, char *keep_ID, double collapse_B
     t->avgbl = BL_avg;
 
     printf("\n*** BASIC STATISTICS ***\n\n", in_str);
-    printf("Number of taxa in the tree read: %d\n", t->nb_taxa);
+    printf("Number of leaves in the tree read: %d\n", t->nb_taxa);
     if (t->nb_taxa > MAXNSP) {
         fprintf(stderr, "Fatal error: too many taxa: more than %d.\n", MAXNSP);
         return NULL;
     }
-    //printf("Number of leaves according to the tree structure: %d\n", count_leaves(t));
-    printf("Number of nodes in the tree read: %d\n", t->nb_nodes - t->nb_taxa);
-    printf("Number of edges in the tree read: %d\n", t->nb_edges);
-    printf("Average branch lengths of the tree: %lf\n", t->avgbl);
-    printf("Minimum branch length in the tree: %lf\n", t->min_bl);
+    printf("Number of nodes: %d\n", t->nb_nodes - t->nb_taxa);
+    printf("Number of edges: %d\n", t->nb_edges);
+    printf("Average branch lengths: %lf\n", t->avgbl);
+    printf("Minimum branch length: %lf\n", t->min_bl);
     printf("Number of edges with zero length: %d\n", count_zero_length_branches(t));
-    printf("The maximum number of multifurcations at a single node of the input tree: %d\n", maxpoly-1);
-
-
-    /* Collapse branches */
-    collapsed_internal = 0;
-    do {
-      collapsed_one = 0; /* flag that will be set to one as soon as we collapse one branch */
-      uncollapsed_terminal = 0;
-      for(i=0; i < t->nb_edges; i++) {
-	if (t->a_edges[i]->brlen <= collapse_BRLEN) {
-	  if (t->a_edges[i]->right->nneigh == 1) { /* don't collapse terminal edges */
-	    uncollapsed_terminal++;
-	  }else{
-	    collapse_branch(t->a_edges[i], t, nbanno);
-	    collapsed_one = 1;
-	    collapsed_internal++;
-	    break; /* breaking the for so that we start again from the beginning because tree->a_edges has changed */
-	  }
-	}
-      } /* end for */
-    } while (collapsed_one);
-    if(collapsed_internal > 0) printf("\n*** Collapsing tree ... Collapsed %d branches\n",collapsed_internal);
-
+    printf("Maximum number of multifurcations in the tree structure: %d\n", maxpoly-1);
+   
     return t;
 
 } /* end parse_nh_string */

@@ -65,5 +65,4 @@ void golden(Node *nd, char **tipnames, int *states, int nb, int nbanno, double m
         count++;
     }
     p[nbanno] = (x1 + x2) / 2.0;
-    //printf("fx1 = %lf, fx2 = %lf\n",fx1, fx2);
 }

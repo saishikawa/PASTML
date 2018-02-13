@@ -38,15 +38,12 @@ void output_state_anc_PP(Node *nd, int nb, int nbanno, char **character, FILE *o
         output_state_anc_PP(nd->neigh[i], nb, nbanno, character, outfile);
     }
 
-    //printf("%s", nd->name);
     for (i = 0; i < nbanno; i++) {
-      //printf(", %.5f", nd->marginal[j]);
         if (nd->local_flag[i] == 1) {
             nd->marginal[i] = (double) 1.0 / num;
         } else {
         }
     }
-    //printf("\n");
 
     fprintf(outfile, "%s", nd->name);
         for (i = 0; i < nbanno; i++) {
@@ -54,7 +51,7 @@ void output_state_anc_PP(Node *nd, int nb, int nbanno, char **character, FILE *o
 
                 if (strcmp(character[i], character[nd->tmp_best[j]]) == 0) {
                     if (nd->local_flag[j] == 1) {
-                        fprintf(outfile, ", %.5f", nd->marginal[j]);
+                        fprintf(outfile, ", %.3f", nd->marginal[j]);
                     } else {
                         fprintf(outfile, ", 0.0");
                     }
@@ -73,9 +70,9 @@ void output_state_tip_PP(Node *nd, int nb, int nbanno, char **character, FILE *o
         fprintf(outfile, "%s", nd->name);
         for (i = 0; i < nbanno; i++) {
             if (i == nd->pupko_state) {
-                fprintf(outfile, ", 1.0");
+                fprintf(outfile, ", 1.000");
             } else {
-                fprintf(outfile, ", 0.0");
+                fprintf(outfile, ", 0.000");
             }
         }
         fprintf(outfile, "\n");

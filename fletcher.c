@@ -6,6 +6,7 @@ int ncom;
 double *pcom, *xicom, scale_up, scale_low, *store_p, *best_p;
 extern Tree* s_tree;
 extern Node* root;
+extern double opt_param[MAXCHAR+2];
 
 void SHFT(double* a, double* b, double* c, double* d){
 
@@ -270,7 +271,7 @@ function). The routine linmin is called to perform line minimizations.*/
 
   scale_up = 5.0 / s_tree->avgbl;
   scale_low = 0.05 / s_tree->avgbl;
-  printf("Scalingfactor upbound = %lf, start point = %.5e\n\n***Fletcher-Reeves-Polak-Ribiere minimization ...\n\n",scale_up,p[nbanno]);
+  printf("\n*** Fletcher-Reeves-Polak-Ribiere minimization ***\n\n");
   g=vector(0,n-1);
   h=vector(0,n-1);
   xi=vector(0,n-1);
@@ -285,12 +286,13 @@ function). The routine linmin is called to perform line minimizations.*/
     printf("Step%d, ",its);
     linmin(root, tipnames, states, nb, nbanno, mu, model, p,xi,n,fret);
     for (i=0;i<n;i++) {
+      opt_param[i]=p[i];
       if(i < nbanno) printf("%s=%.6e, ",character[i],p[i]);
       if(i == nbanno) printf("Scaling=%.6e, ",p[i]);
       if(i == nbanno+1) printf("Epsilon=%.6e, ",p[i]);
     }
     calc_lik_bfgs(root, tipnames, states, nb, nbanno, mu, model, p, &fl);
-    printf("lnL = %lf\n",fl);
+    printf("lnL=%lf\n",(-1.0)*fl);
     if (fabs(*fret-fp) <= ftol) {
       free_vector(g,0,n-1); free_vector(h,0,n-1); free_vector(xi,0,n-1);
       return;

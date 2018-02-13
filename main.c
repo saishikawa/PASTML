@@ -21,8 +21,7 @@ int main(int argc, char **argv) {
     char *out_tree_name = NULL;
     int i, argnum;
     struct timespec;
-    double *frequency = NULL;
-    double collapse_BRLEN = -1.0;
+    double *frequency, collapse_BRLEN= -1.0;
     int opt;
     int check_freq = 0;
     char *scaling = "T", *keep_ID = "T";
@@ -75,13 +74,27 @@ int main(int argc, char **argv) {
                 model = optarg;
                 break;
 
+		/*case 'f':
+                argnum = atoi(argv[optind-1]);
+                frequency = check_alloc(argnum, sizeof(double));
+                if (frequency == NULL) {
+                    return ENOMEM;
+                }
+                for (i = 1; i <= argnum; i++) {
+                    frequency[i - 1] = atof(argv[optind - 1 + i]);
+                    printf("Input Frequency No.%d = %lf\n", i, frequency[i-1]);
+                }
+                check_freq = 1;
+                break;*/
+
             case 's':
                 scaling=optarg;
                 break;
 
 
             case 'B':
-                collapse_BRLEN = pow(0.1, atof(optarg));
+	      collapse_BRLEN = pow(0.1, atof(optarg));
+	      //printf("Branches shorter than %lf will be collapsed into a polytomy\n",collapse_BRLEN);
                 break;
 
             case 'I':
@@ -117,6 +130,13 @@ int main(int argc, char **argv) {
     /* No error in arguments */
     free(arg_error_string);
 
+    /* Initialise optional arguments is needed */
+    if (check_freq == 0) {
+        frequency = calloc(MAXCHAR, sizeof(double));
+        if (frequency == NULL) {
+            return ENOMEM;
+        }
+    }
     if (out_annotation_name == NULL) {
         out_annotation_name = calloc(256, sizeof(char));
         sprintf(out_annotation_name, "%s.pastml.out.csv", annotation_name);
@@ -125,6 +145,8 @@ int main(int argc, char **argv) {
         out_tree_name = calloc(256, sizeof(char));
         sprintf(out_tree_name, "%s.pastml.out.nwk", tree_name);
     }
-    return runpastml(annotation_name, tree_name, out_annotation_name, out_tree_name, model, frequency, 
-                     scaling, keep_ID, collapse_BRLEN);
+    int res = runpastml(annotation_name, tree_name, out_annotation_name, out_tree_name, model, frequency, scaling, keep_ID, collapse_BRLEN);
+
+    free(frequency);
+    return res;
 }

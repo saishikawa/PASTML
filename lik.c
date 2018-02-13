@@ -132,10 +132,8 @@ void calc_lik_bfgs(Node *nd, char **tipnames, int *states, int nb, int nbanno, d
 
         bl = nd->br[0]->brlen;
         if (bl == 0.0) {
-	  //bl = (bl + p[nbanno + 1]) * (s_tree->avgbl / (s_tree->avgbl + p[nbanno + 1]));
 	  bl = bl * p[nbanno];
         } else {
-	  //bl = (bl + p[nbanno + 1]) * (s_tree->avgbl / (s_tree->avgbl + p[nbanno + 1]));
           bl = bl * p[nbanno];
         }
         mul = -1. * mu * bl;
@@ -210,7 +208,6 @@ void calc_lik_bfgs(Node *nd, char **tipnames, int *states, int nb, int nbanno, d
     }
     //DEBUG
     /*for (i = 0; i < nbanno; i++) {
-      if(nd->condlike[i] == 0.0) {
         if(i==0) {
           printf("Current %s, Son: ", nd->name);
           for (j = node_start; j < nd->nneigh; j++) {
@@ -221,7 +218,7 @@ void calc_lik_bfgs(Node *nd, char **tipnames, int *states, int nb, int nbanno, d
         }
         printf("Cond%d = %.5e, ", i, nd->condlike[i]);
         if(i==nbanno-1) printf("\n");
-      }
-      }*/
+    }
+    */
     return;
 }

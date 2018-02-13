@@ -1,6 +1,3 @@
-#ifndef PASTML_H
-#define PASTML_H
-
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,8 +7,11 @@
 #include <float.h>
 #include <limits.h>
 
+#ifndef ASRML_H
+#define ASRML_H
+
 #define ITMAX_O 1000
-#define ITMAX 500
+#define ITMAX 200
 #define EPS 1.0e-10
 #define TOL 2.0e-4
 #define GOLD 1.618034
@@ -28,7 +28,7 @@
 #define MAXLNAME 255
 #define MAXNSP 50000
 #define MAXPOLY 10000
-#define MAXCHAR 50
+#define MAXCHAR 256
 #define MIN_BRLEN    1.0e-5
 #define MAX_TREELENGTH    10000000 /* more or less 10MB for a tree file in NH format */
 #define MAX_NODE_DEPTH    100000 /* max depth for nodes in the tree */
@@ -43,6 +43,11 @@
 #define MAX_TAX 10000
 #define LOG2 0.69314718055994528623
 #define MIN(a, b) ((a)<(b)?(a):(b))
+
+#ifndef _IO_H
+#define _IO_H
+
+#endif
 
 typedef struct __Node {
     char *name;
@@ -107,4 +112,4 @@ typedef struct __Tree {
   double ex_avgbl;
 } Tree;
 
-#endif // PASTML_H
+#endif // ASRML_H

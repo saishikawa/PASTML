@@ -19,7 +19,7 @@ void gradient(char **tipnames, int *states, int nb, int nbanno, double mu, char 
     int i, j;
     double pluslnl, oldlnl, tmp_p[n], sum;
 
-    calc_lik_bfgs(root, tipnames, states, nb, nbanno, mu, model, p, &oldlnl);
+    oldlnl = calc_lik_bfgs(root, tipnames, states, nb, nbanno, mu, model, p);
     for (i = 0; i < n; i++) {
         sum = 0.0;
         for (j = 0; j < n; j++) {
@@ -39,7 +39,7 @@ void gradient(char **tipnames, int *states, int nb, int nbanno, double mu, char 
         for (j = 0; j < nbanno; j++) {
             tmp_p[j] = tmp_p[j] / sum;
         }
-        calc_lik_bfgs(root, tipnames, states, nb, nbanno, mu, model, tmp_p, &pluslnl);
+        pluslnl = calc_lik_bfgs(root, tipnames, states, nb, nbanno, mu, model, tmp_p);
         if (i < nbanno) {
             g[i] = (fabs(pluslnl) - fabs(oldlnl)) / (STEP);
         } else if (i == nbanno) {
@@ -86,7 +86,7 @@ double f1dim(char **tipnames, int *states, int nb, int nbanno, double mu, char *
     if (fabs(xt[nbanno + 1]) > 1.0 || fabs(xt[nbanno + 1]) < SCAL_MIN || xt[nbanno + 1] < 0.0)
         xt[nbanno + 1] = pcom[nbanno + 1];
 
-    calc_lik_bfgs(root, tipnames, states, nb, nbanno, mu, model, xt, &f);
+    f = calc_lik_bfgs(root, tipnames, states, nb, nbanno, mu, model, xt);
     for (j = 0; j < ncom; j++) {
         store_p[j] = xt[j];
     }
@@ -254,7 +254,7 @@ routines mnbrak and brent .*/
     }
     if (p[nbanno] > scale_up || p[nbanno] < scale_low) p[nbanno] = pold[nbanno];
     if (p[nbanno + 1] > 1.0 || p[nbanno + 1] < SCAL_MIN) p[nbanno + 1] = pold[nbanno + 1];
-    calc_lik_bfgs(root, tipnames, states, nb, nbanno, mu, model, p, &f_check);
+    f_check = calc_lik_bfgs(root, tipnames, states, nb, nbanno, mu, model, p);
     free_vector(pcom, 0, n - 1);
     free_vector(xicom, 0, n - 1);
     free_vector(pold, 0, n - 1);
@@ -274,14 +274,14 @@ function). The routine linmin is called to perform line minimizations.*/
     double gg, gam, fp, dgg, fl;
     double *g, *h, *xi;
 
-    scale_up = 5.0 / s_tree->avgbl;
-    scale_low = 0.05 / s_tree->avgbl;
+    scale_up = 5.0 / s_tree->avg_branch_len;
+    scale_low = 0.05 / s_tree->avg_branch_len;
     printf("Scalingfactor upbound = %lf, start point = %.5e\n\n***Fletcher-Reeves-Polak-Ribiere minimization ...\n\n",
            scale_up, p[nbanno]);
     g = vector(0, n - 1);
     h = vector(0, n - 1);
     xi = vector(0, n - 1);
-    calc_lik_bfgs(root, tipnames, states, nb, nbanno, mu, model, p, &fp);
+    fp = calc_lik_bfgs(root, tipnames, states, nb, nbanno, mu, model, p);
     gradient(tipnames, states, nb, nbanno, mu, model, p, xi, n);
     for (j = 0; j < n; j++) {
         g[j] = -xi[j];
@@ -296,7 +296,7 @@ function). The routine linmin is called to perform line minimizations.*/
             if (i == nbanno) printf("Scaling=%.6e, ", p[i]);
             if (i == nbanno + 1) printf("Epsilon=%.6e, ", p[i]);
         }
-        calc_lik_bfgs(root, tipnames, states, nb, nbanno, mu, model, p, &fl);
+        fl = calc_lik_bfgs(root, tipnames, states, nb, nbanno, mu, model, p);
         printf("lnL = %lf\n", fl);
         if (fabs(*fret - fp) <= ftol) {
             free_vector(g, 0, n - 1);

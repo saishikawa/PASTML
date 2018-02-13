@@ -27,16 +27,16 @@ int Stopping_Rule(double x0, double x1) {
 }
 
 void golden(char **tipnames, int *states, int nb, int nbanno, double mu, char *model, double *p, double ub) {
-    double lb = 0.05 / s_tree->avgbl, x1, x2, fx1 = 0., fx2 = 0., diff;
+    double lb = 0.05 / s_tree->avg_branch_len, x1, x2, fx1 = 0., fx2 = 0., diff;
     int count = 0;
 
     x1 = ub + (lb - ub) / gratio;
     p[nbanno] = x1;
-    calc_lik_bfgs(root, tipnames, states, nb, nbanno, mu, model, p, &fx1);
+    fx1 = calc_lik_bfgs(root, tipnames, states, nb, nbanno, mu, model, p);
     fx1 = fx1 * (-1.0);
     x2 = lb + (ub - lb) / gratio;
     p[nbanno] = x2;
-    calc_lik_bfgs(root, tipnames, states, nb, nbanno, mu, model, p, &fx2);
+    fx2 = calc_lik_bfgs(root, tipnames, states, nb, nbanno, mu, model, p);
     fx2 = fx2 * (-1.0);
     diff = fx1 - fx2;
 
@@ -48,7 +48,7 @@ void golden(char **tipnames, int *states, int nb, int nbanno, double mu, char *m
             fx1 = fx2;
             x2 = lb + (ub - lb) / gratio;
             p[nbanno] = x2;
-            calc_lik_bfgs(root, tipnames, states, nb, nbanno, mu, model, p, &fx2);
+            fx2 = calc_lik_bfgs(root, tipnames, states, nb, nbanno, mu, model, p);
             fx2 = fx2 * (-1.0);
             diff = fx1 - fx2;
         } else if (diff > 0.0) {
@@ -57,7 +57,7 @@ void golden(char **tipnames, int *states, int nb, int nbanno, double mu, char *m
             fx2 = fx1;
             x1 = ub + (lb - ub) / gratio;
             p[nbanno] = x1;
-            calc_lik_bfgs(root, tipnames, states, nb, nbanno, mu, model, p, &fx1);
+            fx1 = calc_lik_bfgs(root, tipnames, states, nb, nbanno, mu, model, p);
             fx1 = fx1 * (-1.0);
             diff = fx1 - fx2;
         }

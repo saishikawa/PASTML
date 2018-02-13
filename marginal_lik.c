@@ -24,7 +24,6 @@ void down_like_marginal(Node *nd, int nb, int nbanno, double mu, double scale, d
     if (nd == root) {
         for (j = 0; j < nbanno; j++) {
             nd->sum_down[j] = frequency[j];
-            nd->down_factor = 0;
         }
     } else {
         father = nd->neigh[0];
@@ -119,7 +118,6 @@ void down_like_marginal(Node *nd, int nb, int nbanno, double mu, double scale, d
                 } while (curr_scaler_pow != 0);
             }
         }
-        nd->down_factor = nd->up_factor + max_factor;
         for (j = 0; j < nbanno; j++) {
             nd->condlike_mar[j] = nd->sum_down[j] * nd->up_like[j] * frequency[j];
         }
@@ -132,7 +130,6 @@ void down_like_marginal(Node *nd, int nb, int nbanno, double mu, double scale, d
         }
         if (smallest < LIM_P) {
             curr_scaler_pow = (int) (POW * LOG2 - log(smallest)) / LOG2;
-            nd->down_factor += curr_scaler_pow;
             do {
                 piecewise_scaler_pow = MIN(curr_scaler_pow, 63);
                 curr_scaler = ((unsigned long long) (1) << piecewise_scaler_pow);

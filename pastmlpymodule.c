@@ -17,7 +17,7 @@ static PyObject *infer_ancestral_states(PyObject *self, PyObject *args) {
         return NULL;
     }
 
-    sts = runpastml(annotation_name, tree_name, out_annotation_name, out_tree_name, model, "T", "T", -1.0);
+    sts = runpastml(annotation_name, tree_name, out_annotation_name, out_tree_name, model, "T", -1.0);
     if (sts != EXIT_SUCCESS) {
         if (errno) {
             return PyErr_SetFromErrno(PyErr_NewException("pastml.error", NULL, NULL));

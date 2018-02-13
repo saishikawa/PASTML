@@ -12,7 +12,6 @@
 
 Tree *s_tree;
 Node *root;
-int have_miss = -1;
 
 unsigned int tell_size_of_one_tree(char *filename) {
     /* the only purpose of this is to know about the size of a treefile (NH format) in order to save memspace in allocating the string later on */
@@ -51,20 +50,11 @@ int copy_nh_stream_into_str(FILE *nh_stream, char *big_string) {
     return EXIT_SUCCESS; /* leaves the stream right after the terminal ';' */
 } /*end copy_nh_stream_into_str */
 
-void free_edge(Edge *edge) {
-    int i;
-    if (edge == NULL) return;
-    for (i = 0; i < 2; i++) if (edge->subtype_counts[i]) free(edge->subtype_counts[i]);
-
-    free(edge);
-}
-
 void free_node(Node *node, int count, int num_anno) {
     int j;
 
     if (node == NULL) return;
     if (node->name && count != 0) free(node->name);
-    if (node->comment) free(node->comment);
     free(node->neigh);
     free(node->br);
     free(node->condlike);
@@ -86,7 +76,7 @@ void free_tree(Tree *tree, int num_anno) {
     int i;
     if (tree == NULL) return;
     for (i = 0; i < tree->nb_nodes; i++) free_node(tree->a_nodes[i], i, num_anno);
-    for (i = 0; i < tree->nb_edges; i++) free_edge(tree->a_edges[i]);
+    for (i = 0; i < tree->nb_edges; i++) free(tree->a_edges[i]);
     for (i = 0; i < tree->nb_taxa; i++) free(tree->taxa_names[i]);
     free(tree->taxa_names);
     free(tree->a_nodes);
@@ -95,9 +85,9 @@ void free_tree(Tree *tree, int num_anno) {
 
 }
 
-int runpastml(char *annotation_name, char* tree_name, char *out_annotation_name, char *out_tree_name,
-              char *model, char* scaling, char* keep_ID, double collapse_BRLEN) {
-    int i, line = 0, check, sum_freq = 0, count_miss = 0;
+int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name, char *out_tree_name, char *model,
+              char *scaling, double collapse_BRLEN) {
+    int i, line = 0, found_new_annotation, sum_freq = 0;
     int *states;
     int *count_array;
     double sum = 0., mu, lnl = 0., scale, maxlnl = 0., nano, sec;
@@ -117,7 +107,10 @@ int runpastml(char *annotation_name, char* tree_name, char *out_annotation_name,
         return EINVAL;
     }
 
-    opterr = 0;
+    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &samp_ini);
+    srand((unsigned) time(NULL));
+
+    /* Allocate memory */
     states = calloc(MAXNSP, sizeof(int));
     annotations = calloc(MAXNSP, sizeof(char *));
     tips = calloc(MAXNSP, sizeof(char *));
@@ -125,11 +118,13 @@ int runpastml(char *annotation_name, char* tree_name, char *out_annotation_name,
         annotations[i] = calloc(MAXLNAME, sizeof(char));
         tips[i] = calloc(MAXLNAME, sizeof(char));
     }
-    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &samp_ini);
-    srand((unsigned) time(NULL));
+    states[0] = 0;
+    character = calloc(max_characters, sizeof(char *));
+    for (i = 0; i < max_characters; i++) {
+        character[i] = calloc(MAXLNAME, sizeof(char));
+    }
 
     /*Read annotation from file*/
-
     annotationfile = fopen(annotation_name, "r");
     if (!annotationfile) {
         fprintf(stderr, "Annotation file %s is not found or is impossible to access.", annotation_name);
@@ -138,33 +133,23 @@ int runpastml(char *annotation_name, char* tree_name, char *out_annotation_name,
         return ENOENT;
     }
 
-    states[0] = 0;
-    character = calloc(max_characters, sizeof(char *));
-    for (i = 0; i < max_characters; i++) {
-        character[i] = calloc(MAXLNAME, sizeof(char));
-    }
-
     while (fgets(anno_line, MAXLNAME, annotationfile)) {
         sscanf(anno_line, "%[^\n,],%[^\n\r]", tips[line], annotations[line]);
         char *annotation_value = annotations[line];
         if (strcmp(annotation_value, "") == 0) sprintf(annotation_value, "?");
         if (strcmp(annotation_value, "?") == 0) {
-            count_miss++;
             states[line] = -1;
         } else {
-            check = 0;
+            found_new_annotation = TRUE;
             for (i = 0; i < line; i++) {
-                if (strcmp(annotations[i], "?") == 0) {
-                } else {
-                    if (strcmp(annotation_value, annotations[i]) == 0) {
-                        states[line] = states[i];
-                        strcpy(character[states[line]], annotation_value);
-                        check = 1;
-                        break;
-                    }
+                if (strcmp(annotations[i], "?") != 0 && strcmp(annotation_value, annotations[i]) == 0) {
+                    states[line] = states[i];
+                    strcpy(character[states[line]], annotation_value);
+                    found_new_annotation = FALSE;
+                    break;
                 }
             }
-            if (check == 0) {
+            if (found_new_annotation == TRUE) {
                 num_anno++;
                 states[line] = num_anno;
                 if (num_anno >= max_characters) {
@@ -206,12 +191,10 @@ int runpastml(char *annotation_name, char* tree_name, char *out_annotation_name,
         }
         count_array[states[i]]++;
     }
-    have_miss = num_anno;
 
-    for (i = 0; i < num_anno; i++) {
-        sum_freq = sum_freq + count_array[i];
+    for (i = 0; i <= num_anno; i++) {
+        sum_freq += count_array[i];
     }
-    sum_freq = sum_freq + count_miss;
     printf("\n*** Frequency of %d characters in the MODEL %s ***\n\n", num_anno, model);
     for (i = 0; i < num_anno; i++) {
         if (strcmp(model, "JC") == 0) {
@@ -222,11 +205,11 @@ int runpastml(char *annotation_name, char* tree_name, char *out_annotation_name,
         printf("%s = %lf\n", character[i], frequency[i]);
     }
 
+    printf("Frequency of missing data = %lf\n", (double) count_array[i] / (double) sum_freq);
+
     free(count_array);
 
-    printf("Frequency of Missing data %s = %lf\n", character[num_anno], (double) count_miss / (double) sum_freq);
-
-    /* we would need two additional spots in the parameter array,
+    /* we would need two additional spots in the parameter array: for the scaling factor, and for the epsilon,
      * therefore num_anno + 2*/
     parameter = calloc(num_anno + 2, sizeof(double));
     for (i = 0; i < num_anno; i++) {
@@ -264,7 +247,7 @@ int runpastml(char *annotation_name, char* tree_name, char *out_annotation_name,
     fclose(treefile);
 
     /*Make Tree structure*/
-    s_tree = complete_parse_nh(c_tree, num_anno, keep_ID, collapse_BRLEN); 
+    s_tree = complete_parse_nh(c_tree, num_anno, collapse_BRLEN);
     if (NULL == s_tree) {
         fprintf(stderr, "A problem occurred while parsing the reference tree.\n");
         return EINVAL;
@@ -278,14 +261,14 @@ int runpastml(char *annotation_name, char* tree_name, char *out_annotation_name,
     parameter[num_anno] = 1.0;
     parameter[num_anno + 1] = 1.0e-3;
 
-    calc_lik_bfgs(root, tips, states, num_tips, num_anno, mu, model, parameter, &lnl);
-    printf("\n*** Initial likelihood of the tree ***\n\n %lf\n\n", lnl * (-1.0));
+    lnl = calc_lik_bfgs(root, tips, states, num_tips, num_anno, mu, model, parameter);
+    printf("\n*** Initial log likelihood of the tree ***\n\n %lf\n\n", lnl * (-1.0));
 
     scale = 1.0;
     ite = 0;
     iteration = &ite;
     optlnl = &maxlnl;
-    scaleup = 5.0 / s_tree->avgbl;
+    scaleup = 5.0 / s_tree->avg_branch_len;
     if (strcmp(scaling, "T") == 0) {
         golden(tips, states, num_tips, num_anno, mu, model, parameter, scaleup);
         printf("Scaling factor is roughly optimized by GSS\n");
@@ -310,14 +293,16 @@ int runpastml(char *annotation_name, char* tree_name, char *out_annotation_name,
     }
     printf("\n*** Tree scaling factor ***\n\n %.5f \n\n*** Epsilon for approximating branch lengths ***\n\n %.5e",
            parameter[num_anno], parameter[num_anno + 1]);
-    calc_lik_bfgs(root, tips, states, num_tips, num_anno, mu, model, parameter, optlnl);
+    double optlnl_value;
+    optlnl_value = calc_lik_bfgs(root, tips, states, num_tips, num_anno, mu, model, parameter);
+    optlnl = &optlnl_value;
     printf("\n\n*** Optimised likelihood ***\n\n %lf\n", (*optlnl)*(-1.0));
 
     //Marginal likelihood calculation
     printf("\n*** Calculating Marginal Likelihoods...\n");
     down_like_marginal(root, num_tips, num_anno, mu, scale, parameter);
 
-    printf("\n*** Predicting likely ancestral statesby the Marginal Approximation method...\n\n");
+    printf("\n*** Predicting likely ancestral states by the Marginal Approximation method...\n\n");
     int res_code = make_samples(num_tips, num_anno, character, parameter, out_annotation_name, out_tree_name);
     if (EXIT_SUCCESS != res_code) {
         return res_code;
@@ -333,7 +318,7 @@ int runpastml(char *annotation_name, char* tree_name, char *out_annotation_name,
     clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &samp_fin);
     sec = (double) (samp_fin.tv_sec - samp_ini.tv_sec);
     nano = (double) (samp_fin.tv_nsec - samp_ini.tv_nsec) / 1000.0 / 1000.0 / 1000.0;
-
     printf("\nTotal execution time = %3.10lf seconds\n\n", (sec + nano));
+
     return EXIT_SUCCESS;
 }

@@ -9,7 +9,6 @@ extern Node *root;
 
 
 void calc_correct(Node *nd, int nb, int nbanno, char **character) {
-    static int count = 0;
     int i, j, tmpnum, node_start;
     double tmp_correct = 10.0, local_cor;
 
@@ -50,12 +49,9 @@ void calc_correct(Node *nd, int nb, int nbanno, char **character) {
             nd->local_flag[i] = 0;
         }
     }
-    nd->count = count;
-
     if (nd == root) {
         return;
     }
-    count++;
 }
 
 void order_marginal(Node *nd, int nb, int nbanno) {

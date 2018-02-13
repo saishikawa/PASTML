@@ -6,7 +6,6 @@
 #ifndef PASTML_LIK_H
 #define PASTML_LIK_H
 
-void calc_lik_bfgs(Node *nd, char **tipnames, int *states, int nb, int nbanno, double mu, char *model, double *p,
-                   double *likelihood);
+double calc_lik_bfgs(Node *nd, char **tipnames, int *states, int num_tips, int num_annotations, double mu, char *model, double *parameters);
 
 #endif //PASTML_LIK_H

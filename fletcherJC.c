@@ -26,7 +26,7 @@ void gradientJC(char **tipnames, int *states, int nb, int nbanno, double mu, cha
     }
     likp[nbanno] = p[0];
     likp[nbanno + 1] = p[1];
-    calc_lik_bfgs(root, tipnames, states, nb, nbanno, mu, model, likp, &oldlnl);
+    oldlnl = calc_lik_bfgs(root, tipnames, states, nb, nbanno, mu, model, likp);
     for (i = 0; i < n; i++) {
         for (j = 0; j < n; j++) {
             if (j == i) {
@@ -37,7 +37,7 @@ void gradientJC(char **tipnames, int *states, int nb, int nbanno, double mu, cha
                 }
             }
         }
-        calc_lik_bfgs(root, tipnames, states, nb, nbanno, mu, model, likp, &pluslnl);
+        pluslnl = calc_lik_bfgs(root, tipnames, states, nb, nbanno, mu, model, likp);
         if (i == 0) {
             g[i] = (fabs(pluslnl) - fabs(oldlnl)) / (STEP2);
         } else if (i == 1) {
@@ -77,7 +77,7 @@ double f1dimJC(char **tipnames, int *states, int nb, int nbanno, double mu, char
     }
     likp[nbanno] = xt[0];
     likp[nbanno + 1] = xt[1];
-    calc_lik_bfgs(root, tipnames, states, nb, nbanno, mu, model, likp, &f);
+    f = calc_lik_bfgs(root, tipnames, states, nb, nbanno, mu, model, likp);
     for (j = 0; j < ncomjc; j++) {
         store_pjc[j] = xt[j];
     }
@@ -254,7 +254,7 @@ routines mnbrak and brent .*/
     }
     likp[nbanno] = p[0];
     likp[nbanno + 1] = p[1];
-    calc_lik_bfgs(root, tipnames, states, nb, nbanno, mu, model, likp, &f_check);
+    f_check = calc_lik_bfgs(root, tipnames, states, nb, nbanno, mu, model, likp);
     free_vector(pcomjc, 0, n - 1);
     free_vector(xicomjc, 0, n - 1);
     free_vector(pold, 0, n - 1);
@@ -275,8 +275,8 @@ function). The routine linmin is called to perform line minimizations.*/
     double gg, gam, fp, dgg, fl;
     double *g, *h, *xi, *likp;
 
-    scale_upjc = 5.0 / s_tree->avgbl;
-    scale_lowjc = 0.05 / s_tree->avgbl;
+    scale_upjc = 5.0 / s_tree->avg_branch_len;
+    scale_lowjc = 0.05 / s_tree->avg_branch_len;
     printf("Scalingfactor upbound = %lf, start point = %.5e\n\n***Fletcher-Reeves-Polak-Ribiere minimization ...\n\n",
            scale_upjc, p[0]);
     g = vector(0, n - 1);
@@ -288,7 +288,7 @@ function). The routine linmin is called to perform line minimizations.*/
     }
     likp[nbanno] = p[0];
     likp[nbanno + 1] = p[1];
-    calc_lik_bfgs(root, tipnames, states, nb, nbanno, mu, model, likp, &fp);
+    fp = calc_lik_bfgs(root, tipnames, states, nb, nbanno, mu, model, likp);
     gradientJC(tipnames, states, nb, nbanno, mu, model, p, xi, n, frequency);
     for (j = 0; j < n; j++) {
         g[j] = -xi[j];
@@ -307,7 +307,7 @@ function). The routine linmin is called to perform line minimizations.*/
         }
         likp[nbanno] = p[0];
         likp[nbanno + 1] = p[1];
-        calc_lik_bfgs(root, tipnames, states, nb, nbanno, mu, model, likp, &fl);
+        fl = calc_lik_bfgs(root, tipnames, states, nb, nbanno, mu, model, likp);
         printf("lnL = %lf\n", fl);
         if (fabs(fl - fp) <= ftol) {
             free_vector(g, 0, n - 1);

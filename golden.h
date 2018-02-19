@@ -7,6 +7,7 @@
 
 #include "pastml.h"
 
-void golden(char **tipnames, int *states, int nb, int nbanno, double mu, char *model, double *p, double ub);
+void golden(char **tipnames, int *states, int num_tips, int num_annotations, double mu, double *parameters,
+            double lower_bound, double upper_bound);
 
 #endif //PASTML_GOLDEN_H

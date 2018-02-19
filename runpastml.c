@@ -98,7 +98,7 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
     struct timespec samp_ini, samp_fin;
     char anno_line[MAXLNAME];
     int *iteration, ite;
-    double *optlnl, scaleup;
+    double *optlnl;
     int max_characters = MAXCHAR;
     double *frequency = NULL;
 
@@ -261,17 +261,23 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
     parameter[num_anno] = 1.0;
     parameter[num_anno + 1] = 1.0e-3;
 
-    lnl = calc_lik_bfgs(root, tips, states, num_tips, num_anno, mu, model, parameter);
+    lnl = calc_lik_bfgs(root, tips, states, num_tips, num_anno, mu, parameter);
+    if (lnl == fabs(log(0))) {
+        fprintf(stderr, "A problem occurred while calculating the likelihood: "
+                "Is your tree ok and has at least 2 children per inner node?\n");
+        return EXIT_FAILURE;
+    }
     printf("\n*** Initial log likelihood of the tree ***\n\n %lf\n\n", lnl * (-1.0));
 
     scale = 1.0;
     ite = 0;
     iteration = &ite;
     optlnl = &maxlnl;
-    scaleup = 5.0 / s_tree->avg_branch_len;
     if (strcmp(scaling, "T") == 0) {
-        golden(tips, states, num_tips, num_anno, mu, model, parameter, scaleup);
-        printf("Scaling factor is roughly optimized by GSS\n");
+        golden(tips, states, num_tips, num_anno, mu, parameter, s_tree->tip_avg_branch_len / 10000,
+               s_tree->tip_avg_branch_len / 10);
+        printf("Scaling factor is roughly optimized between %f and %f by GSS: %f\n", s_tree->tip_avg_branch_len / 10000,
+               s_tree->tip_avg_branch_len / 10, parameter[num_anno]);
         if (strcmp(model, "F81") == 0) {
             frprmn(tips, states, num_tips, num_anno, mu, model, parameter, num_anno + 2, 1.0e-3, iteration, optlnl,
                    character);
@@ -294,7 +300,7 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
     printf("\n*** Tree scaling factor ***\n\n %.5f \n\n*** Epsilon for approximating branch lengths ***\n\n %.5e",
            parameter[num_anno], parameter[num_anno + 1]);
     double optlnl_value;
-    optlnl_value = calc_lik_bfgs(root, tips, states, num_tips, num_anno, mu, model, parameter);
+    optlnl_value = calc_lik_bfgs(root, tips, states, num_tips, num_anno, mu, parameter);
     optlnl = &optlnl_value;
     printf("\n\n*** Optimised likelihood ***\n\n %lf\n", (*optlnl)*(-1.0));
 

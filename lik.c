@@ -15,8 +15,8 @@ int calculate_node_probabilities(const Node *nd, int num_annotations, int first_
 
 double remove_upscaling_factors(double log_likelihood, int factors);
 
-int process_node(Node *nd, Node* root, char **tipnames, int *states, int num_tips, int num_annotations, double mu, char *model,
-                 double *parameters) {
+int process_node(Node *nd, Node* root, char *const *tipnames, const int *states, 
+                 int num_tips, int num_annotations, double mu, double *parameters) {
     /**
      * Calculates node probabilities.
      * parameters = [frequency_char_1, .., frequency_char_n, scaling_factor, epsilon].
@@ -36,7 +36,7 @@ int process_node(Node *nd, Node* root, char **tipnames, int *states, int num_tip
         int first_child_index = (nd == root) ? 0 : 1;
         /* recursively calculate probabilities for children */
         for (int i = first_child_index; i < nd->nneigh; i++) {
-            add_factors = process_node(nd->neigh[i], root, tipnames, states, num_tips, num_annotations, mu, model, parameters);
+            add_factors = process_node(nd->neigh[i], root, tipnames, states, num_tips, num_annotations, mu, parameters);
             /* if all the probabilities are zero (shown by add_factors == -1),
              * there is no point to go any further
              */
@@ -72,7 +72,7 @@ int process_node(Node *nd, Node* root, char **tipnames, int *states, int num_tip
     return factors;
 }
 
-double calc_lik_bfgs(Node *root, char **tipnames, int *states, int num_tips, int num_annotations, double mu, char *model,
+double calc_lik_bfgs(Node *root, char *const *tipnames,const int *states, int num_tips, int num_annotations, double mu,
                      double *parameters) {
     /**
      * Calculates tree likelihood.
@@ -81,7 +81,7 @@ double calc_lik_bfgs(Node *root, char **tipnames, int *states, int num_tips, int
      */
     double scaled_lk = 0;
 
-    int factors = process_node(root, root, tipnames, states, num_tips, num_annotations, mu, model, parameters);
+    int factors = process_node(root, root, tipnames, states, num_tips, num_annotations, mu, parameters);
     /* if factors == -1, it means that the likelihood is 0 */
     if (factors != -1) {
         for (int i = 0; i < num_annotations; i++) {
@@ -232,7 +232,7 @@ int upscale_node_probs(const Node *nd, int num_annotations) {
     }
 
     if (smallest == 1.1) {
-        printf("Likelihood of the node %s is already 0, no need to go further.\n", nd->name);
+        fprintf(stderr, "Likelihood of the node %s is already 0, no need to go further.\n", nd->name);
         return -1;
     }
 

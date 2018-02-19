@@ -388,6 +388,7 @@ int parse_substring_into_node(char *in_str, int begin, int end, Node *current_no
     Node *son;
 
     /* allocating the data structures for the current node */
+    /* FIXME: in case the tree has an inner node with just one child, nneigh will become 1 instead of 2.*/
     current_node->nneigh = (nb_commas == 0 ? 1 : nb_commas + 1 + has_father);
     current_node->neigh = malloc(current_node->nneigh * sizeof(Node *));
     current_node->br = malloc(current_node->nneigh * sizeof(Edge *));

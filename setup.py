@@ -9,10 +9,7 @@ pastml_module = Extension('pastml', sources=['pastmlpymodule.c',
                                                     'marginal_approxi.c',
                                                     'output_tree.c',
                                                     'output_states.c',
-                                                    'fletcher.c',
-                                                    'nrutil.c',
-                                                    'golden.c',
-                                                    'fletcherJC.c'],
+                                                    'nrutil.c'],
                           language='c')
 
 setup(
@@ -35,5 +32,5 @@ setup(
     keywords=['PASTML', 'phylogeny', 'ancestral state inference', 'likelihood'],
     ext_modules=[pastml_module],
     headers=['pastml.h', 'runpastml.h', 'make_tree.h', 'lik.h', 'marginal_lik.h', 'marginal_approxi.h',
-             'output_tree.h', 'output_states.h', 'fletcher.h', 'nrutil.h', 'golden.h', 'fletcherJC.h']
+             'output_tree.h', 'output_states.h', 'nrutil.h']
 )

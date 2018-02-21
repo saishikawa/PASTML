@@ -106,5 +106,5 @@ int main(int argc, char **argv) {
         out_tree_name = calloc(256, sizeof(char));
         sprintf(out_tree_name, "%s.pastml.out.nwk", tree_name);
     }
-    return runpastml(annotation_name, tree_name, out_annotation_name, out_tree_name, model, scaling, collapse_BRLEN);
+    return runpastml(annotation_name, tree_name, out_annotation_name, out_tree_name, model, collapse_BRLEN);
 }

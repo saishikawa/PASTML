@@ -16,10 +16,9 @@
 #define GOLD 1.618034
 #define GLIMIT 100.0
 #define TINY 1.0e-20
-#define CGOLD 0.3819660
-#define STEP 1.0e-4
-#define STEP2 1.0e-4
-#define STEP3 1.0e-6
+#define STEP_FREQUENCY 1.0e-4
+#define STEP_SCALING_FACTOR 1.0e-4
+#define STEP_EPSILON 1.0e-6
 #define SCAL_MIN 1.0e-5
 #define SIGMA 1.0e-3
 

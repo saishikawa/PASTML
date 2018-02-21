@@ -2,12 +2,9 @@
 #include "marginal_lik.h"
 #include "lik.h"
 #include "marginal_approxi.h"
-#include "fletcher.h"
-#include "fletcherJC.h"
 #include "make_tree.h"
-#include "golden.h"
+#include "param_minimization.h"
 #include <time.h>
-#include <unistd.h>
 #include <errno.h>
 
 Tree *s_tree;
@@ -86,19 +83,17 @@ void free_tree(Tree *tree, int num_anno) {
 }
 
 int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name, char *out_tree_name, char *model,
-              char *scaling, double collapse_BRLEN) {
+              double collapse_BRLEN) {
     int i, line = 0, found_new_annotation, sum_freq = 0;
     int *states;
     int *count_array;
-    double sum = 0., mu, lnl = 0., scale, maxlnl = 0., nano, sec;
+    double sum = 0., mu, lnl, scale, nano, sec;
     double *parameter;
     char **annotations, **character, **tips, *c_tree;
     int num_anno = -1, num_tips = 0;
     FILE *treefile, *annotationfile;
     struct timespec samp_ini, samp_fin;
     char anno_line[MAXLNAME];
-    int *iteration, ite;
-    double *optlnl;
     int max_characters = MAXCHAR;
     double *frequency = NULL;
 
@@ -259,53 +254,31 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
     }
     mu = 1 / (1 - sum);
     parameter[num_anno] = 1.0;
-    parameter[num_anno + 1] = 1.0e-3;
+    parameter[num_anno + 1] = s_tree->tip_avg_branch_len / 100.0;
 
     lnl = calc_lik_bfgs(root, tips, states, num_tips, num_anno, mu, parameter);
-    if (lnl == fabs(log(0))) {
+    if (lnl == log(0)) {
         fprintf(stderr, "A problem occurred while calculating the likelihood: "
-                "Is your tree ok and has at least 2 children per inner node?\n");
+                "Is your tree ok and has at least 2 children per every inner node?\n");
         return EXIT_FAILURE;
     }
-    printf("\n*** Initial log likelihood of the tree ***\n\n %lf\n\n", lnl * (-1.0));
+    printf("\n*** Initial log likelihood of the tree ***\n\n %lf\n\n", lnl);
 
-    scale = 1.0;
-    ite = 0;
-    iteration = &ite;
-    optlnl = &maxlnl;
-    if (strcmp(scaling, "T") == 0) {
-        golden(tips, states, num_tips, num_anno, mu, parameter, s_tree->tip_avg_branch_len / 10000,
-               s_tree->tip_avg_branch_len / 10);
-        printf("Scaling factor is roughly optimized between %f and %f by GSS: %f\n", s_tree->tip_avg_branch_len / 10000,
-               s_tree->tip_avg_branch_len / 10, parameter[num_anno]);
-        if (strcmp(model, "F81") == 0) {
-            frprmn(tips, states, num_tips, num_anno, mu, model, parameter, num_anno + 2, 1.0e-3, iteration, optlnl,
-                   character);
-        } else if (strcmp(model, "JC") == 0) {
-            parameter[0] = parameter[num_anno];
-            parameter[1] = parameter[num_anno + 1];
-            frprmnJC(tips, states, num_tips, num_anno, mu, model, parameter, 2, 1.0e-3, iteration, optlnl, frequency);
-            parameter[num_anno] = parameter[0];
-            parameter[num_anno + 1] = parameter[1];
-            for (i = 0; i < num_anno; i++) {
-                parameter[i] = frequency[i];
-            }
+    lnl = minimize_params(tips, states, num_tips, num_anno, mu, parameter, character, model);
 
+    if (0 == strcmp("F81", model)) {
+        printf("\n*** Optimized frequencies ***\n\n");
+        for (i = 0; i < num_anno; i++) {
+            printf("%s = %.5f\n", character[i], parameter[i]);
         }
     }
-    printf("\n*** Optimized frequencies ***\n\n");
-    for (i = 0; i < num_anno; i++) {
-        printf("%s = %.5f\n", character[i], parameter[i]);
-    }
-    printf("\n*** Tree scaling factor ***\n\n %.5f \n\n*** Epsilon for approximating branch lengths ***\n\n %.5e",
+    printf("\n*** Tree scaling factor ***\n\n %.5f \n\n*** Epsilon ***\n\n %.5e",
            parameter[num_anno], parameter[num_anno + 1]);
-    double optlnl_value;
-    optlnl_value = calc_lik_bfgs(root, tips, states, num_tips, num_anno, mu, parameter);
-    optlnl = &optlnl_value;
-    printf("\n\n*** Optimised likelihood ***\n\n %lf\n", (*optlnl)*(-1.0));
+    printf("\n\n*** Optimised likelihood ***\n\n %lf\n", lnl);
 
     //Marginal likelihood calculation
     printf("\n*** Calculating Marginal Likelihoods...\n");
+    scale = 1.0;
     down_like_marginal(root, num_tips, num_anno, mu, scale, parameter);
 
     printf("\n*** Predicting likely ancestral states by the Marginal Approximation method...\n\n");

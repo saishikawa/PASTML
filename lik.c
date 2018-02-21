@@ -64,9 +64,7 @@ int process_node(Node *nd, Node* root, char *const *tipnames, const int *states,
     }
 
     if (nd->nneigh != 1) { // if not a tip
-        for (int i = 0; i < num_annotations; i++) {
-            nd->up_like[i] = nd->condlike[i];
-        }
+        memcpy( (void*)nd->up_like, (void*)nd->condlike, num_annotations * sizeof(double));
     }
 
     return factors;
@@ -75,7 +73,7 @@ int process_node(Node *nd, Node* root, char *const *tipnames, const int *states,
 double calc_lik_bfgs(Node *root, char *const *tipnames,const int *states, int num_tips, int num_annotations, double mu,
                      double *parameters) {
     /**
-     * Calculates tree likelihood.
+     * Calculates tree log likelihood.
      * parameters = [frequency_char_1, .., frequency_char_n, scaling_factor, epsilon].
      * mu = 1 / (1 - (frequency_1^2 + ... + frequency_n^2)).
      */
@@ -91,7 +89,7 @@ double calc_lik_bfgs(Node *root, char *const *tipnames,const int *states, int nu
             root->mar_prob[i] = root->condlike[i] / scaled_lk;
         }
     }
-    return fabs(remove_upscaling_factors(log(scaled_lk), factors));
+    return remove_upscaling_factors(log(scaled_lk), factors);
 }
 
 

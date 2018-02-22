@@ -6,124 +6,6 @@ double BL_sum = 0., BL_avg = 0.;
 void free_node(Node *node, int count, int num_anno);
 
 
-/* collapsing a branch */
-void collapse_branch(Edge *branch, Tree *tree, int nbanno) {
-    /* this function collapses the said branch and creates a higher-order multifurcation (n1 + n2 - 2 neighbours for the resulting node).
-       We also have to remove the extra node from tree->a_nodes and the extra edge from t->a_edges.
-       to be done:
-       (1) create a new node with n1+n2-2 neighbours. Ultimately we will destroy the original node.
-       (2) populate its list of neighbours from the lists of neighbours corresponding to the two original nodes
-       (3) populate its list of neighbouring edges form the br lists of the two original nodes
-       (4) for each of the neighbours, set the info regarding their new neighbour (that is, our new node)
-       (5) for each of the neighbouring branches, set the info regarding their new side (that is, our new node)
-       (6) destroy the two original nodes and commit this info to a_nodes. Modify tree->nb_nodes
-       (7) destroy the original edge and commit this info to a_edges. Modify tree->nb_edges */
-
-    /* WARNING: this function won't accept to collapse terminal edges */
-    Node *node1 = branch->left, *node2 = branch->right;
-    int i, j, n1 = node1->nneigh, n2 = node2->nneigh;
-    if (n1 == 1 || n2 == 1) {
-        fprintf(stderr, "Warning: %s() won't collapse terminal edges.\n", __FUNCTION__);
-        return;
-    }
-    int degree = n1 + n2 - 2;
-    Node *new = (Node *) malloc(sizeof(Node));
-    new->nneigh = degree;
-    new->neigh = malloc(degree * sizeof(Node *));
-    new->br = malloc(degree * sizeof(Edge *));
-    new->id = node1->id; /* because we are going to store the node at this index in tree->a_nodes */
-    new->name = strdup("collapsed");
-
-    new->neigh = malloc(new->nneigh * sizeof(Node *));
-    new->br = malloc(new->nneigh * sizeof(Edge *));
-
-    size_t nbanno_size_t = (size_t) nbanno;
-    new->condlike = calloc(nbanno_size_t, sizeof(double)); for (i = 0; i < nbanno; i++) new->condlike[i] = 0.0;
-    new->condlike_mar = calloc(nbanno_size_t, sizeof(double)); for (i = 0; i < nbanno; i++) new->condlike_mar[i] = 0.0;
-    new->up_like = calloc(nbanno_size_t, sizeof(double)); for (i = 0; i < nbanno; i++) new->up_like[i] = 0.0;
-    new->mar_prob = calloc(nbanno_size_t, sizeof(double)); for (i = 0; i < nbanno; i++) new->mar_prob[i] = 0.0;
-    new->pij = calloc(nbanno_size_t, sizeof(double *));
-    for (i = 0; i < nbanno; i++) new->pij[i] = calloc(nbanno_size_t, sizeof(double));
-    for (i = 0; i < nbanno; i++) {
-      for (j = 0; j < nbanno; j++) new->pij[i][j] = 0.0;
-    }
-
-    new->marginal = calloc(nbanno_size_t, sizeof(double)); for (i = 0; i < nbanno; i++) new->marginal[i] = 0.0;
-    new->tmp_best = calloc(nbanno_size_t, sizeof(int)); for (i = 0; i < nbanno; i++) new->tmp_best[i] = 0;
-    new->sum_down = calloc(nbanno_size_t, sizeof(double)); for (i = 0; i < nbanno; i++) new->sum_down[i] = 0.0;
-
-    new->rootpij = calloc(nbanno_size_t, sizeof(double *));
-    for (i = 0; i < nbanno; i++) new->rootpij[i] = calloc(nbanno_size_t, sizeof(double));
-    for (i = 0; i < nbanno; i++) {
-      for (j = 0; j < nbanno; j++) new->rootpij[i][j] = 0.0;
-    }
-
-    new->local_flag = calloc(nbanno_size_t, sizeof(int));
-    for (i = 0; i < nbanno; i++) new->local_flag[i] = 1;
-
-    /* very important: set tree->node0 to new in case it was either node1 or node2 */
-    if (tree->node0 == node1 || tree->node0 == node2) tree->node0 = new;
-
-
-    int ind = 0; /* index in the data structures in new */
-    /* (2) and (3) and (4) and (5) */
-    for (i = 0; i < n1; i++) {
-        if (node1->neigh[i] == node2) continue;
-        new->neigh[ind] = node1->neigh[i];
-        /*  then change one of the neighbours of that neighbour to be the new node... */
-        for (j = 0; j < new->neigh[ind]->nneigh; j++) {
-            if (new->neigh[ind]->neigh[j] == node1) {
-                new->neigh[ind]->neigh[j] = new;
-                break;
-            }
-        } /* end for j */
-
-        new->br[ind] = node1->br[i];
-        /* then change one of the two ends of that branch to be the new node... */
-        if (new->neigh[ind] == new->br[ind]->right) new->br[ind]->left = new; else new->br[ind]->right = new;
-        ind++;
-    }
-
-    for (i = 0; i < n2; i++) {
-        if (node2->neigh[i] == node1) continue;
-        new->neigh[ind] = node2->neigh[i];
-        /*  then change one of the neighbours of that neighbour to be the new node... */
-        for (j = 0; j < new->neigh[ind]->nneigh; j++) {
-            if (new->neigh[ind]->neigh[j] == node2) {
-                new->neigh[ind]->neigh[j] = new;
-                break;
-            }
-        } /* end for j */
-
-        new->br[ind] = node2->br[i];
-        /* then change one of the two ends of that branch to be the new node... */
-        if (new->neigh[ind] == new->br[ind]->right) new->br[ind]->left = new; else new->br[ind]->right = new;
-        ind++;
-    }
-
-    /* (6) tidy up tree->a_nodes and destroy old nodes */
-    assert(tree->a_nodes[new->id] == node1);
-    tree->a_nodes[new->id] = new;
-    /* current last node in tree->a_edges changes id and is now placed at the position were node2 was */
-    int id2 = node2->id;
-    assert(tree->a_nodes[id2] == node2);
-    tree->a_nodes[id2] = tree->a_nodes[--tree->next_avail_node_id]; /* moving the last node into the spot occupied by node2... */
-    tree->a_nodes[id2]->id = id2;                    /* and changing its id accordingly */
-    tree->a_nodes[tree->next_avail_node_id] = NULL; /* not strictly necessary, but... */
-    tree->nb_nodes--;
-    free_node(node1, 1, nbanno);
-    free_node(node2, 1, nbanno);
-
-    /* (7) tidy up tree->a_edges and destroy the old branch */
-    assert(tree->a_edges[branch->id] == branch);
-    tree->a_edges[branch->id] = tree->a_edges[--tree->next_avail_edge_id]; /* moving the last branch into the spot occupied by 'branch' */
-    tree->a_edges[branch->id]->id = branch->id;                /* ... and changing its id accordingly */
-    tree->a_edges[tree->next_avail_edge_id] = NULL; /* not strictly necessary, but... */
-    tree->nb_edges--;
-    free(branch);
-
-} /* end collapse_branch */
-
 int index_toplevel_colon(char *in_str, int begin, int end) {
     /* returns the index of the (first) toplevel colon only, -1 if not found */
     int level = 0, i;
@@ -160,13 +42,6 @@ int parse_double(char *in_str, int begin, int end, double *location) {
     }
     return EXIT_SUCCESS;
 } /* end parse_double */
-
-int count_zero_length_branches(Tree *tree) {
-    int count = 0;
-    int i, n = tree->nb_edges;
-    for (i = 0; i < n; i++) if (tree->a_edges[i]->had_zero_length) count++;
-    return count;
-}
 
 int strip_toplevel_parentheses(char *in_str, int begin, int end, int *pair) {
     /* returns the new (begin,end) pair comprising all chars found strictly inside the toplevel parentheses.
@@ -227,7 +102,7 @@ int count_outer_commas(char *in_str, int begin, int end) {
     return count;
 } /* end count_outer_commas */
 
-int process_name_and_brlen(Node *son_node, Edge *edge, Tree *current_tree, char *in_str, int begin, int end) {
+int process_name_and_brlen(Node *son_node, char *in_str, int begin, int end) {
     /* looks into in_str[begin..end] for the branch length of the "father" edge
        and updates the edge and node structures accordingly */
     int colon = index_toplevel_colon(in_str, begin, end);
@@ -237,14 +112,12 @@ int process_name_and_brlen(Node *son_node, Edge *edge, Tree *current_tree, char 
 
     /* processing the optional BRANCH LENGTH... */
     if (colon == -1) {
-        edge->had_zero_length = TRUE;
-        edge->brlen = 0.0;
+        son_node->brlen = 0.0;
     } else {
         if (EXIT_SUCCESS != parse_double(in_str, colon + 1, end, &brlen)) {
             return EXIT_FAILURE;
         }
-        edge->had_zero_length = (brlen == 0.0);
-        edge->brlen = brlen;
+        son_node->brlen = brlen;
     }
 
     /* then scan backwards from the colon (or from the end if no branch length) to get the NODE NAME,
@@ -285,7 +158,7 @@ Node *create_son_and_connect_to_father(Node *current_node, Tree *current_tree, i
                                        int end) {
     /* This function creates (allocates) the son node in the given direction from the current node.
        It also creates a new branch to connect the son to the father.
-       The array structures in the tree (a_nodes and a_edges) are updated accordingly.
+       The array structures in the tree (a_nodes) are updated accordingly.
        Branch length and node name are processed.
        The input string given between the begin and end indices (included) is of the type:
        (...)node_name:length
@@ -308,19 +181,11 @@ Node *create_son_and_connect_to_father(Node *current_node, Tree *current_tree, i
 
     son->name = NULL;
 
-    Edge *edge = (Edge *) malloc(sizeof(Edge));
-    edge->id = current_tree->next_avail_edge_id++;
-    current_tree->a_edges[edge->id] = edge;
     current_tree->nb_edges++;
-
-    edge->right = son;
-    edge->left = current_node;
-
     current_node->neigh[direction] = son;
-    current_node->br[direction] = edge;
 
     /* process node name (of the son) and branch length (of the edge we just created)... */
-    if (EXIT_SUCCESS != process_name_and_brlen(son, edge, current_tree, in_str, begin, end)) {
+    if (EXIT_SUCCESS != process_name_and_brlen(son, in_str, begin, end)) {
         return NULL;
     };
 
@@ -391,7 +256,6 @@ int parse_substring_into_node(char *in_str, int begin, int end, Node *current_no
     /* FIXME: in case the tree has an inner node with just one child, nneigh will become 1 instead of 2.*/
     current_node->nneigh = (nb_commas == 0 ? 1 : nb_commas + 1 + has_father);
     current_node->neigh = malloc(current_node->nneigh * sizeof(Node *));
-    current_node->br = malloc(current_node->nneigh * sizeof(Edge *));
 
     size_t nbanno_size_t = (size_t) nbanno;
     current_node->condlike = calloc(nbanno_size_t, sizeof(double)); for (i = 0; i < nbanno; i++) current_node->condlike[i] = 0.0;
@@ -456,7 +320,6 @@ int parse_substring_into_node(char *in_str, int begin, int end, Node *current_no
             /* after the recursive treatment of the son, the data structures of the son have been created, so now we can write
                in it the data corresponding to its direction0 (father) */
             son->neigh[0] = current_node;
-            son->br[0] = current_node->br[direction];
         } /* end for i (treatment of the various sons) */
     } /* end if/else on the number of commas */
 
@@ -464,16 +327,14 @@ int parse_substring_into_node(char *in_str, int begin, int end, Node *current_no
 } /* end parse_substring_into_node */
 
 
-
-
-Tree *parse_nh_string(char *in_str, int nbanno, double collapse_BRLEN) {
+Tree *parse_nh_string(char *in_str, int nbanno) {
     /* this function allocates, populates and returns a new tree. */
     /* returns NULL if the file doesn't correspond to NH format */
     int in_length = (int) strlen(in_str);
-    int i, j; /* loop counter */
+    int i; /* loop counter */
     int begin, end; /* to delimitate the string to further process */
     int n_otu = 0, nodecount = 0;
-    int collapsed_one = 0, uncollapsed_terminal = 0, collapsed_internal = 0, maxpoly;
+    int maxpoly;
     double tip_branch_len_sum=0.0;
 
     /* SYNTACTIC CHECKS on the input string */
@@ -512,7 +373,6 @@ Tree *parse_nh_string(char *in_str, int nbanno, double collapse_BRLEN) {
     t->a_nodes = (Node **) calloc(2 * n_otu - 1, sizeof(Node *));
     t->nb_nodes = 1; /* for the moment we only have the node0 node. */
 
-    t->a_edges = (Edge **) calloc(2 * n_otu - 2, sizeof(Edge *));
     t->nb_edges = 0; /* none at the moment */
 
     t->node0 = (Node *) malloc(sizeof(Node));
@@ -523,7 +383,6 @@ Tree *parse_nh_string(char *in_str, int nbanno, double collapse_BRLEN) {
     t->taxa_names = (char **) malloc(n_otu * sizeof(char *));
 
     t->next_avail_node_id = 1; /* root node has id 0 */
-    t->next_avail_edge_id = 0; /* no branch added so far */
     t->next_avail_taxon_id = 0; /* no taxon added so far */
 
     /* ACTUALLY READING THE TREE... */
@@ -546,7 +405,7 @@ Tree *parse_nh_string(char *in_str, int nbanno, double collapse_BRLEN) {
     maxpoly=0;
     for (i = 0; i < t->nb_nodes; i++) {
         if(t->a_nodes[i]->nneigh == 1){ //tips
-          tip_branch_len_sum += t->a_nodes[i]->br[0]->brlen;
+          tip_branch_len_sum += t->a_nodes[i]->brlen;
         }
         if (t->a_nodes[i]->nneigh - 1 > MAXPOLY) {
             fprintf(stderr, "Fatal error: too many polytomy more than %d at the node %s.\n", MAXPOLY,
@@ -554,16 +413,10 @@ Tree *parse_nh_string(char *in_str, int nbanno, double collapse_BRLEN) {
             return NULL;
         }
         if(maxpoly < t->a_nodes[i]->nneigh) maxpoly = t->a_nodes[i]->nneigh;
-        if (t->min_bl > t->a_nodes[i]->br[0]->brlen && t->a_nodes[i]->br[0]->brlen != 0.0)
-            t->min_bl = t->a_nodes[i]->br[0]->brlen;
-        for (j = 0; j < t->a_nodes[i]->nneigh; j++) {
-            if (j == 0) {
-                if (i == 0) {
-                } else {
-                    BL_sum += t->a_nodes[i]->br[j]->brlen;
-                }
-            } else {
-            }
+        if (t->min_bl > t->a_nodes[i]->brlen && t->a_nodes[i]->brlen != 0.0)
+            t->min_bl = t->a_nodes[i]->brlen;
+        if (i != 0) {
+            BL_sum += t->a_nodes[i]->brlen;
         }
     }
     t->tip_avg_branch_len = tip_branch_len_sum / (double) t->nb_taxa;
@@ -580,39 +433,15 @@ Tree *parse_nh_string(char *in_str, int nbanno, double collapse_BRLEN) {
     printf("Number of edges in the tree read: %d\n", t->nb_edges);
     printf("Average branch lengths of the tree: %lf\n", t->avg_branch_len);
     printf("Minimum branch length in the tree: %lf\n", t->min_bl);
-    printf("Number of edges with zero length: %d\n", count_zero_length_branches(t));
     printf("The maximum number of multifurcations at a single node of the input tree: %d\n", maxpoly-1);
-
-
-    /* Collapse branches */
-    collapsed_internal = 0;
-    do {
-      collapsed_one = 0; /* flag that will be set to one as soon as we collapse one branch */
-      uncollapsed_terminal = 0;
-      for(i=0; i < t->nb_edges; i++) {
-	if (t->a_edges[i]->brlen <= collapse_BRLEN) {
-	  if (t->a_edges[i]->right->nneigh == 1) { /* don't collapse terminal edges */
-	    uncollapsed_terminal++;
-	  }else{
-	    collapse_branch(t->a_edges[i], t, nbanno);
-	    collapsed_one = 1;
-	    collapsed_internal++;
-	    break; /* breaking the for so that we start again from the beginning because tree->a_edges has changed */
-	  }
-	}
-      } /* end for */
-    } while (collapsed_one);
-    if(collapsed_internal > 0) printf("\n*** Collapsing tree ... Collapsed %d branches\n",collapsed_internal);
 
     return t;
 
 } /* end parse_nh_string */
 
 
-
-
-Tree *complete_parse_nh(char *big_string, int nbanno, double collapse_BRLEN) {
-    Tree *mytree = parse_nh_string(big_string, nbanno, collapse_BRLEN);
+Tree *complete_parse_nh(char *big_string, int nbanno) {
+    Tree *mytree = parse_nh_string(big_string, nbanno);
     if (mytree == NULL) {
         fprintf(stderr, "Not a syntactically correct NH tree.\n");
         return NULL;

@@ -11,9 +11,7 @@ int main(int argc, char **argv) {
     char *out_annotation_name = NULL;
     char *out_tree_name = NULL;
     struct timespec;
-    double collapse_BRLEN = -1.0;
     int opt;
-    char *scaling = "T";
     char *arg_error_string = malloc(sizeof(char) * 1024);
 
     opterr = 0;
@@ -29,11 +27,9 @@ int main(int argc, char **argv) {
             "optional arguments:\n"
             "   -o OUTPUT_ANNOTATION_FILE           path where the output annotation csv file containing node states will be created\n"
             "   -n OUTPUT_TREE_NWK                  path where the output tree file will be created (in newick format)\n"
-            "   -m MODEL                            state evolution model (JC or F81)\n"
-            "   -s SCALING_ON_OFF                   branch length scaling on (T, by default) or off (F)\n"
-            "   -B THRETHOLD_OF_BRANCH_COLLAPSE     define X to collapse branches shorter than 1.0e-X (default: no collapse)\n";
+            "   -m MODEL                            state evolution model (JC or F81)\n";
 
-    opt = getopt(argc, argv, "a:t:o:m:n:s:B:");
+    opt = getopt(argc, argv, "a:t:o:m:n:");
     do {
         switch (opt) {
             case -1:
@@ -60,22 +56,13 @@ int main(int argc, char **argv) {
                 model = optarg;
                 break;
 
-            case 's':
-                scaling=optarg;
-                break;
-
-
-            case 'B':
-                collapse_BRLEN = pow(0.1, atof(optarg));
-                break;
-
             default: /* '?' */
                 snprintf(arg_error_string, 1024, "%s%s", "Unknown arguments...\n\n", help_string);
                 printf(arg_error_string);
                 free(arg_error_string);
                 return EINVAL;
         }
-    } while ((opt = getopt(argc, argv, "a:t:o:m:n:s:B:")) != -1);
+    } while ((opt = getopt(argc, argv, "a:t:o:m:n:")) != -1);
     /* Make sure that the required arguments are set correctly */
     if (annotation_name == NULL) {
         snprintf(arg_error_string, 1024, "%s%s", "Annotation file (-a) must be specified.\n\n", help_string);
@@ -106,5 +93,5 @@ int main(int argc, char **argv) {
         out_tree_name = calloc(256, sizeof(char));
         sprintf(out_tree_name, "%s.pastml.out.nwk", tree_name);
     }
-    return runpastml(annotation_name, tree_name, out_annotation_name, out_tree_name, model, collapse_BRLEN);
+    return runpastml(annotation_name, tree_name, out_annotation_name, out_tree_name, model);
 }

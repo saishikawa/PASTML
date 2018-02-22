@@ -1,164 +1,149 @@
 #include "pastml.h"
-
-extern Tree *s_tree;
-extern Node *root;
+#include "scaling.h"
 
 
-void down_like_marginal(Node *nd, int nb, int nbanno, double mu, double scale, double *frequency) {
-    int i, j, k, ii;
-    double sum, prob_down_son, smallest, sum_mu;
-    Node *father;
-    double curr_scaler, tmp_father_lik[nbanno];
-    int curr_scaler_pow, piecewise_scaler_pow, my_id, node_start, tmp_father_factor[nbanno], tmp_factor[nbanno], max_father_factor, max_factor;
-    static int count = 0;
+int *calculate_sum_down(const Node *nd, const Node *root, int num_annotations);
 
-    sum_mu = 0.0;
-    for (i = 0; i < nbanno; i++) {
-        sum_mu += frequency[i] * frequency[i];
+int get_max(int *array, int n) {
+    /**
+     * Finds the maximum in an array of positive integers.
+     */
+    int max_value = 0;
+    for (int i = 0; i < n; i++) {
+        if (max_value < array[i]) {
+            max_value = array[i];
+        }
     }
-    mu = 1 / (1 - sum_mu);
+    return max_value;
+}
+
+void normalize(double *array, int n) {
+    /**
+     * Divides array members by their sum.
+     */
+    double sum = 0.0;;
+    for (int i = 0; i < n; i++) {
+        sum += array[i];
+    }
+    for (int i = 0; i < n; i++) {
+        array[i] /= sum;
+    }
+}
+
+void down_like_marginal(Node *nd, Node *root, int num_tips, int num_annotations, double scale, double *frequency) {
+    int child_i, cur_annot_i;
+    int curr_scaler_pow, max_factor;
+
+    /*a tip, therefore nothing to do*/
     if (nd->nneigh == 1) {
         return;
     }
 
     if (nd == root) {
-        for (j = 0; j < nbanno; j++) {
-            nd->sum_down[j] = frequency[j];
-        }
+        memcpy((void *) nd->sum_down, (void *) frequency, num_annotations * sizeof(double));
     } else {
-        father = nd->neigh[0];
-        for (i = 0; i < father->nneigh; i++) {
-            if (father->neigh[i] == nd) {
-                my_id = i;
-            }
-        }
-        //currentNODE has j
-        for (j = 0; j < nbanno; j++) {
-            if (father == root) {
-                node_start = 0;
-                nd->sum_down[j] = 1.0;
-                tmp_factor[j] = 0;
-                for (i = node_start; i < father->nneigh; i++) {
-                    if (i != my_id) {
-                        prob_down_son = 0.0;
-                        //assume other sons have ii
-                        for (ii = 0; ii < nbanno; ii++) {
-                            //assume root has k
-                            nd->rootpij[j][ii] = 0.0;
-                            for (k = 0; k < nbanno; k++) {
-                                nd->rootpij[j][ii] += nd->pij[j][k] * father->neigh[i]->pij[k][ii];
-                            }
-                            prob_down_son += nd->rootpij[j][ii] * father->neigh[i]->up_like[ii];
-                        }
-                        nd->sum_down[j] *= prob_down_son;
-                    }
-                }
-            } else {
-                node_start = 1;
-                nd->sum_down[j] = 0.0;
-                tmp_factor[j] = 0;
-
-                //assume father has k
-                for (k = 0; k < nbanno; k++) {
-                    tmp_father_lik[k] = nd->pij[j][k] * father->sum_down[k];
-                    tmp_father_factor[k] = 0;
-                    for (i = node_start; i < father->nneigh; i++) {
-                        if (i != my_id) {
-                            prob_down_son = 0.0;
-                            //assume other sons have ii
-                            for (ii = 0; ii < nbanno; ii++) {
-                                prob_down_son += father->neigh[i]->pij[k][ii] * father->neigh[i]->up_like[ii];
-                            }
-                            tmp_father_lik[k] *= prob_down_son;
-                        }
-                        if (tmp_father_lik[k] < LIM_P) {
-                            curr_scaler_pow = (int) (POW * LOG2 - log(tmp_father_lik[k])) / LOG2;
-                            tmp_father_factor[k] += curr_scaler_pow;
-                            do {
-                                piecewise_scaler_pow = MIN(curr_scaler_pow, 63);
-                                curr_scaler = ((unsigned long long) (1) << piecewise_scaler_pow);
-                                tmp_father_lik[k] *= curr_scaler;
-                                curr_scaler_pow -= piecewise_scaler_pow;
-                            } while (curr_scaler_pow != 0);
-                        }
-                    }
-                }
-                max_father_factor = 0.0;
-                for (k = 0; k < nbanno; k++) {
-                    if (max_father_factor < tmp_father_factor[k]) max_father_factor = tmp_father_factor[k];
-                }
-                for (k = 0; k < nbanno; k++) {
-                    curr_scaler_pow = max_father_factor - tmp_father_factor[k];
-                    if (curr_scaler_pow != 0) {
-                        do {
-                            piecewise_scaler_pow = MIN(curr_scaler_pow, 63);
-                            curr_scaler = ((unsigned long long) (1) << piecewise_scaler_pow);
-                            tmp_father_lik[k] *= curr_scaler;
-                            curr_scaler_pow -= piecewise_scaler_pow;
-                        } while (curr_scaler_pow != 0);
-                    }
-                    nd->sum_down[j] += tmp_father_lik[k];
-                }
-                tmp_factor[j] = max_father_factor;
-            }
-        }
-
-        max_factor = tmp_factor[0];
-        for (j = 0; j < nbanno; j++) {
-            if (max_factor < tmp_factor[j]) max_factor = tmp_factor[j];
-        }
-        for (j = 0; j < nbanno; j++) {
-            curr_scaler_pow = max_factor - tmp_factor[j];
+        int *tmp_factor = calculate_sum_down(nd, root, num_annotations);
+        max_factor = get_max(tmp_factor, num_annotations);
+        for (cur_annot_i = 0; cur_annot_i < num_annotations; cur_annot_i++) {
+            curr_scaler_pow = max_factor - tmp_factor[cur_annot_i];
             if (curr_scaler_pow != 0) {
-                do {
-                    piecewise_scaler_pow = MIN(curr_scaler_pow, 63);
-                    curr_scaler = ((unsigned long long) (1) << piecewise_scaler_pow);
-                    nd->sum_down[j] *= curr_scaler;
-                    curr_scaler_pow -= piecewise_scaler_pow;
-                } while (curr_scaler_pow != 0);
+                rescale(nd->sum_down, cur_annot_i, curr_scaler_pow);
             }
         }
-        for (j = 0; j < nbanno; j++) {
-            nd->condlike_mar[j] = nd->sum_down[j] * nd->up_like[j] * frequency[j];
+        free(tmp_factor);
+
+        for (cur_annot_i = 0; cur_annot_i < num_annotations; cur_annot_i++) {
+            nd->condlike_mar[cur_annot_i] =
+                    nd->sum_down[cur_annot_i] * nd->up_like[cur_annot_i] * frequency[cur_annot_i];
         }
 
-        smallest = 1.0;
-        for (j = 0; j < nbanno; j++) {
-            if (nd->condlike_mar[j] > 0.0) {
-                if (nd->condlike_mar[j] < smallest) smallest = nd->condlike_mar[j];
-            }
-        }
-        if (smallest < LIM_P) {
-            curr_scaler_pow = (int) (POW * LOG2 - log(smallest)) / LOG2;
-            do {
-                piecewise_scaler_pow = MIN(curr_scaler_pow, 63);
-                curr_scaler = ((unsigned long long) (1) << piecewise_scaler_pow);
-                for (j = 0; j < nbanno; j++) {
-                    nd->condlike_mar[j] *= curr_scaler;
-                }
-                curr_scaler_pow -= piecewise_scaler_pow;
-            } while (curr_scaler_pow != 0);
-        }
-
-        sum = 0.0;;
-        for (j = 0; j < nbanno; j++) {
-            sum += nd->condlike_mar[j];
-        }
-        for (j = 0; j < nbanno; j++) {
-            nd->condlike_mar[j] = (nd->condlike_mar[j]) / sum;
-        }
+        upscale_node_probs(nd->condlike_mar, num_annotations);
+        normalize(nd->condlike_mar, num_annotations);
     }
 
-
-    if (nd == root) {
-        node_start = 0;
-    } else {
-        node_start = 1;
+    for (child_i = (nd == root) ? 0 : 1; child_i < nd->nneigh; child_i++) {
+        down_like_marginal(nd->neigh[child_i], root, num_tips, num_annotations, scale, frequency);
     }
-
-    for (i = node_start; i < nd->nneigh; i++) {
-        down_like_marginal(nd->neigh[i], nb, nbanno, mu, scale, frequency);
-    }
-    count++;
 }
+
+int *calculate_sum_down(const Node *nd, const Node *root, int num_annotations) {
+    Node *father = nd->neigh[0];
+    Node *other_child;
+    int my_id = -1;
+    int tmp_father_factor[num_annotations];
+    int *tmp_factor = calloc(num_annotations, sizeof(int));
+    double tmp_father_lik[num_annotations];
+
+    for (int child_i = 0; child_i < father->nneigh; child_i++) {
+        if (father->neigh[child_i] == nd) {
+            my_id = child_i;
+        }
+    }
+    //currentNODE has cur_annot_i
+    for (int cur_annot_i = 0; cur_annot_i < num_annotations; cur_annot_i++) {
+        nd->sum_down[cur_annot_i] = 1.0;
+        tmp_factor[cur_annot_i] = 0;
+
+        if (father == root) {
+            for (int child_i = 0; child_i < father->nneigh; child_i++) {
+                if (child_i != my_id) {
+                    other_child = father->neigh[child_i];
+                    double prob_down_son = 0.0;
+                    //assume other sons have other_annot_i
+                    for (int other_annot_i = 0; other_annot_i < num_annotations; other_annot_i++) {
+                        /* Calculate the probability of having a branch from the root to a child node child_i,
+                         * given that the root is in state cur_annot_i: p_child_branch_from_i = sum_j(p_ij * p_child_j)
+                         */
+                        nd->rootpij[cur_annot_i][other_annot_i] = 0.0;
+                        for (int father_annotation_i = 0;
+                             father_annotation_i < num_annotations; father_annotation_i++) {
+                            nd->rootpij[cur_annot_i][other_annot_i] +=
+                                    nd->pij[cur_annot_i][father_annotation_i] *
+                                    other_child->pij[father_annotation_i][other_annot_i];
+                        }
+                        prob_down_son += nd->rootpij[cur_annot_i][other_annot_i] * other_child->up_like[other_annot_i];
+                    }
+                    nd->sum_down[cur_annot_i] *= prob_down_son;
+                }
+            }
+        } else {
+            //assume father has father_annotation_i
+            for (int father_annotation_i = 0; father_annotation_i < num_annotations; father_annotation_i++) {
+                tmp_father_lik[father_annotation_i] =
+                        nd->pij[cur_annot_i][father_annotation_i] * father->sum_down[father_annotation_i];
+                tmp_father_factor[father_annotation_i] = 0;
+                // as our father is not root, its first nneigh is our grandfather,
+                // and we should iterate over children staring at 1
+                for (int child_i = 1; child_i < father->nneigh; child_i++) {
+                    if (child_i != my_id) {
+                        other_child = father->neigh[child_i];
+                        double prob_down_son = 0.0;
+                        //assume other sons have other_annot_i
+                        for (int other_annot_i = 0; other_annot_i < num_annotations; other_annot_i++) {
+                            prob_down_son += other_child->pij[father_annotation_i][other_annot_i]
+                                             * other_child->up_like[other_annot_i];
+                        }
+                        tmp_father_lik[father_annotation_i] *= prob_down_son;
+                    }
+                    if (tmp_father_lik[father_annotation_i] < LIM_P) {
+                        int curr_scaler_pow1 = get_scaling_pow(tmp_father_lik[father_annotation_i]);
+                        tmp_father_factor[father_annotation_i] += curr_scaler_pow1;
+                        rescale(tmp_father_lik, father_annotation_i, curr_scaler_pow1);
+                    }
+                }
+            }
+            int max_father_factor = get_max(tmp_father_factor, num_annotations);
+            for (int father_annotation_i = 0; father_annotation_i < num_annotations; father_annotation_i++) {
+                int curr_scaler_pow = max_father_factor - tmp_father_factor[father_annotation_i];
+                if (curr_scaler_pow != 0) {
+                    rescale(tmp_father_lik, father_annotation_i, curr_scaler_pow);
+                }
+                nd->sum_down[cur_annot_i] += tmp_father_lik[father_annotation_i];
+            }
+            tmp_factor[cur_annot_i] = max_father_factor;
+        }
+    }
+    return tmp_factor;
+}
+
 

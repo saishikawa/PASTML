@@ -7,6 +7,6 @@
 
 #include "pastml.h"
 
-Tree *complete_parse_nh(char *big_string, int nbanno, double collapse_BRLEN);
+Tree *complete_parse_nh(char *big_string, int nbanno);
 
 #endif //PASTML_MAKE_TREE_H

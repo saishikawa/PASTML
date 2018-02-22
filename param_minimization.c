@@ -2,6 +2,8 @@
 #include <gsl/gsl_multimin.h>
 #include "lik.h"
 
+#define STEP_EPSILON 1.0e-6
+
 extern Tree *s_tree;
 extern Node *root;
 
@@ -129,7 +131,8 @@ my_fdf (const gsl_vector *x, void *params,
 
 
 double minimize_params(char **tip_array, const int *state_array, int num_tips, int num_annotations, double mu,
-                       double *parameters, char **character, char *model_name) {
+                       double *parameters, char **character, char *model_name, double scale_low, double scale_up,
+                       double epsilon_low, double epsilon_up) {
     /**
      * Optimises the following parameters: parameters = [frequency_char_1, .., frequency_char_n, scaling_factor, epsilon],
      * using BFGS algorithm.
@@ -150,10 +153,6 @@ double minimize_params(char **tip_array, const int *state_array, int num_tips, i
     const gsl_multimin_fdfminimizer_type *T;
     gsl_multimin_fdfminimizer *s;
     /* Parameters: num_annotations, num_tips, scale_low, scale_up, epsilon_low, epsilon_up, mu. */
-    double scale_low = 1.0 / 10000;
-    double scale_up = 10000.0;
-    double epsilon_low = s_tree->tip_avg_branch_len / 10000.0;
-    double epsilon_up = s_tree->tip_avg_branch_len / 10.0;
     double par[7] = {(double) num_annotations, (double) num_tips, scale_low, scale_up, epsilon_low, epsilon_up, mu};
 
     gsl_vector *x;

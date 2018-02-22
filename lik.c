@@ -1,12 +1,9 @@
 #include "pastml.h"
+#include "scaling.h"
 
 extern Tree *s_tree;
 
-int upscale_node_probs(const Node *nd, int num_annotations);
-
 void set_p_ij(const Node *nd, int num_annotations, const double *parameters, double mu);
-
-double get_rescaled_branch_len(const Node *nd, double scaling_factor, double epsilon);
 
 void
 initialise_tip_probabilities(Node *nd, char *const *tipnames, const int *states, int num_tips, int num_annotations);
@@ -133,12 +130,13 @@ int calculate_node_probabilities(const Node *nd, int num_annotations, int first_
                 nd->condlike[i] *= p_child_branch_from_i;
             }
         }
-        int add_factors = upscale_node_probs(nd, num_annotations);
+        int add_factors = upscale_node_probs(nd->condlike, num_annotations);
 
         /* if all the probabilities are zero (shown by add_factors == -1),
          * there is no point to go any further
          */
         if (add_factors == -1) {
+            fprintf(stderr, "Likelihood of one of the nodes is already 0, no need to go further.\n");
             return -1;
         }
         factors += add_factors;
@@ -175,6 +173,21 @@ initialise_tip_probabilities(Node *nd, char *const *tipnames, const int *states,
     }
 }
 
+double get_rescaled_branch_len(const Node *nd, double scaling_factor, double epsilon) {
+    /**
+     * Returns the node branch length multiplied by the scaling factor.
+     *
+     * For tips, before multiplying, the branch length is adjusted with epsilon:
+     * bl = (bl + eps) / (avg_tip_len / (avg_tip_len + eps)).
+     * This removes zero tip branches, while keeping the average branch length intact.
+     */
+    double bl = nd->brlen;
+    if (nd->nneigh == 1) { /*a tip*/
+        bl = (bl + epsilon) * (s_tree->tip_avg_branch_len / (s_tree->tip_avg_branch_len + epsilon));
+    }
+    return bl * scaling_factor;
+}
+
 void set_p_ij(const Node *nd, int num_annotations, const double *parameters, double mu) {
     /**
      * Sets node probabilities of substitution: p[i][j].
@@ -197,57 +210,3 @@ void set_p_ij(const Node *nd, int num_annotations, const double *parameters, dou
     }
 }
 
-double get_rescaled_branch_len(const Node *nd, double scaling_factor, double epsilon) {
-    /**
-     * Returns the node branch length multiplied by the scaling factor.
-     *
-     * For tips, before multiplying, the branch length is adjusted with epsilon:
-     * bl = (bl + eps) / (avg_tip_len / (avg_tip_len + eps)).
-     * This removes zero tip branches, while keeping the average branch length intact.
-     */
-    double bl = nd->br[0]->brlen;
-    if (nd->nneigh == 1) { /*a tip*/
-        bl = (bl + epsilon) * (s_tree->tip_avg_branch_len / (s_tree->tip_avg_branch_len + epsilon));
-    }
-    return bl * scaling_factor;
-}
-
-int upscale_node_probs(const Node *nd, int num_annotations) {
-    /**
-     * The rescaling is done to avoid underflow problems:
-     * if a certain node probability is too small, we multiply this node probabilities by a scaling factor,
-     * and keep the factor in mind to remove it from the final likelihood.
-     */
-    int j;
-    int factors = 0;
-
-    /* find the smallest non-zero probability */
-    double smallest = 1.1;
-    for (j = 0; j < num_annotations; j++) {
-        if (nd->condlike[j] > 0.0 && nd->condlike[j] < smallest) {
-            smallest = nd->condlike[j];
-        }
-    }
-
-    if (smallest == 1.1) {
-        fprintf(stderr, "Likelihood of the node %s is already 0, no need to go further.\n", nd->name);
-        return -1;
-    }
-
-    if (smallest < LIM_P) {
-        int curr_scaler_pow = (int) (POW * LOG2 - log(smallest)) / LOG2;
-        int piecewise_scaler_pow;
-        double curr_scaler;
-
-        factors = curr_scaler_pow;
-        do {
-            piecewise_scaler_pow = MIN(curr_scaler_pow, 63);
-            curr_scaler = ((unsigned long long) (1) << piecewise_scaler_pow);
-            for (j = 0; j < num_annotations; j++) {
-                nd->condlike[j] *= curr_scaler;
-            }
-            curr_scaler_pow -= piecewise_scaler_pow;
-        } while (curr_scaler_pow != 0);
-    }
-    return factors;
-}

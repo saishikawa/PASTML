@@ -10,17 +10,6 @@
 #include <float.h>
 #include <limits.h>
 
-#define ITMAX_O 1000
-#define ITMAX 500
-#define TOL 2.0e-4
-#define GOLD 1.618034
-#define GLIMIT 100.0
-#define TINY 1.0e-20
-#define STEP_FREQUENCY 1.0e-4
-#define STEP_SCALING_FACTOR 1.0e-4
-#define STEP_EPSILON 1.0e-6
-#define SCAL_MIN 1.0e-5
-#define SIGMA 1.0e-3
 
 #define MAXLNAME 255
 #define MAXNSP 50000
@@ -40,7 +29,6 @@ typedef struct __Node {
     int id;            /* unique id attributed to the node */
     int nneigh;    /* number of neighbours */
     struct __Node **neigh;    /* neighbour nodes */
-    struct __Edge **br;    /* corresponding branches going from this node */
 
     double **pij;           /* probability of substitution */
     double *condlike;       /*conditional likelihoods at the node*/
@@ -53,31 +41,18 @@ typedef struct __Node {
     double **rootpij;
     int pupko_state;
     int *local_flag;
-} Node;
-
-
-/* Every edge connects two nodes.
-   By convention, all terminal branches will have the tip on their RIGHT end */
-
-typedef struct __Edge {
-    int id;
-    Node *left, *right;        /* in rooted trees the right end will always be the descendant.
-			      		 In any case, a leaf is always on the right side of its branch. */
     double brlen;
-    short int had_zero_length;    /* set at the moment when we read the tree */
-} Edge;
+} Node;
 
 
 typedef struct __Tree {
     Node **a_nodes;            /* array of node pointers */
-    Edge **a_edges;            /* array of edge pointers */
     Node *node0;            /* the root or pseudo-root node */
     int nb_nodes;
     int nb_edges;
     int nb_taxa;
     char **taxa_names;        /* store only once the taxa names */
     int next_avail_node_id;
-    int next_avail_edge_id;
     int next_avail_taxon_id;
     double avg_branch_len;
     double min_bl;

@@ -1,87 +1,59 @@
+#include <errno.h>
 #include "pastml.h"
 
-extern Tree *s_tree;
-extern Node *root;
 
+void output_states(Node *nd, Node *root, int num_annotations, char **character, FILE *outfile) {
+    int i, j, num_nonzero_states = 0;
 
-void output_state_anc_PP(Node *nd, int nb, int nbanno, char **character, FILE *outfile) {
-    int i, j, node_start, num = 0;
-
-    if (nd == root) {
-        fprintf(outfile, "Internal NodeID");
-        for (i = 0; i < nbanno; i++) {
-            fprintf(outfile, ", %s", character[i]);
-        }
-        fprintf(outfile, "\n");
-    }
-    if (nd->nneigh == 1) {
-        return;
-    }
-
-    if (nd == root) {
-        node_start = 0;
-    } else {
-        node_start = 1;
-    }
-
-    for (i = 0; i < nbanno; i++) {
-        if (nd->local_flag[i] == 1) {
-            num++;
-        } else {
-        }
-    }
-
-    for (i = node_start; i < nd->nneigh; i++) {
-        output_state_anc_PP(nd->neigh[i], nb, nbanno, character, outfile);
-    }
-
-    for (i = 0; i < nbanno; i++) {
-        if (nd->local_flag[i] == 1) {
-            nd->marginal[i] = (double) 1.0 / num;
-        } else {
-        }
+    // process children
+    for (i = (nd == root) ? 0: 1; i < nd->nneigh; i++) {
+        output_states(nd->neigh[i], root, num_annotations, character, outfile);
     }
 
     fprintf(outfile, "%s", nd->name);
-        for (i = 0; i < nbanno; i++) {
-            for (j = 0; j < nbanno; j++) {
 
+    // a tip
+    if (nd->nneigh == 1) {
+        for (i = 0; i < num_annotations; i++) {
+            fprintf(outfile, ", %.5f", (i == nd->pupko_state) ? 1.0 : 0.0);
+        }
+    // an internal node
+    } else {
+        for (i = 0; i < num_annotations; i++) {
+            if (nd->local_flag[i] == 1) {
+                num_nonzero_states++;
+            }
+        }
+        double marginal_val = 1.0 / num_nonzero_states;
+        for (i = 0; i < num_annotations; i++) {
+            for (j = 0; j < num_annotations; j++) {
                 if (strcmp(character[i], character[nd->tmp_best[j]]) == 0) {
-                    if (nd->local_flag[j] == 1) {
-                        fprintf(outfile, ", %.5f", nd->marginal[j]);
-                    } else {
-                        fprintf(outfile, ", 0.0");
-                    }
+                    fprintf(outfile, ", %.5f", (nd->local_flag[j] == 1) ? marginal_val : 0.0);
                 }
             }
         }
+    }
+
     fprintf(outfile, "\n");
 }
 
-void output_state_tip_PP(Node *nd, int nb, int nbanno, char **character, FILE *outfile) {
-    int i, node_start;
-
-    if (nd->nneigh == 1) {
-        fprintf(outfile, "%s", nd->name);
-        for (i = 0; i < nbanno; i++) {
-            if (i == nd->pupko_state) {
-                fprintf(outfile, ", 1.0");
-            } else {
-                fprintf(outfile, ", 0.0");
-            }
-        }
-        fprintf(outfile, "\n");
-        return;
+int output_state_ancestral_states(Node *root, int num_annotations, char **character, char *output_filepath) {
+    FILE* outfile = fopen(output_filepath, "w");
+    if (!outfile) {
+        fprintf(stderr, "Output annotation file %s is impossible to access.", output_filepath);
+        fprintf(stderr, "Value of errno: %d\n", errno);
+        fprintf(stderr, "Error opening the file: %s\n", strerror(errno));
+        return ENOENT;
     }
 
-    if (nd == root) {
-        node_start = 0;
-    } else {
-        node_start = 1;
+    // print the header
+    fprintf(outfile, "node ID");
+    for (int i = 0; i < num_annotations; i++) {
+        fprintf(outfile, ", %s", character[i]);
     }
+    fprintf(outfile, "\n");
 
-    for (i = node_start; i < nd->nneigh; i++) {
-        output_state_tip_PP(nd->neigh[i], nb, nbanno, character, outfile);
-    }
+    output_states(root, root, num_annotations, character, outfile);
+    fclose(outfile);
+    return EXIT_SUCCESS;
 }
-

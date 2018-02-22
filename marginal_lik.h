@@ -7,6 +7,6 @@
 
 #include "pastml.h"
 
-void down_like_marginal(Node *nd, int nb, int nbanno, double mu, double scale, double *frequency);
+void down_like_marginal(Node *nd, Node* root, int num_tips, int num_annotations, double scale, double *frequency);
 
 #endif //PASTML_MARGINAL_LIK_H_H

@@ -7,8 +7,6 @@
 
 #include "pastml.h"
 
-void output_state_anc_PP(Node *nd, int nb, int nbanno, char **character, FILE *outfile);
-
-void output_state_tip_PP(Node *nd, int nb, int nbanno, char **character, FILE *outfile);
+int output_state_ancestral_states(Node *nd, int num_annotations, char **character, char *output_filepath);
 
 #endif //PASTML_OUTPUT_STATES_H

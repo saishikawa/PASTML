@@ -5,7 +5,8 @@
 #ifndef PASTML_MARGINAL_APPROXI_H
 #define PASTML_MARGINAL_APPROXI_H
 
-int make_samples(int num_tips, int num_anno, char **character, double *parameter, char *out_annotation_file_name,
-                 char *out_tree_name);
+void
+order_marginal(Node *nd, Node *root, int num_annotations);
+void calc_correct(Node *nd, Node *root, int nbanno);
 
 #endif //PASTML_MARGINAL_APPROXI_H

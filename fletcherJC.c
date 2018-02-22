@@ -7,6 +7,7 @@ double *pcomjc, *xicomjc, scale_upjc, scale_lowjc, *store_pjc, *best_pjc;
 extern Tree* s_tree;
 extern Node* root;
 extern double opt_param[MAXCHAR+2];
+extern double epsilon_max, epsilon_min;
 
 void SHFT2(double* a, double* b, double* c, double* d){
 
@@ -73,7 +74,7 @@ double f1dimJC(Node *nd, char** tipnames, int* states, int nb, int nbanno, doubl
   xt[0]=(pcomjc[0]*exp1+x*xicomjc[0])/exp1;
   xt[1]=(pcomjc[1]*exp2+x*xicomjc[1])/exp2;
   if(xt[0] >  scale_upjc || xt[0] < scale_lowjc) xt[0] = pcomjc[0];
-  if(fabs(xt[1]) >  1.0 || fabs(xt[1]) < SCAL_MIN || xt[1] < 0.0) xt[1] = pcomjc[1];
+  if(fabs(xt[1]) >  epsilon_max || fabs(xt[1]) < epsilon_min || xt[1] < 0.0) xt[1] = pcomjc[1];
 
   for(i=0;i<nbanno;i++){
     likp[i] = frequency[i]; 
@@ -246,7 +247,7 @@ routines mnbrak and brent .*/
     p[j]=best_pjc[j];
   }
   if(p[0] >  scale_upjc || p[0] < scale_lowjc) p[0] = pold[0];
-  if(p[1] >  1.0 || p[1] < SCAL_MIN) p[1] = pold[1];
+  if(p[1] >  epsilon_max || p[1] < epsilon_min) p[1] = pold[1];
   for(i=0;i<nbanno;i++){
     likp[i] = frequency[i]; 
    }

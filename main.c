@@ -26,12 +26,13 @@ int main(int argc, char **argv) {
     int check_freq = 0;
     char *scaling = "T", *keep_ID = "T";
     char *arg_error_string = malloc(sizeof(char) * 1024);
+    int input_length = 0;
 
     opterr = 0;
 
     const char *help_string = "usage: PASTML -a ANNOTATION_FILE -t TREE_NWK [-m MODEL] "
             "[-o OUTPUT_ANNOTATION_FILE] [-n OUTPUT_TREE_NWK] "
-            "[-s SCALING_ON_OFF] [-I KEEP_INTERNAL_NODE_IDS_ON_OFF] [-B THRETHOLD_OF_BRANCH_COLLAPSE]\n"
+            "[-s SCALING_ON_OFF] [-I KEEP_INTERNAL_NODE_IDS_ON_OFF] [-L SEQUENCE_LENGTH]\n"
             "\n"
             "required arguments:\n"
             "   -a ANNOTATION_FILE                  path to the annotation csv file containing tip states\n"
@@ -43,11 +44,11 @@ int main(int argc, char **argv) {
             "   -m MODEL                            state evolution model (JC or F81)\n"
             "   -s SCALING_ON_OFF                   branch length scaling on (T, by default) or off (F)\n"
             "   -I KEEP_INTERNAL_NODE_IDS_ON_OFF    keep internal node ids from the input tree: T (true) or F (false)\n"
-            "   -B THRETHOLD_OF_BRANCH_COLLAPSE     define X to collapse branches shorter than 1.0e-X (default: no collapse)\n";
+            "   -L SEQUENCE_LENGTH                  the length of the molecular sequence from which the input tree was inferred\n";
 
     //            "   -f USER_DEFINED_FREQUENCY           set number of state and each state frequencies, the sum must be 1.0 (e.g. -f 4 0.1 0.2 0.3 0.4)\n"
 
-    opt = getopt(argc, argv, "a:t:o:m:n:s:B:I:");
+    opt = getopt(argc, argv, "a:t:o:m:n:s:I:L:");
     do {
         switch (opt) {
             case -1:
@@ -91,10 +92,8 @@ int main(int argc, char **argv) {
                 scaling=optarg;
                 break;
 
-
-            case 'B':
-	      collapse_BRLEN = pow(0.1, atof(optarg));
-	      //printf("Branches shorter than %lf will be collapsed into a polytomy\n",collapse_BRLEN);
+            case 'L':
+	        input_length=atoi(optarg);
                 break;
 
             case 'I':
@@ -107,7 +106,7 @@ int main(int argc, char **argv) {
                 free(arg_error_string);
                 return EINVAL;
         }
-    } while ((opt = getopt(argc, argv, "a:t:o:m:n:s:B:I:")) != -1);
+    } while ((opt = getopt(argc, argv, "a:t:o:m:n:s:I:L:")) != -1);
     /* Make sure that the required arguments are set correctly */
     if (annotation_name == NULL) {
         snprintf(arg_error_string, 1024, "%s%s", "Annotation file (-a) must be specified.\n\n", help_string);
@@ -145,7 +144,7 @@ int main(int argc, char **argv) {
         out_tree_name = calloc(256, sizeof(char));
         sprintf(out_tree_name, "%s.pastml.out.nwk", tree_name);
     }
-    int res = runpastml(annotation_name, tree_name, out_annotation_name, out_tree_name, model, frequency, scaling, keep_ID, collapse_BRLEN);
+    int res = runpastml(annotation_name, tree_name, out_annotation_name, out_tree_name, model, frequency, scaling, keep_ID, input_length);
 
     free(frequency);
     return res;

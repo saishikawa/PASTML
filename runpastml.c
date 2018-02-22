@@ -14,6 +14,7 @@ Tree *s_tree;
 Node *root;
 int have_miss = -1;
 double opt_param[MAXCHAR + 2];
+double epsilon_max, epsilon_min;
 
 unsigned int tell_size_of_one_tree(char *filename) {
     /* the only purpose of this is to know about the size of a treefile (NH format) in order to save memspace in allocating the string later on */
@@ -97,7 +98,7 @@ void free_tree(Tree *tree, int num_anno) {
 }
 
 int runpastml(char *annotation_name, char* tree_name, char *out_annotation_name, char *out_tree_name,
-              char *model, double *frequency, char* scaling, char* keep_ID, double collapse_BRLEN) {
+              char *model, double *frequency, char* scaling, char* keep_ID, int input_length) {
     int i, line = 0, check, sum_freq = 0, count_miss;
     int *states, *count;
     double sum = 0., mu, lnl = 0., scale, maxlnl = 0., nano, sec;
@@ -249,7 +250,7 @@ int runpastml(char *annotation_name, char* tree_name, char *out_annotation_name,
     fclose(treefile);
 
     /*Make Tree structure*/
-    s_tree = complete_parse_nh(c_tree, num_anno, keep_ID, collapse_BRLEN); /* sets taxname_lookup_table en passant */
+    s_tree = complete_parse_nh(c_tree, num_anno, keep_ID, input_length); /* sets taxname_lookup_table en passant */
     if (NULL == s_tree) {
         fprintf(stderr, "A problem occurred while parsing the reference tree.\n");
         return EINVAL;
@@ -261,7 +262,15 @@ int runpastml(char *annotation_name, char* tree_name, char *out_annotation_name,
     }
     mu = 1 / (1 - sum);
     parameter[num_anno] = 1.0;
-    parameter[num_anno + 1] = 1.0e-3;
+    if(input_length > 0) {
+      parameter[num_anno + 1] = 1.0 / (double) input_length / 100.0;
+      epsilon_max = 1.0 / (double) input_length;
+      epsilon_min = 1.0 / (double) input_length / 10000.0;
+    } else {
+      parameter[num_anno + 1] = s_tree->ex_avgbl/1000.0;
+      epsilon_max = s_tree->ex_avgbl/10.0;
+      epsilon_min = s_tree->ex_avgbl/100000.0;
+    }
 
     calc_lik_bfgs(root, tips, states, num_tips, num_anno, mu, model, parameter, &lnl);
     printf("\n*** Initial likelihood of the tree ***\n\n %lf\n\n", lnl * (-1.0));

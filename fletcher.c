@@ -7,6 +7,7 @@ double *pcom, *xicom, scale_up, scale_low, *store_p, *best_p;
 extern Tree* s_tree;
 extern Node* root;
 extern double opt_param[MAXCHAR+2];
+extern double epsilon_max, epsilon_min;
 
 void SHFT(double* a, double* b, double* c, double* d){
 
@@ -88,7 +89,7 @@ double f1dim(Node *nd, char** tipnames, int* states, int nb, int nbanno, double 
   xt[nbanno]=(pcom[nbanno]*exp1+x*xicom[nbanno])/exp1;
   xt[nbanno+1]=(pcom[nbanno+1]*exp2+x*xicom[nbanno+1])/exp2;
   if(xt[nbanno] >  scale_up || xt[nbanno] < scale_low) xt[nbanno] = pcom[nbanno];
-  if(fabs(xt[nbanno+1]) >  1.0 || fabs(xt[nbanno+1]) < SCAL_MIN || xt[nbanno+1] < 0.0) xt[nbanno+1] = pcom[nbanno+1];
+  if(fabs(xt[nbanno+1]) > epsilon_max || fabs(xt[nbanno+1]) < epsilon_min || xt[nbanno+1] < 0.0) xt[nbanno+1] = pcom[nbanno+1];
   
   calc_lik_bfgs(root, tipnames, states, nb, nbanno, mu, model, xt, &f);
   for(j=0;j<ncom;j++) {
@@ -253,7 +254,7 @@ routines mnbrak and brent .*/
     p[j]=best_p[j];
   }
   if(p[nbanno] >  scale_up || p[nbanno] < scale_low) p[nbanno] = pold[nbanno];
-  if(p[nbanno+1] >  1.0 || p[nbanno+1] < SCAL_MIN) p[nbanno+1] = pold[nbanno+1];
+  if(p[nbanno+1] > epsilon_max || p[nbanno+1] < epsilon_min) p[nbanno+1] = pold[nbanno+1];
   calc_lik_bfgs(root, tipnames, states, nb, nbanno, mu, model, p, &f_check);
   free_vector(pcom,0,n-1); free_vector(xicom,0,n-1); free_vector(pold,0,n-1); free_vector(store_p,0,n-1); free_vector(best_p,0,n-1);
 }

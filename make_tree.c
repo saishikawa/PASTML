@@ -503,7 +503,7 @@ int parse_substring_into_node(char *in_str, int begin, int end, Node *current_no
 
 
 
-Tree *parse_nh_string(char *in_str, int nbanno, char *keep_ID, double collapse_BRLEN) {
+Tree *parse_nh_string(char *in_str, int nbanno, char *keep_ID, int input_length) {
     /* this function allocates, populates and returns a new tree. */
     /* returns NULL if the file doesn't correspond to NH format */
     int in_length = (int) strlen(in_str);
@@ -513,6 +513,7 @@ Tree *parse_nh_string(char *in_str, int nbanno, char *keep_ID, double collapse_B
     char str[MAXLNAME];
     int collapsed_one = 0, uncollapsed_terminal = 0, collapsed_internal = 0, maxpoly;
     double ex_sum=0.0;
+    double collapse_length=0.0;
 
     /* SYNTACTIC CHECKS on the input string */
     i = 0;
@@ -585,12 +586,13 @@ Tree *parse_nh_string(char *in_str, int nbanno, char *keep_ID, double collapse_B
     /* SANITY CHECKS AFTER READING THE TREE */
 
     /* Collapse branches */
+    if(input_length > 0) collapse_length = 1.0 / (double) input_length;
     collapsed_internal = 0;
     do {
       collapsed_one = 0; /* flag that will be set to one as soon as we collapse one branch */
       uncollapsed_terminal = 0;
       for(i=0; i < t->nb_edges; i++) {
-	if (t->a_edges[i]->brlen <= collapse_BRLEN) {
+	if (t->a_edges[i]->brlen <= collapse_length) {
 	  if (t->a_edges[i]->right->nneigh == 1) { /* don't collapse terminal edges */
 	    uncollapsed_terminal++;
 	  }else{
@@ -602,7 +604,7 @@ Tree *parse_nh_string(char *in_str, int nbanno, char *keep_ID, double collapse_B
 	}
       } /* end for */
     } while (collapsed_one);
-    if(collapsed_internal > 0) printf("\n*** Collapsed %d branches according to the threshold of the branch length: %.1e\n",collapsed_internal, collapse_BRLEN);
+    if(collapsed_internal > 0) printf("\n*** Collapsed %d branches those have shorter branch length than %.1e\n",collapsed_internal, collapse_length);
     
 
     if (strcmp(keep_ID, "F") == 0) {
@@ -669,9 +671,9 @@ Tree *parse_nh_string(char *in_str, int nbanno, char *keep_ID, double collapse_B
 
 
 
-Tree *complete_parse_nh(char *big_string, int nbanno, char *keep_ID, double collapse_BRLEN) {
+Tree *complete_parse_nh(char *big_string, int nbanno, char *keep_ID, int input_length) {
     int i;
-    Tree *mytree = parse_nh_string(big_string, nbanno, keep_ID, collapse_BRLEN);
+    Tree *mytree = parse_nh_string(big_string, nbanno, keep_ID, input_length);
     if (mytree == NULL) {
         fprintf(stderr, "Not a syntactically correct NH tree.\n");
         return NULL;

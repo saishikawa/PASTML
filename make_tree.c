@@ -258,45 +258,30 @@ int parse_substring_into_node(char *in_str, int begin, int end, Node *current_no
     current_node->neigh = malloc(current_node->nneigh * sizeof(Node *));
 
     size_t nbanno_size_t = (size_t) nbanno;
-    current_node->condlike = calloc(nbanno_size_t, sizeof(double)); for (i = 0; i < nbanno; i++) current_node->condlike[i] = 0.0;
+    current_node->bottom_up_likelihood = calloc(nbanno_size_t, sizeof(double)); for (i = 0; i < nbanno; i++) current_node->bottom_up_likelihood[i] = 0.0;
     current_node->condlike_mar = calloc(nbanno_size_t, sizeof(double)); for (i = 0; i < nbanno; i++) current_node->condlike_mar[i] = 0.0;
-    current_node->up_like = calloc(nbanno_size_t, sizeof(double)); for (i = 0; i < nbanno; i++) current_node->up_like[i] = 0.0;
-    current_node->mar_prob = calloc(nbanno_size_t, sizeof(double)); for (i = 0; i < nbanno; i++) current_node->mar_prob[i] = 0.0;
     current_node->pij = calloc(nbanno_size_t, sizeof(double *));
     for (i = 0; i < nbanno; i++) current_node->pij[i] = calloc(nbanno_size_t, sizeof(double));
     for (i = 0; i < nbanno; i++) {
       for (j = 0; j < nbanno; j++) current_node->pij[i][j] = 0.0;
     }
 
-    current_node->marginal = calloc(nbanno_size_t, sizeof(double)); for (i = 0; i < nbanno; i++) current_node->marginal[i] = 0.0;
-    current_node->tmp_best = calloc(nbanno_size_t, sizeof(int)); for (i = 0; i < nbanno; i++) current_node->tmp_best[i] = 0;
-    current_node->sum_down = calloc(nbanno_size_t, sizeof(double)); for (i = 0; i < nbanno; i++) current_node->sum_down[i] = 0.0;
-
-    current_node->rootpij = calloc(nbanno_size_t, sizeof(double *));
-    for (i = 0; i < nbanno; i++) current_node->rootpij[i] = calloc(nbanno_size_t, sizeof(double));
+    current_node->marginal = calloc(nbanno_size_t, sizeof(double));
     for (i = 0; i < nbanno; i++) {
-      for (j = 0; j < nbanno; j++) current_node->rootpij[i][j] = 0.0;
+        current_node->marginal[i] = 0.0;
     }
-
-    current_node->local_flag = calloc(nbanno_size_t, sizeof(int));
-    for (i = 0; i < nbanno; i++) current_node->local_flag[i] = 1;
-
+    current_node->best_states = calloc(nbanno_size_t, sizeof(int));
+    for (i = 0; i < nbanno; i++) {
+        current_node->best_states[i] = 0;
+    }
+    current_node->top_down_likelihood = calloc(nbanno_size_t, sizeof(double));
+    for (i = 0; i < nbanno; i++) {
+        current_node->top_down_likelihood[i] = 0.0;
+    }
 
     if (has_father == 0) { /* root */
     }
-    if (nb_commas == 0) { /* leaf: no recursive call */
-        /* this means there is no split here, terminal node: we know that the current node is a leaf.
-           Its name is already there in node->name, we just have to update the taxname table and all info related
-           to the fact that we have a taxon here. */
-        /* that's also the moment when we check that there are no two identical taxa on different leaves of the tree */
-        for (i = 0; i < current_tree->next_avail_taxon_id; i++) {
-            if (!strcmp(current_node->name, current_tree->taxa_names[i])) {
-                fprintf(stderr, "Fatal error: duplicate taxon %s.\n", current_node->name);
-                return EXIT_FAILURE;
-            } /* end if */
-        } /* end for */
-        current_tree->taxa_names[current_tree->next_avail_taxon_id++] = strdup(current_node->name);
-    } else { /* at least one comma, so at least two sons: */
+    if (nb_commas != 0) { /* at least one comma, so at least two sons: */
         for (i = 0; i <= nb_commas; i++) { /* e.g. three iterations for two commas */
             direction = i + has_father;
             pair[0] = comma_index + 1; /* == begin at first iteration */
@@ -380,10 +365,8 @@ Tree *parse_nh_string(char *in_str, int nbanno) {
 
     t->node0->id = 0;
     t->node0->name = "ROOT";
-    t->taxa_names = (char **) malloc(n_otu * sizeof(char *));
 
     t->next_avail_node_id = 1; /* root node has id 0 */
-    t->next_avail_taxon_id = 0; /* no taxon added so far */
 
     /* ACTUALLY READING THE TREE... */
     if (EXIT_SUCCESS != parse_substring_into_node(in_str, begin, end, t->node0, 0 /* no father node */, t, nbanno)) {

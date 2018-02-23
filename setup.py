@@ -1,15 +1,10 @@
 from distutils.core import setup, Extension
 
 # the C extension module
-pastml_module = Extension('pastml', sources=['pastmlpymodule.c',
-                                                    'runpastml.c',
-                                                    'make_tree.c',
-                                                    'lik.c',
-                                                    'marginal_lik.c',
-                                                    'marginal_approxi.c',
-                                                    'output_tree.c',
-                                                    'output_states.c',
-                                                    'scaling.c'],
+pastml_module = Extension('pastml',
+                          sources=['pastmlpymodule.c', 'runpastml.c', 'make_tree.c', 'lik.c',
+                                   'marginal_lik.c', 'marginal_approxi.c', 'output_tree.c', 'output_states.c',
+                                   'scaling.c', 'param_minimization.c'],
                           language='c')
 
 setup(
@@ -32,5 +27,5 @@ setup(
     keywords=['PASTML', 'phylogeny', 'ancestral state inference', 'likelihood'],
     ext_modules=[pastml_module],
     headers=['pastml.h', 'runpastml.h', 'make_tree.h', 'lik.h', 'marginal_lik.h', 'marginal_approxi.h',
-             'output_tree.h', 'output_states.h', 'scaling.h']
+             'output_tree.h', 'output_states.h', 'scaling.h', 'param_minimization.c']
 )

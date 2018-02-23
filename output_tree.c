@@ -41,7 +41,7 @@ int write_subtree_to_stream(Node *node, Node *node_from, FILE *stream, double ep
         putc(')', stream);
     }
     // write node's name and dist to father
-    fprintf(stream, "%s:%f", (node->name ? node->name : ""), get_rescaled_branch_len(node, scaling, epsilon));
+    fprintf(stream, "%s:%f", (node->name ? node->name : ""), node->brlen);
     return EXIT_SUCCESS;
 } /* end write_subtree_to_stream */
 

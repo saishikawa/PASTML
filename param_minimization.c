@@ -4,15 +4,6 @@
 
 #define STEP_EPSILON 1.0e-6
 
-extern Tree *s_tree;
-extern Node *root;
-
-char *const *tipnames;
-const int *states;
-double* cur_parameters;
-
-char *model;
-
 double softmax(double* xs, int n) {
     /**
      * transforms an array of n arbitrary values x in such a way that all of them become between 0 and 1 and sum to 1,
@@ -44,7 +35,7 @@ double anti_sigmoid(double x, const double lower_bound, const double upper_bound
 }
 
 void *get_likelihood_parameters(const gsl_vector *v, int num_annotations, double scale_low, double scale_up,
-                                double epsilon_low, double epsilon_up) {
+                                double epsilon_low, double epsilon_up, double* cur_parameters, char* model) {
     size_t j;
 
     if (strcmp("F81", model) == 0) {
@@ -63,43 +54,40 @@ void *get_likelihood_parameters(const gsl_vector *v, int num_annotations, double
 }
 
 double
-my_f (const gsl_vector *v, void *params)
+minus_loglikelihood (const gsl_vector *v, void *params, double* cur_parameters, char* model, Node* root)
 {
     /**
-     * this function should return the result f(x,params) for argument x and parameters params.
-     * If the function cannot be computed, an error value of GSL_NAN should be returned.
-     *
      * Calculates the -log likelihood value.
      */
     double *p = (double *)params;
     int num_annotations = (int) p[0];
-    int num_tips = (int) p[1];
-    double scale_low = p[2], scale_up = p[3], epsilon_low = p[4], epsilon_up = p[5], mu = p[6];
-    get_likelihood_parameters(v, num_annotations, scale_low, scale_up, epsilon_low, epsilon_up);
+    double scale_low = p[1], scale_up = p[2], epsilon_low = p[3], epsilon_up = p[4];
+    get_likelihood_parameters(v, num_annotations, scale_low, scale_up, epsilon_low, epsilon_up, cur_parameters, model);
 
-    return -calc_lik_bfgs(root, tipnames, states, num_tips, num_annotations, mu, cur_parameters);
+    return -calc_lik_bfgs(root, num_annotations, cur_parameters);
 }
-
-/* The gradient of f, df = (df/dx, df/dy). */
 void
-my_df (const gsl_vector *v, void *params, gsl_vector *df)
+d_minus_loglikelihood (const gsl_vector *v, void *params, gsl_vector *df, double* cur_parameters,
+                       double cur_minus_log_likelihood, char* model, Node* root)
 {
-    /*
-     * this function should store the n-dimensional gradient: g_i = \partial f(x,\hbox{\it params}) / \partial x_i
-     * in the vector g for argument x and parameters params,
-     * returning an appropriate error code if the function cannot be computed.
-     * 
-     * Fill in the gradient vector for each of the parameters.
+    /** Fills in the gradient vector for each of the parameters.
      * parameters = [frequency_char_1, .., frequency_char_n, scaling_factor, epsilon].
-     * mu = 1 / (1 - (frequency_1^2 + ... + frequency_n^2)).
+     * cur_minus_log_likelihood in the given point can be pre-specified,
+     * otherwise should be put to a negative value to show that it needs recalculation.
      */
     double *p = (double *)params;
     int num_annotations = (int) p[0];
-    int num_tips = (int) p[1];
-    double scale_low = p[2], scale_up = p[3], epsilon_low = p[4], epsilon_up = p[5], mu = p[6];
-    get_likelihood_parameters(v, num_annotations, scale_low, scale_up, epsilon_low, epsilon_up);
-    double diff_log_likelihood,
-            cur_log_likelihood = -calc_lik_bfgs(root, tipnames, states, num_tips, num_annotations, mu, cur_parameters);
+    double scale_low = p[1], scale_up = p[2], epsilon_low = p[3], epsilon_up = p[4];
+    double diff_log_likelihood;
+
+    // if the cur_minus_log_likelihood is already given, let's not recalculate it
+    // otherwise it is negative to show that we need to recalculate it.
+    if (cur_minus_log_likelihood < 0) {
+        get_likelihood_parameters(v, num_annotations, scale_low, scale_up, epsilon_low, epsilon_up,
+                                  cur_parameters, model);
+        cur_minus_log_likelihood = -calc_lik_bfgs(root, num_annotations, cur_parameters);
+    }
+
     int n = (strcmp("F81", model) == 0) ? (num_annotations + 2): 2;
     for (size_t i = 0; i < n; i++) {
         /* create a next_step_parameters array, where all the values but the i-th are the same as in parameters,
@@ -108,10 +96,10 @@ my_df (const gsl_vector *v, void *params, gsl_vector *df)
             gsl_vector_set(v, i - 1, gsl_vector_get(v, i - 1) - STEP_EPSILON);
         }
         gsl_vector_set(v, i, gsl_vector_get(v, i) + STEP_EPSILON);
-        get_likelihood_parameters(v, num_annotations, scale_low, scale_up, epsilon_low, epsilon_up);
+        get_likelihood_parameters(v, num_annotations, scale_low, scale_up, epsilon_low, epsilon_up,
+                                  cur_parameters, model);
 
-        diff_log_likelihood = -calc_lik_bfgs(root, tipnames, states, num_tips, num_annotations, mu, cur_parameters)
-                              - cur_log_likelihood;
+        diff_log_likelihood = -calc_lik_bfgs(root, num_annotations, cur_parameters) - cur_minus_log_likelihood;
 
         /* calculate the gradients*/
         gsl_vector_set(df, i, diff_log_likelihood / STEP_EPSILON);
@@ -119,41 +107,39 @@ my_df (const gsl_vector *v, void *params, gsl_vector *df)
     gsl_vector_set(v, n - 1, gsl_vector_get(v, n - 1) - STEP_EPSILON);
 }
 
-/* Compute both f and df together. */
-void
-my_fdf (const gsl_vector *x, void *params,
-        double *f, gsl_vector *df)
-{
-    *f = my_f(x, params);
-    my_df(x, params, df);
-}
-
-
-
-double minimize_params(char **tip_array, const int *state_array, int num_tips, int num_annotations, double mu,
-                       double *parameters, char **character, char *model_name, double scale_low, double scale_up,
-                       double epsilon_low, double epsilon_up) {
+double minimize_params(Node* root, int num_annotations, double *parameters, char **character, char *model, double scale_low,
+                       double scale_up, double epsilon_low, double epsilon_up) {
     /**
-     * Optimises the following parameters: parameters = [frequency_char_1, .., frequency_char_n, scaling_factor, epsilon],
+     * Optimises the following parameters:
+     * parameters = [frequency_char_1, .., frequency_char_n, scaling_factor, epsilon],
      * using BFGS algorithm.
      * If model is JC, the frequences are not optimised.
-     * mu = 1 / (1 - (frequency_1^2 + ... + frequency_n^2)).
      * The parameters variable is updated to contain the optimal parameters found.
      * The optimal value of the likelihood is returned.
      */
 
     size_t iter = 0;
     int status;
-    tipnames = tip_array;
-    states = state_array;
 
-    model = model_name;
     size_t n = (size_t) ((strcmp("JC", model) == 0) ? 2 : (num_annotations + 2));
 
     const gsl_multimin_fdfminimizer_type *T;
     gsl_multimin_fdfminimizer *s;
-    /* Parameters: num_annotations, num_tips, scale_low, scale_up, epsilon_low, epsilon_up, mu. */
-    double par[7] = {(double) num_annotations, (double) num_tips, scale_low, scale_up, epsilon_low, epsilon_up, mu};
+    /* Parameters: num_annotations, scale_low, scale_up, epsilon_low, epsilon_up, mu. */
+    double par[5] = {(double) num_annotations, scale_low, scale_up, epsilon_low, epsilon_up};
+
+    double my_f(const gsl_vector *v, void *params) {
+        return minus_loglikelihood(v, params, parameters, model, root);
+    }
+
+    void my_df(const gsl_vector *v, void *params, gsl_vector *df) {
+        return d_minus_loglikelihood (v, params, df, parameters, -1, model, root);
+    }
+
+    void my_fdf (const gsl_vector *v, void *params, double *f, gsl_vector *df) {
+        *f = minus_loglikelihood(v, params, parameters, model, root);
+        d_minus_loglikelihood (v, params, df, parameters, *f, model, root);
+    }
 
     gsl_vector *x;
     gsl_multimin_function_fdf my_func;
@@ -162,8 +148,6 @@ double minimize_params(char **tip_array, const int *state_array, int num_tips, i
     my_func.df = my_df;
     my_func.fdf = my_fdf;
     my_func.params = par;
-
-    cur_parameters = parameters;
 
     /* Starting point */
     x = gsl_vector_alloc(n);
@@ -203,19 +187,18 @@ double minimize_params(char **tip_array, const int *state_array, int num_tips, i
         if (status == GSL_SUCCESS) {
             printf("Minimum found!\n");
         }
-        get_likelihood_parameters(s->x, num_annotations, scale_low, scale_up, epsilon_low, epsilon_up);
+        get_likelihood_parameters(s->x, num_annotations, scale_low, scale_up, epsilon_low, epsilon_up, parameters,
+                                  model);
 
         printf ("%5d\t%10.5f\t\t", iter, -s->f);
         if (strcmp("F81", model) == 0) {
             for (size_t j = 0; j < num_annotations; j++) {
-                printf("%.5f\t", cur_parameters[j]);
+                printf("%.5f\t", parameters[j]);
             }
         }
-        printf ("%.5f\t%.5f\n", cur_parameters[num_annotations], cur_parameters[num_annotations + 1]);
+        printf ("%.5f\t%.5f\n", parameters[num_annotations], parameters[num_annotations + 1]);
     }
     while (status == GSL_CONTINUE && iter < 150);
-
-    get_likelihood_parameters(s->x, num_annotations, scale_low, scale_up, epsilon_low, epsilon_up);
     double optimum = -s->f;
 
     gsl_multimin_fdfminimizer_free(s);

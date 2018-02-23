@@ -50,7 +50,6 @@ int upscale_node_probs(double* array, int n) {
     return factors;
 }
 
-
 void rescale(double *array, int i, int curr_scaler_pow) {
     int piecewise_scaler_pow;
     unsigned long long curr_scaler;

@@ -7,6 +7,6 @@
 
 void
 order_marginal(Node *nd, Node *root, int num_annotations);
-void calc_correct(Node *nd, Node *root, int nbanno);
+void calc_correct(Node *nd, Node *root, int n);
 
 #endif //PASTML_MARGINAL_APPROXI_H

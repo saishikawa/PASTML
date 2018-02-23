@@ -53,29 +53,28 @@ void free_node(Node *node, int count, int num_anno) {
     int j;
 
     if (node == NULL) return;
-    if (node->name && count != 0) free(node->name);
+    if (node->name && count != 0) {
+        free(node->name);
+    }
     free(node->neigh);
-    free(node->condlike);
+    free(node->bottom_up_likelihood);
     free(node->condlike_mar);
     free(node->marginal);
-    free(node->tmp_best);
-    free(node->mar_prob);
-    free(node->up_like);
-    free(node->sum_down);
-    free(node->local_flag);
-    for (j = 0; j < num_anno; j++) free(node->pij[j]);
+    free(node->best_states);
+    free(node->top_down_likelihood);
+    for (j = 0; j < num_anno; j++) {
+        free(node->pij[j]);
+    }
     free(node->pij);
-    for (j = 0; j < num_anno; j++) free(node->rootpij[j]);
-    free(node->rootpij);
     free(node);
 }
 
 void free_tree(Tree *tree, int num_anno) {
     int i;
     if (tree == NULL) return;
-    for (i = 0; i < tree->nb_nodes; i++) free_node(tree->a_nodes[i], i, num_anno);
-    for (i = 0; i < tree->nb_taxa; i++) free(tree->taxa_names[i]);
-    free(tree->taxa_names);
+    for (i = 0; i < tree->nb_nodes; i++) {
+        free_node(tree->a_nodes[i], i, num_anno);
+    }
     free(tree->a_nodes);
     free(tree);
 
@@ -230,10 +229,10 @@ Tree* read_tree(char* tree_name, int num_anno) {
 int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name, char *out_tree_name, char *model) {
     int i;
     int *states;
-    double sum = 0., mu, lnl, scale, nano, sec;
-    double *parameter;
+    double log_likelihood, nano, sec;
+    double *parameters;
     char **character, **tips;
-    int num_anno, num_tips = 0;
+    int num_annotations, num_tips = 0;
     struct timespec samp_ini, samp_fin;
     int exit_val;
 
@@ -259,33 +258,28 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
     if (character == NULL) {
         return EXIT_FAILURE;
     }
-    num_anno = *num_anno_arr;
+    num_annotations = *num_anno_arr;
     num_tips = *num_tips_arr;
     free(num_anno_arr);
     free(num_tips_arr);
 
-    num_anno++;
+    num_annotations++;
 
-    /* we would need two additional spots in the parameter array: for the scaling factor, and for the epsilon,
-     * therefore num_anno + 2*/
-    parameter = calloc(num_anno + 2, sizeof(double));
-    if (parameter == NULL) {
+    /* we would need two additional spots in the parameters array: for the scaling factor, and for the epsilon,
+     * therefore num_annotations + 2*/
+    parameters = calloc(num_annotations + 2, sizeof(double));
+    if (parameters == NULL) {
         fprintf(stderr, "Memory problems: %s\n", strerror(errno));
         fprintf(stderr, "Value of errno: %d\n", errno);
         return ENOMEM;
     }
 
-    exit_val = calculate_frequencies(num_anno, num_tips, states, character, model, parameter);
+    exit_val = calculate_frequencies(num_annotations, num_tips, states, character, model, parameters);
     if (EXIT_SUCCESS != exit_val) {
         return exit_val;
     }
 
-    for (i = 0; i < num_anno; i++) {
-        sum += pow(parameter[i], 2);
-    }
-    mu = 1 / (1 - sum);
-
-    s_tree = read_tree(tree_name, num_anno);
+    s_tree = read_tree(tree_name, num_annotations);
     if (s_tree == NULL) {
         return EXIT_FAILURE;
     }
@@ -296,47 +290,50 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
                 " and the number of tips (%d) do not match", num_tips, s_tree->nb_taxa);
     }
     num_tips = s_tree->nb_taxa;
-    parameter[num_anno] = 1.0;
-    parameter[num_anno + 1] = s_tree->tip_avg_branch_len / 100.0;
+    parameters[num_annotations] = 1.0;
+    parameters[num_annotations + 1] = s_tree->tip_avg_branch_len / 100.0;
 
-    lnl = calc_lik_bfgs(root, tips, states, num_tips, num_anno, mu, parameter);
-    if (lnl == log(0)) {
-        fprintf(stderr, "A problem occurred while calculating the likelihood: "
+    initialise_tip_probabilities(root, root, tips, states, num_tips, num_annotations);
+
+    log_likelihood = calc_lik_bfgs(root, num_annotations, parameters);
+    if (log_likelihood == log(0)) {
+        fprintf(stderr, "A problem occurred while calculating the bottom_up_likelihood: "
                 "Is your tree ok and has at least 2 children per every inner node?\n");
         return EXIT_FAILURE;
     }
-    printf("\n*** Initial log likelihood of the tree ***\n\n %lf\n\n", lnl);
+    printf("\n*** Initial log likelihood of the tree ***\n\n %lf\n\n", log_likelihood);
 
-    lnl = minimize_params(tips, states, num_tips, num_anno, mu, parameter, character, model, 1.0 / 10000, 10000.0,
+    log_likelihood = minimize_params(root, num_annotations, parameters, character, model, 1.0 / 10000, 10000.0,
                           s_tree->tip_avg_branch_len / 10000.0, s_tree->tip_avg_branch_len / 10.0);
 
     if (0 == strcmp("F81", model)) {
         printf("\n*** Optimized frequencies ***\n\n");
-        for (i = 0; i < num_anno; i++) {
-            printf("%s = %.5f\n", character[i], parameter[i]);
+        for (i = 0; i < num_annotations; i++) {
+            printf("%s = %.5f\n", character[i], parameters[i]);
         }
     }
     printf("\n*** Tree scaling factor ***\n\n %.5f \n\n*** Epsilon ***\n\n %.5e",
-           parameter[num_anno], parameter[num_anno + 1]);
-    printf("\n\n*** Optimised likelihood ***\n\n %lf\n", lnl);
+           parameters[num_annotations], parameters[num_annotations + 1]);
+    printf("\n\n*** Optimised log likelihood ***\n\n %lf\n", log_likelihood);
 
-    //Marginal likelihood calculation
+    rescale_branch_lengths(root, root, parameters[num_annotations], parameters[num_annotations + 1]);
+
+    //Marginal bottom_up_likelihood calculation
     printf("\n*** Calculating Marginal Likelihoods...\n");
-    scale = 1.0;
-    down_like_marginal(root, root, num_tips, num_anno, scale, parameter);
+    calculate_marginal_probabilities(root, root, num_annotations, parameters);
 
     printf("\n*** Predicting likely ancestral states by the Marginal Approximation method...\n\n");
 
-    order_marginal(root, root, num_anno);
-    calc_correct(root, root, num_anno);
+    order_marginal(root, root, num_annotations);
+    calc_correct(root, root, num_annotations);
 
-    exit_val = write_nh_tree(root, out_tree_name, parameter[num_anno], parameter[num_anno + 1]);
+    exit_val = write_nh_tree(root, out_tree_name, parameters[num_annotations], parameters[num_annotations + 1]);
     if (EXIT_SUCCESS != exit_val) {
         return exit_val;
     }
     printf("Scaled tree with internal node ids is written to %s\n", out_tree_name);
 
-    exit_val = output_state_ancestral_states(root, num_anno, character, out_annotation_name);
+    exit_val = output_state_ancestral_states(root, num_annotations, character, out_annotation_name);
     if (EXIT_SUCCESS != exit_val) {
         return exit_val;
     }
@@ -346,7 +343,7 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
     free(tips);
     free(character);
     free(states);
-    free_tree(s_tree, num_anno);
+    free_tree(s_tree, num_annotations);
 
     clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &samp_fin);
     sec = (double) (samp_fin.tv_sec - samp_ini.tv_sec);

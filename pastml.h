@@ -30,17 +30,13 @@ typedef struct __Node {
     int nneigh;    /* number of neighbours */
     struct __Node **neigh;    /* neighbour nodes */
 
-    double **pij;           /* probability of substitution */
-    double *condlike;       /*conditional likelihoods at the node*/
+    double **pij;           /* probability of substitution from i to j */
+    double *bottom_up_likelihood;       /* conditional likelihoods at the node*/
     double *condlike_mar;
     double *marginal;
-    int *tmp_best;
-    double *mar_prob;
-    double *up_like;
-    double *sum_down;
-    double **rootpij;
-    int pupko_state;
-    int *local_flag;
+    int *best_states;
+    double *top_down_likelihood;
+    int fixed_state; /* a state given to the node in the annotation file, that is not to be optimised */
     double brlen;
 } Node;
 
@@ -51,9 +47,7 @@ typedef struct __Tree {
     int nb_nodes;
     int nb_edges;
     int nb_taxa;
-    char **taxa_names;        /* store only once the taxa names */
     int next_avail_node_id;
-    int next_avail_taxon_id;
     double avg_branch_len;
     double min_bl;
   double tip_avg_branch_len;

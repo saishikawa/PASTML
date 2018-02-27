@@ -2,12 +2,15 @@
 #include "marginal_likelihood.h"
 #include "likelihood.h"
 #include "marginal_approximation.h"
-#include "make_tree.h"
 #include "param_minimization.h"
 #include "output_tree.h"
 #include "output_states.h"
+#include "logger.h"
+#include "make_tree.h"
 #include <time.h>
 #include <errno.h>
+
+extern QUIET;
 
 size_t tell_size_of_one_tree(char *filename) {
     /* the only purpose of this is to know about the size of a treefile (NH format)
@@ -176,20 +179,20 @@ int calculate_frequencies(size_t num_annotations, size_t num_tips, int *states, 
     for (int i = 0; i <= num_annotations; i++) {
         sum_freq += count_array[i];
     }
-    printf("MODEL:\t%s\n\n", model);
-    printf("INITIAL FREQUENCIES:\n\n");
+    log_info("MODEL:\t%s\n\n", model);
+    log_info("INITIAL FREQUENCIES:\n\n");
     for (int i = 0; i < num_annotations; i++) {
         if (strcmp(model, "JC") == 0) {
             parameters[i] = ((double) 1) / num_annotations;
         } else if (strcmp(model, "F81") == 0) {
             parameters[i] = ((double) count_array[i]) / sum_freq;
         }
-        printf("\t%s:\t%.10f\n", character[i], parameters[i]);
+        log_info("\t%s:\t%.10f\n", character[i], parameters[i]);
     }
     if (count_array[num_annotations] > 0.0) {
-        printf("\n\tMissing data:\t%.10f\n", (double) count_array[num_annotations] / (double) sum_freq);
+        log_info("\n\tMissing data:\t%.10f\n", (double) count_array[num_annotations] / (double) sum_freq);
     }
-    printf("\n");
+    log_info("\n");
     free(count_array);
     return EXIT_SUCCESS;
 }
@@ -218,7 +221,7 @@ Tree *read_tree(char *nwk, size_t num_anno) {
 
     void *retval;
     if ((retval = calloc(tree_file_size + 1, sizeof(char))) == NULL) {
-        printf("Not enough memory\n");
+        fprintf(stderr, "Not enough memory\n");
         return NULL;
     }
     char *c_tree = (char *) retval;
@@ -313,49 +316,49 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
                 "Is your tree ok and has at least 2 children per every inner node?\n");
         return EXIT_FAILURE;
     }
-    printf("INITIAL LOG LIKELIHOOD:\t%.10f\n\n", log_likelihood);
+    log_info("INITIAL LOG LIKELIHOOD:\t%.10f\n\n", log_likelihood);
 
 
-    printf("OPTIMISING PARAMETERS...\n\n");
+    log_info("OPTIMISING PARAMETERS...\n\n");
     log_likelihood = minimize_params(s_tree, num_annotations, parameters, character, model, 1.0 / 10000, 10000.0,
                                      s_tree->min_branch_len / 10.0,
                                      MIN(s_tree->min_branch_len * 10.0, s_tree->avg_branch_len / 10.0));
-    printf("\n");
+    log_info("\n");
 
-    printf("OPTIMISED PARAMETERS:\n\n");
+    log_info("OPTIMISED PARAMETERS:\n\n");
     if (0 == strcmp("F81", model)) {
         for (i = 0; i < num_annotations; i++) {
-            printf("\tFrequency of %s:\t%.10f\n", character[i], parameters[i]);
+            log_info("\tFrequency of %s:\t%.10f\n", character[i], parameters[i]);
         }
-        printf("\n");
+        log_info("\n");
     }
-    printf("\tScaling factor:\t%.10f \n", parameters[num_annotations]);
-    printf("\tEpsilon:\t%.10f\n", parameters[num_annotations + 1]);
-    printf("\n");
-    printf("OPTIMISED LOG LIKELIHOOD:\t%.10f\n", log_likelihood);
-    printf("\n");
+    log_info("\tScaling factor:\t%.10f \n", parameters[num_annotations]);
+    log_info("\tEpsilon:\t%.10f\n", parameters[num_annotations + 1]);
+    log_info("\n");
+    log_info("OPTIMISED LOG LIKELIHOOD:\t%.10f\n", log_likelihood);
+    log_info("\n");
 
     rescale_branch_lengths(s_tree, parameters[num_annotations], parameters[num_annotations + 1]);
 
     //Marginal bottom_up_likelihood calculation
-    printf("CALCULATING MARGINAL PROBABILITIES...\n\n");
+    log_info("CALCULATING MARGINAL PROBABILITIES...\n\n");
     calculate_marginal_probabilities(s_tree, num_annotations, parameters);
-    printf("PREDICTING MOST LIKELY ANCESTRAL STATES...\n\n");
+    log_info("PREDICTING MOST LIKELY ANCESTRAL STATES...\n\n");
     choose_likely_states(s_tree, num_annotations);
 
     exit_val = write_nh_tree(s_tree, out_tree_name, parameters[num_annotations], parameters[num_annotations + 1]);
     if (EXIT_SUCCESS != exit_val) {
         return exit_val;
     }
-    printf("SAVING THE RESULTS...\n\n");
-    printf("\tScaled tree with internal node ids is written to %s.\n", out_tree_name);
+    log_info("SAVING THE RESULTS...\n\n");
+    log_info("\tScaled tree with internal node ids is written to %s.\n", out_tree_name);
 
     exit_val = output_state_ancestral_states(s_tree, num_annotations, character, out_annotation_name);
     if (EXIT_SUCCESS != exit_val) {
         return exit_val;
     }
-    printf("\tState predictions are written to %s in csv format.\n", out_annotation_name);
-    printf("\n");
+    log_info("\tState predictions are written to %s in csv format.\n", out_annotation_name);
+    log_info("\n");
 
     //free all
     free(character);
@@ -367,8 +370,8 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
           + (time_end.tv_nsec - time_start.tv_nsec) / 1000.0 / 1000.0 / 1000.0;
 
     minutes = (int) (sec / 60.0);
-    printf("TOTAL EXECUTION TIME:\t%d minute%s %.2f seconds\n\n", minutes, (minutes != 1) ? "s": "",
-           sec - (60.0 * minutes));
+    log_info("TOTAL EXECUTION TIME:\t%d minute%s %.2f seconds\n\n", minutes, (minutes != 1) ? "s" : "",
+             sec - (60.0 * minutes));
 
     return EXIT_SUCCESS;
 }

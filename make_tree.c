@@ -385,19 +385,19 @@ Tree *parse_nh_string(char *in_str, size_t nbanno) {
     t->avg_tip_branch_len = tip_branch_len_sum / (double) t->nb_taxa;
     t->avg_branch_len = branch_len_sum / (double) t->nb_edges;
 
-    printf("BASIC TREE STATISTICS:\n\n");
-    printf("\tNumber of taxa:\t%zd\n", t->nb_taxa);
+    log_info("BASIC TREE STATISTICS:\n\n");
+    log_info("\tNumber of taxa:\t%zd\n", t->nb_taxa);
     if (t->nb_taxa > MAXNSP) {
         fprintf(stderr, "Fatal error: too many taxa: more than %d.\n", MAXNSP);
         return NULL;
     }
-    printf("\tNumber of nodes:\t%zd\n", t->nb_nodes - t->nb_taxa);
-    printf("\tNumber of edges:\t%d\n", t->nb_edges);
-    printf("\tAvg branch length:\t%.4f\n", t->avg_branch_len);
-    printf("\tAvg tip branch length:\t%.4f\n", t->avg_tip_branch_len);
-    printf("\tMin branch length:\t%.4f\n", t->min_branch_len);
-    printf("\tMax number of children per node:\t%d\n", maxpoly-1);
-    printf("\n");
+    log_info("\tNumber of nodes:\t%zd\n", t->nb_nodes - t->nb_taxa);
+    log_info("\tNumber of edges:\t%d\n", t->nb_edges);
+    log_info("\tAvg branch length:\t%.4f\n", t->avg_branch_len);
+    log_info("\tAvg tip branch length:\t%.4f\n", t->avg_tip_branch_len);
+    log_info("\tMin branch length:\t%.4f\n", t->min_branch_len);
+    log_info("\tMax number of children per node:\t%d\n", maxpoly-1);
+    log_info("\n");
 
     return t;
 

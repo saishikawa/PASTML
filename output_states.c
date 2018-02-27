@@ -17,7 +17,7 @@ int output_state_ancestral_states(Tree *tree, size_t num_annotations, char **cha
     // print the header
     fprintf(outfile, "node ID");
     for (i = 0; i < num_annotations; i++) {
-        fprintf(outfile, ", %s", character[i]);
+        fprintf(outfile, ",%s", character[i]);
     }
     fprintf(outfile, "\n");
 
@@ -30,7 +30,7 @@ int output_state_ancestral_states(Tree *tree, size_t num_annotations, char **cha
         for (i = 0; i < num_annotations; i++) {
             for (j = 0; j < num_annotations; j++) {
                 if (strcmp(character[i], character[nd->best_states[j]]) == 0) {
-                    fprintf(outfile, ", %.5f", nd->marginal[j]);
+                    fprintf(outfile, ",%.5f", nd->marginal[j]);
                 }
             }
         }

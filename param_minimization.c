@@ -120,8 +120,8 @@ double minimize_params(Tree* s_tree, size_t num_annotations, double *parameters,
     size_t iter = 0;
     int status;
 
-    printf("Scaling factor can vary between %.10f and %.10f\n", scale_low, scale_up);
-    printf("Epsilon can vary between %.10f and %.10f\n", epsilon_low, epsilon_up);
+    log_info("Scaling factor can vary between %.10f and %.10f\n", scale_low, scale_up);
+    log_info("Epsilon can vary between %.10f and %.10f\n", epsilon_low, epsilon_up);
 
     size_t n = (size_t) ((strcmp("JC", model) == 0) ? 2 : (num_annotations + 2));
 
@@ -168,13 +168,13 @@ double minimize_params(Tree* s_tree, size_t num_annotations, double *parameters,
     double tol = .1;
     gsl_multimin_fdfminimizer_set(s, &my_func, x, step_size, tol);
 
-    printf ("\tstep\tlog-lh\t\t");
+    log_info ("\tstep\tlog-lh\t\t");
     if (strcmp("F81", model) == 0) {
         for (size_t j = 0; j < num_annotations; j++) {
-            printf("%s\t", character[j]);
+            log_info("%s\t", character[j]);
         }
     }
-    printf ("scaling\tepsilon\n");
+    log_info ("scaling\tepsilon\n");
     double epsabs = 1e-3;
     do
     {
@@ -188,10 +188,10 @@ double minimize_params(Tree* s_tree, size_t num_annotations, double *parameters,
                 iter--;
                 status = GSL_CONTINUE;
                 gsl_multimin_fdfminimizer_set(s, &my_func, gsl_multimin_fdfminimizer_x(s), step_size, tol);
-                printf("\t\t(decreased the step size to %.1e)\n", step_size);
+                log_info("\t\t(decreased the step size to %.1e)\n", step_size);
                 continue;
             }
-            printf("\t\t(stopping minimization as %s)\n", gsl_strerror(status));
+            log_info("\t\t(stopping minimization as %s)\n", gsl_strerror(status));
             break;
         }
 
@@ -199,23 +199,23 @@ double minimize_params(Tree* s_tree, size_t num_annotations, double *parameters,
         get_likelihood_parameters(s->x, num_annotations, scale_low, scale_up, epsilon_low, epsilon_up, parameters,
                                   model);
 
-        printf ("\t%3zd\t%5.10f\t\t", iter, -s->f);
+        log_info ("\t%3zd\t%5.10f\t\t", iter, -s->f);
         if (strcmp("F81", model) == 0) {
             for (size_t j = 0; j < num_annotations; j++) {
-                printf("%.10f\t", parameters[j]);
+                log_info("%.10f\t", parameters[j]);
             }
         }
-        printf ("%.10f\t%.10f\n", parameters[num_annotations], parameters[num_annotations + 1]);
+        log_info ("%.10f\t%.10f\n", parameters[num_annotations], parameters[num_annotations + 1]);
 
         if (status == GSL_SUCCESS) {
             // let's adjust the tolerance to make sure we are at the minimum
             if (iter < 10 && epsabs > 1e-5) {
                 epsabs /= 10.0;
                 status = GSL_CONTINUE;
-                printf("\t\t(found an optimum candidate, but to be sure decreased the gradient tolerance to %.1e)\n",
+                log_info("\t\t(found an optimum candidate, but to be sure decreased the gradient tolerance to %.1e)\n",
                        epsabs);
             } else {
-                printf("\t\t(optimum found!)\n");
+                log_info("\t\t(optimum found!)\n");
             }
         }
     }

@@ -18,7 +18,7 @@ pastml_module = Extension('pastml',
                           sources=['pastmlpymodule.c', 'runpastml.c', 'make_tree.c',
                                    'likelihood.c', 'marginal_likelihood.c', 'marginal_approximation.c',
                                    'output_tree.c', 'output_states.c',
-                                   'scaling.c', 'param_minimization.c'],
+                                   'scaling.c', 'param_minimization.c', 'logger.c'],
                           libraries=['gsl', 'gslcblas']
                           )
 
@@ -44,5 +44,5 @@ setup(
     headers=['pastml.h', 'runpastml.h', 'make_tree.h',
              'likelihood.h', 'marginal_likelihood.h', 'marginal_approximation.h',
              'output_tree.h', 'output_states.h',
-             'scaling.h', 'param_minimization.h']
+             'scaling.h', 'param_minimization.h', 'logger.h']
 )

@@ -1,7 +1,4 @@
 #include "pastml.h"
-#include <assert.h>
-
-double BL_sum = 0., BL_avg = 0.;
 
 void free_node(Node *node, int count, int num_anno);
 
@@ -112,12 +109,12 @@ int process_name_and_brlen(Node *son_node, char *in_str, int begin, int end) {
 
     /* processing the optional BRANCH LENGTH... */
     if (colon == -1) {
-        son_node->brlen = 0.0;
+        son_node->branch_len = 0.0;
     } else {
         if (EXIT_SUCCESS != parse_double(in_str, colon + 1, end, &brlen)) {
             return EXIT_FAILURE;
         }
-        son_node->brlen = brlen;
+        son_node->branch_len = brlen;
     }
 
     /* then scan backwards from the colon (or from the end if no branch length) to get the NODE NAME,
@@ -158,7 +155,7 @@ Node *create_son_and_connect_to_father(Node *current_node, Tree *current_tree, i
                                        int end) {
     /* This function creates (allocates) the son node in the given direction from the current node.
        It also creates a new branch to connect the son to the father.
-       The array structures in the tree (a_nodes) are updated accordingly.
+       The array structures in the tree (nodes) are updated accordingly.
        Branch length and node name are processed.
        The input string given between the begin and end indices (included) is of the type:
        (...)node_name:length
@@ -176,7 +173,7 @@ Node *create_son_and_connect_to_father(Node *current_node, Tree *current_tree, i
 
     Node *son = (Node *) malloc(sizeof(Node));
     son->id = current_tree->next_avail_node_id++;
-    current_tree->a_nodes[son->id] = son;
+    current_tree->nodes[son->id] = son;
     current_tree->nb_nodes++;
 
     son->name = NULL;
@@ -244,7 +241,7 @@ int parse_substring_into_node(char *in_str, int begin, int end, Node *current_no
         return EXIT_FAILURE;
     }
 
-    int i, j;
+    int i;
     int pair[2]; /* to be the beginning and end points of the substrings describing the various nodes */
     int inner_pair[2]; /* to be the beginning and end points of the substrings after removing the name and branch length */
     int nb_commas = count_outer_commas(in_str, begin, end);
@@ -253,34 +250,20 @@ int parse_substring_into_node(char *in_str, int begin, int end, Node *current_no
     Node *son;
 
     /* allocating the data structures for the current node */
-    /* FIXME: in case the tree has an inner node with just one child, nneigh will become 1 instead of 2.*/
-    current_node->nneigh = (nb_commas == 0 ? 1 : nb_commas + 1 + has_father);
-    current_node->neigh = malloc(current_node->nneigh * sizeof(Node *));
+    /* FIXME: in case the tree has an inner node with just one child, nb_neigh will become 1 instead of 2.*/
+    current_node->nb_neigh = (nb_commas == 0 ? 1 : nb_commas + 1 + has_father);
+    current_node->neigh = malloc(current_node->nb_neigh * sizeof(Node *));
 
     size_t nbanno_size_t = (size_t) nbanno;
-    current_node->bottom_up_likelihood = calloc(nbanno_size_t, sizeof(double)); for (i = 0; i < nbanno; i++) current_node->bottom_up_likelihood[i] = 0.0;
-    current_node->condlike_mar = calloc(nbanno_size_t, sizeof(double)); for (i = 0; i < nbanno; i++) current_node->condlike_mar[i] = 0.0;
-    current_node->pij = calloc(nbanno_size_t, sizeof(double *));
-    for (i = 0; i < nbanno; i++) current_node->pij[i] = calloc(nbanno_size_t, sizeof(double));
-    for (i = 0; i < nbanno; i++) {
-      for (j = 0; j < nbanno; j++) current_node->pij[i][j] = 0.0;
-    }
-
+    current_node->bottom_up_likelihood = calloc(nbanno_size_t, sizeof(double));
     current_node->marginal = calloc(nbanno_size_t, sizeof(double));
+    current_node->pij = calloc(nbanno_size_t, sizeof(double *));
     for (i = 0; i < nbanno; i++) {
-        current_node->marginal[i] = 0.0;
+        current_node->pij[i] = calloc(nbanno_size_t, sizeof(double));
     }
     current_node->best_states = calloc(nbanno_size_t, sizeof(int));
-    for (i = 0; i < nbanno; i++) {
-        current_node->best_states[i] = 0;
-    }
     current_node->top_down_likelihood = calloc(nbanno_size_t, sizeof(double));
-    for (i = 0; i < nbanno; i++) {
-        current_node->top_down_likelihood[i] = 0.0;
-    }
 
-    if (has_father == 0) { /* root */
-    }
     if (nb_commas != 0) { /* at least one comma, so at least two sons: */
         for (i = 0; i <= nb_commas; i++) { /* e.g. three iterations for two commas */
             direction = i + has_father;
@@ -297,7 +280,7 @@ int parse_substring_into_node(char *in_str, int begin, int end, Node *current_no
             if (EXIT_SUCCESS != strip_toplevel_parentheses(in_str, pair[0], pair[1],
                                        inner_pair)) {
                 return EXIT_FAILURE;
-            } /* because name and brlen already processed by create_son */
+            } /* because name and branch_len already processed by create_son */
             if (EXIT_SUCCESS != parse_substring_into_node(in_str, inner_pair[0], inner_pair[1], son, 1, current_tree,
                                       nbanno)){
                 return EXIT_FAILURE;
@@ -355,21 +338,21 @@ Tree *parse_nh_string(char *in_str, int nbanno) {
       this is the maximum we can have. multifurcations will reduce the number of nodes and branches, so set the data structures to the max size */
     t->nb_taxa = n_otu;
 
-    t->a_nodes = (Node **) calloc(2 * n_otu - 1, sizeof(Node *));
-    t->nb_nodes = 1; /* for the moment we only have the node0 node. */
+    t->nodes = (Node **) calloc(2 * n_otu - 1, sizeof(Node *));
+    t->nb_nodes = 1; /* for the moment we only have the root node. */
 
     t->nb_edges = 0; /* none at the moment */
 
-    t->node0 = (Node *) malloc(sizeof(Node));
-    t->a_nodes[0] = t->node0;
+    t->root = (Node *) malloc(sizeof(Node));
+    t->nodes[0] = t->root;
 
-    t->node0->id = 0;
-    t->node0->name = "ROOT";
+    t->root->id = 0;
+    t->root->name = "ROOT";
 
     t->next_avail_node_id = 1; /* root node has id 0 */
 
     /* ACTUALLY READING THE TREE... */
-    if (EXIT_SUCCESS != parse_substring_into_node(in_str, begin, end, t->node0, 0 /* no father node */, t, nbanno)) {
+    if (EXIT_SUCCESS != parse_substring_into_node(in_str, begin, end, t->root, 0 /* no father node */, t, nbanno)) {
         return NULL;
     }
 
@@ -377,46 +360,46 @@ Tree *parse_nh_string(char *in_str, int nbanno) {
 
     /* name tree nodes if needed */
     for (i = 0; i < t->nb_nodes; i++) {
-        if (t->a_nodes[i]->nneigh > 1 && i > 0) {
+        if (t->nodes[i]->nb_neigh > 1 && i > 0) {
             nodecount++;
-            if (!t->a_nodes[i]->name || strcmp(t->a_nodes[i]->name, "") == 0 || strcmp(t->a_nodes[i]->name, "\0") == 0) {
-                sprintf(t->a_nodes[i]->name, "Pastml_Node_%d", nodecount);
+            if (!t->nodes[i]->name || strcmp(t->nodes[i]->name, "") == 0 || strcmp(t->nodes[i]->name, "\0") == 0) {
+                sprintf(t->nodes[i]->name, "Pastml_Node_%d", nodecount);
             }
         }
     }
-    t->min_bl = DBL_MAX;
+    t->min_branch_len = DBL_MAX;
     maxpoly=0;
+
+    double branch_len_sum = 0.;
     for (i = 0; i < t->nb_nodes; i++) {
-        if(t->a_nodes[i]->nneigh == 1){ //tips
-          tip_branch_len_sum += t->a_nodes[i]->brlen;
+        if(t->nodes[i]->nb_neigh == 1){ //tips
+          tip_branch_len_sum += t->nodes[i]->branch_len;
         }
-        if (t->a_nodes[i]->nneigh - 1 > MAXPOLY) {
-            fprintf(stderr, "Fatal error: too many polytomy more than %d at the node %s.\n", MAXPOLY,
-                    t->a_nodes[i]->name);
-            return NULL;
+        if(maxpoly < t->nodes[i]->nb_neigh)  {
+            maxpoly = t->nodes[i]->nb_neigh;
         }
-        if(maxpoly < t->a_nodes[i]->nneigh) maxpoly = t->a_nodes[i]->nneigh;
-        if (t->min_bl > t->a_nodes[i]->brlen && t->a_nodes[i]->brlen != 0.0)
-            t->min_bl = t->a_nodes[i]->brlen;
+        if (t->min_branch_len > t->nodes[i]->branch_len && t->nodes[i]->branch_len != 0.0)
+            t->min_branch_len = t->nodes[i]->branch_len;
         if (i != 0) {
-            BL_sum += t->a_nodes[i]->brlen;
+            branch_len_sum += t->nodes[i]->branch_len;
         }
     }
-    t->tip_avg_branch_len = tip_branch_len_sum / (double) t->nb_taxa;
-    BL_avg = BL_sum / (double) t->nb_edges;
-    t->avg_branch_len = BL_avg;
+    t->avg_tip_branch_len = tip_branch_len_sum / (double) t->nb_taxa;
+    t->avg_branch_len = branch_len_sum / (double) t->nb_edges;
 
-    printf("\n*** BASIC STATISTICS ***\n\n", in_str);
-    printf("Number of taxa in the tree read: %d\n", t->nb_taxa);
+    printf("BASIC TREE STATISTICS:\n\n");
+    printf("\tNumber of taxa:\t%d\n", t->nb_taxa);
     if (t->nb_taxa > MAXNSP) {
         fprintf(stderr, "Fatal error: too many taxa: more than %d.\n", MAXNSP);
         return NULL;
     }
-    printf("Number of nodes in the tree read: %d\n", t->nb_nodes - t->nb_taxa);
-    printf("Number of edges in the tree read: %d\n", t->nb_edges);
-    printf("Average branch lengths of the tree: %lf\n", t->avg_branch_len);
-    printf("Minimum branch length in the tree: %lf\n", t->min_bl);
-    printf("The maximum number of multifurcations at a single node of the input tree: %d\n", maxpoly-1);
+    printf("\tNumber of nodes:\t%d\n", t->nb_nodes - t->nb_taxa);
+    printf("\tNumber of edges:\t%d\n", t->nb_edges);
+    printf("\tAvg branch length:\t%.4f\n", t->avg_branch_len);
+    printf("\tAvg tip branch length:\t%.4f\n", t->avg_tip_branch_len);
+    printf("\tMin branch length:\t%.4f\n", t->min_branch_len);
+    printf("\tMax number of children per node:\t%d\n", maxpoly-1);
+    printf("\n");
 
     return t;
 

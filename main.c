@@ -17,8 +17,7 @@ int main(int argc, char **argv) {
     opterr = 0;
 
     const char *help_string = "usage: PASTML -a ANNOTATION_FILE -t TREE_NWK [-m MODEL] "
-            "[-o OUTPUT_ANNOTATION_FILE] [-n OUTPUT_TREE_NWK] "
-            "[-s SCALING_ON_OFF] [-I KEEP_INTERNAL_NODE_IDS_ON_OFF] [-B THRETHOLD_OF_BRANCH_COLLAPSE]\n"
+            "[-o OUTPUT_ANNOTATION_FILE] [-n OUTPUT_TREE_NWK]\n"
             "\n"
             "required arguments:\n"
             "   -a ANNOTATION_FILE                  path to the annotation csv file containing tip states\n"

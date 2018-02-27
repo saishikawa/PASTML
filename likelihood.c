@@ -35,7 +35,7 @@ int calculate_node_probabilities(const Node *nd, int num_annotations, int first_
 
 double remove_upscaling_factors(double log_likelihood, int factors);
 
-int process_node(Node *nd, Node* root, int num_annotations, double *parameters) {
+int process_node(Node *nd, Node *root, int num_annotations, double *parameters) {
     /**
      * Calculates node probabilities.
      * parameters = [frequency_char_1, .., frequency_char_n, scaling_factor, epsilon].
@@ -48,10 +48,10 @@ int process_node(Node *nd, Node* root, int num_annotations, double *parameters) 
     }
 
     /* not a tip */
-    if (nd->nneigh != 1) {
+    if (nd->nb_neigh != 1) {
         int first_child_index = (nd == root) ? 0 : 1;
         /* recursively calculate probabilities for children */
-        for (int i = first_child_index; i < nd->nneigh; i++) {
+        for (int i = first_child_index; i < nd->nb_neigh; i++) {
             add_factors = process_node(nd->neigh[i], root, num_annotations, parameters);
             /* if all the probabilities are zero (shown by add_factors == -1),
              * there is no point to go any further
@@ -71,19 +71,11 @@ int process_node(Node *nd, Node* root, int num_annotations, double *parameters) 
         }
         factors += add_factors;
     }
-
-    if (nd == root) {
-        for (int i = 0; i < num_annotations; i++) {
-            /* multiply the probability by character frequency */
-            nd->bottom_up_likelihood[i] = nd->bottom_up_likelihood[i] * parameters[i];
-        }
-    }
-
     return factors;
 }
 
 
-double get_mu(const double* frequencies, int n) {
+double get_mu(const double *frequencies, int n) {
     /**
      * Calculates the mutation rate for F81 (and JC that is a simplification of it),
      * as \mu = 1 / (1 - sum_i \pi_i^2). This way the overall rate of mutation -\mu trace(\Pi Q) is 1.
@@ -96,15 +88,20 @@ double get_mu(const double* frequencies, int n) {
     return 1.0 / (1.0 - sum);
 }
 
-double calc_lik_bfgs(Node *root, int num_annotations, double *parameters) {
+double calculate_bottom_up_likelihood(Node *root, int num_annotations, double *parameters) {
     /**
      * Calculates tree log likelihood.
      * parameters = [frequency_char_1, .., frequency_char_n, scaling_factor, epsilon].
-     * mu = 1 / (1 - (frequency_1^2 + ... + frequency_n^2)).
      */
     double scaled_lk = 0;
 
     int factors = process_node(root, root, num_annotations, parameters);
+
+    for (int i = 0; i < num_annotations; i++) {
+        /* multiply the probability by character frequency */
+        root->bottom_up_likelihood[i] = root->bottom_up_likelihood[i] * parameters[i];
+    }
+
     /* if factors == -1, it means that the bottom_up_likelihood is 0 */
     if (factors != -1) {
         for (int i = 0; i < num_annotations; i++) {
@@ -134,7 +131,7 @@ double remove_upscaling_factors(double log_likelihood, int factors) {
 
 int calculate_node_probabilities(const Node *nd, int num_annotations, int first_child_index) {
     int factors = 0;
-    for (int ii = first_child_index; ii < nd->nneigh; ii++) {
+    for (int ii = first_child_index; ii < nd->nb_neigh; ii++) {
         Node *child = nd->neigh[ii];
         for (int i = 0; i < num_annotations; i++) {
             /* Calculate the probability of having a branch from the node to its child node,
@@ -170,38 +167,33 @@ int calculate_node_probabilities(const Node *nd, int num_annotations, int first_
 }
 
 void
-initialise_tip_probabilities(Node *nd, Node *root,
-                             char *const *tipnames, const int *states, int num_tips, int num_annotations) {
+initialise_tip_probabilities(Tree *s_tree, char *const *tipnames, const int *states, int num_tips,
+                             int num_annotations) {
     /**
      * Sets the state and likelihoods for a tip
      * by setting the likelihood of its real state (given in the metadata file) to 1
      * and the other to 0.
      */
-    int i, j;
+    Node *nd;
+    int j, i;
 
-    /* if a tip, process it */
-    if (nd->nneigh == 1) {
-        for (i = 0; i < num_tips; i++) {
-            if (strcmp(nd->name, tipnames[i]) == 0) {
-                nd->fixed_state = states[i];
-
-                // states[i] == num_annotations means that the annotation is missing
-                if (states[i] == num_annotations) {
-                    // and therefore any state is possible
-                    for (j = 0; j < num_annotations; j++) {
-                        nd->bottom_up_likelihood[j] = 1.0;
+    for (int k = 0; k < s_tree->nb_nodes; k++) {
+        nd = s_tree->nodes[k];
+        /* if a tip, process it */
+        if (nd->nb_neigh == 1) {
+            for (i = 0; i < num_tips; i++) {
+                if (strcmp(nd->name, tipnames[i]) == 0) {
+                    // states[i] == num_annotations means that the annotation is missing
+                    if (states[i] == num_annotations) {
+                        // and therefore any state is possible
+                        for (j = 0; j < num_annotations; j++) {
+                            nd->bottom_up_likelihood[j] = 1.0;
+                        }
+                    } else {
+                        nd->bottom_up_likelihood[states[i]] = 1.0;
                     }
-                } else {
-                    nd->bottom_up_likelihood[states[i]] = 1.0;
+                    break;
                 }
-                break;
-            }
-        }
-    /* if not a tip, call recursively on children */
-    } else {
-        if (nd->nneigh != 1) {
-            for (i = (nd == root) ? 0 : 1; i < nd->nneigh; i++) {
-                initialise_tip_probabilities(nd->neigh[i], root, tipnames, states, num_tips, num_annotations);
             }
         }
     }
@@ -215,21 +207,21 @@ double get_rescaled_branch_len(const Node *nd, double scaling_factor, double eps
      * bl = (bl + eps) / (avg_tip_len / (avg_tip_len + eps)).
      * This removes zero tip branches, while keeping the average branch length intact.
      */
-    double bl = nd->brlen;
-    if (nd->nneigh == 1) { /*a tip*/
-        bl = (bl + epsilon) * (s_tree->tip_avg_branch_len / (s_tree->tip_avg_branch_len + epsilon));
+    double bl = nd->branch_len;
+    if (nd->nb_neigh == 1) { /*a tip*/
+        bl = (bl + epsilon) * (s_tree->avg_tip_branch_len / (s_tree->avg_tip_branch_len + epsilon));
     }
     return bl * scaling_factor;
 }
 
-void rescale_branch_lengths(Node *nd, Node *root, double scaling_factor, double epsilon) {
+void rescale_branch_lengths(Tree *s_tree, double scaling_factor, double epsilon) {
     /**
      * Rescales all the branches in the tree.
      */
-    nd->brlen = get_rescaled_branch_len(nd, scaling_factor, epsilon);
-    /* call recursively on children */
-    for (int i = (nd == root) ? 0 : 1; i < nd->nneigh; i++) {
-        rescale_branch_lengths(nd->neigh[i], root, scaling_factor, epsilon);
+    Node *nd;
+    for (int i = 0; i < s_tree->nb_nodes; i++) {
+        nd = s_tree->nodes[i];
+        nd->branch_len = get_rescaled_branch_len(nd, scaling_factor, epsilon);
     }
 }
 

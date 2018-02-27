@@ -13,7 +13,6 @@
 
 #define MAXLNAME 255
 #define MAXNSP 50000
-#define MAXPOLY 10000
 #define MAXCHAR 50
 #define MAX_TREELENGTH    10000000 /* more or less 10MB for a tree file in NH format */
 #define MAX_NAMELENGTH        255    /* max length of a taxon name */
@@ -27,30 +26,28 @@
 typedef struct __Node {
     char *name;
     int id;            /* unique id attributed to the node */
-    int nneigh;    /* number of neighbours */
+    int nb_neigh;    /* number of neighbours */
     struct __Node **neigh;    /* neighbour nodes */
 
     double **pij;           /* probability of substitution from i to j */
     double *bottom_up_likelihood;       /* conditional likelihoods at the node*/
-    double *condlike_mar;
     double *marginal;
     int *best_states;
     double *top_down_likelihood;
-    int fixed_state; /* a state given to the node in the annotation file, that is not to be optimised */
-    double brlen;
+    double branch_len;
 } Node;
 
 
 typedef struct __Tree {
-    Node **a_nodes;            /* array of node pointers */
-    Node *node0;            /* the root or pseudo-root node */
+    Node **nodes;            /* array of node pointers */
+    Node *root;            /* the root or pseudo-root node */
     int nb_nodes;
     int nb_edges;
     int nb_taxa;
     int next_avail_node_id;
     double avg_branch_len;
-    double min_bl;
-  double tip_avg_branch_len;
+    double min_branch_len;
+    double avg_tip_branch_len;
 } Tree;
 
 #endif // PASTML_H

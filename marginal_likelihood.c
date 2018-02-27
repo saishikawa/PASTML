@@ -1,6 +1,6 @@
 #include "pastml.h"
 #include "scaling.h"
-#include "lik.h"
+#include "likelihood.h"
 
 
 int *calculate_top_down_likelihoods(const Node *nd, const Node *root, int num_annotations, double *frequencies) {
@@ -24,7 +24,7 @@ int *calculate_top_down_likelihoods(const Node *nd, const Node *root, int num_an
      * multiplying each of them by the probability of substitutions among N1 and T1 (y → tip_state(T1), in branch(T3)),
      * and N1 and N2 (y → x, in branch(N2)).
      *
-     * We calculate up-likelihoods for N3 in same manner.     *
+     * We calculate up-likelihoods for N3 in same manner.
      */
     Node *father = nd->neigh[0];
     Node *other_child;
@@ -35,7 +35,7 @@ int *calculate_top_down_likelihoods(const Node *nd, const Node *root, int num_an
     double mu = get_mu(frequencies, num_annotations);
     int child_id, j, i, k;
 
-    for (child_id = 0; child_id < father->nneigh; child_id++) {
+    for (child_id = 0; child_id < father->nb_neigh; child_id++) {
         if (father->neigh[child_id] == nd) {
             my_id = child_id;
         }
@@ -47,7 +47,7 @@ int *calculate_top_down_likelihoods(const Node *nd, const Node *root, int num_an
         if (father == root) {
             nd->top_down_likelihood[i] = 1.0;
             /* as our tree is rooted, there will be just one other child */
-            for (child_id = 0; child_id < father->nneigh; child_id++) {
+            for (child_id = 0; child_id < father->nb_neigh; child_id++) {
                 if (child_id != my_id) {
                     other_child = father->neigh[child_id];
                     /* we ignore the root and consider the tree as unrooted,
@@ -57,7 +57,7 @@ int *calculate_top_down_likelihoods(const Node *nd, const Node *root, int num_an
                     double prob_up_i = 0.0;
                     for (j = 0; j < num_annotations; j++) {
                         prob_up_i += other_child->bottom_up_likelihood[j]
-                                     * get_pij(frequencies, mu, nd->brlen + other_child->brlen, j, i);
+                                     * get_pij(frequencies, mu, nd->branch_len + other_child->branch_len, j, i);
                     }
                     nd->top_down_likelihood[i] *= prob_up_i;
                 }
@@ -72,9 +72,9 @@ int *calculate_top_down_likelihoods(const Node *nd, const Node *root, int num_an
             for (j = 0; j < num_annotations; j++) {
                 prob_father[j] = nd->pij[j][i] * father->top_down_likelihood[j];
                 father_scaling_factors[j] = 0;
-                // as our father is not root, its first nneigh is our grandfather,
+                // as our father is not root, its first nb_neigh is our grandfather,
                 // and we should iterate over children staring from 1
-                for (child_id = 1; child_id < father->nneigh; child_id++) {
+                for (child_id = 1; child_id < father->nb_neigh; child_id++) {
                     if (child_id != my_id) {
                         other_child = father->neigh[child_id];
                         double other_child_prob = 0.0;
@@ -131,15 +131,8 @@ void calculate_marginal_probabilities(Node *nd, Node *root, int num_annotations,
     int i;
     int curr_scaler_pow, max_factor;
 
-    /* a tip, therefore nothing to do */
-    if (nd->nneigh == 1) {
-        return;
-    }
-
     if (nd == root) {
-        memcpy((void *) nd->top_down_likelihood, (void *) frequency, num_annotations * sizeof(double));
-        memcpy((void *) nd->condlike_mar, (void *) nd->bottom_up_likelihood, num_annotations * sizeof(double));
-        normalize(nd->condlike_mar, num_annotations);
+        memcpy((void *) nd->marginal, (void *) nd->bottom_up_likelihood, num_annotations * sizeof(double));
     } else {
         int *tmp_factor = calculate_top_down_likelihoods(nd, root, num_annotations, frequency);
         max_factor = get_max(tmp_factor, num_annotations);
@@ -153,16 +146,14 @@ void calculate_marginal_probabilities(Node *nd, Node *root, int num_annotations,
 
         // Finally, the marginal likelihood of a certain state can be computed
         // by multiplying its up-, down-likelihoods, and its frequency.
-
         for (i = 0; i < num_annotations; i++) {
-            nd->condlike_mar[i] = nd->top_down_likelihood[i] * nd->bottom_up_likelihood[i] * frequency[i];
+            nd->marginal[i] = nd->top_down_likelihood[i] * nd->bottom_up_likelihood[i] * frequency[i];
         }
-        upscale_node_probs(nd->condlike_mar, num_annotations);
-        normalize(nd->condlike_mar, num_annotations);
     }
+    normalize(nd->marginal, num_annotations);
 
     // recursively calculate marginal probabilities for the children
-    for (i = (nd == root) ? 0 : 1; i < nd->nneigh; i++) {
+    for (i = (nd == root) ? 0 : 1; i < nd->nb_neigh; i++) {
         calculate_marginal_probabilities(nd->neigh[i], root, num_annotations, frequency);
     }
 }

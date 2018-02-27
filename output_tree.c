@@ -1,10 +1,10 @@
 #include <errno.h>
 #include "pastml.h"
-#include "lik.h"
+#include "likelihood.h"
 
 int dir_a_to_b(Node *a, Node *b) {
     /* this returns the direction from a to b when a and b are two neighbours, otherwise return -1 */
-    int i, n = a->nneigh;
+    int i, n = a->nb_neigh;
     for (i = 0; i < n; i++) if (a->neigh[i] == b) break;
     if (i < n) return i;
     else {
@@ -13,7 +13,7 @@ int dir_a_to_b(Node *a, Node *b) {
 } /* end dir_a_to_b */
 
 int write_subtree_to_stream(Node *node, Node *node_from, FILE *stream, double epsilon, double scaling) {
-    int i, direction_to_exclude, n = node->nneigh;
+    int i, direction_to_exclude, n = node->nb_neigh;
     if (node_from == NULL) {
         return EXIT_SUCCESS;
     }
@@ -41,7 +41,7 @@ int write_subtree_to_stream(Node *node, Node *node_from, FILE *stream, double ep
         putc(')', stream);
     }
     // write node's name and dist to father
-    fprintf(stream, "%s:%f", (node->name ? node->name : ""), node->brlen);
+    fprintf(stream, "%s:%f", (node->name ? node->name : ""), node->branch_len);
     return EXIT_SUCCESS;
 } /* end write_subtree_to_stream */
 
@@ -55,7 +55,7 @@ int write_nh_tree(Node *root, char *output_filepath, double epsilon, double scal
         return ENOENT;
     }
     /* writing the tree from the current position in the file */
-    int i, n = root->nneigh;
+    int i, n = root->nb_neigh;
     putc('(', output_file);
     for (i = 0; i < n - 1; i++) {
         if (EXIT_SUCCESS != write_subtree_to_stream(root->neigh[i], root, output_file, epsilon, scaling)) {

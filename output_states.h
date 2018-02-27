@@ -7,6 +7,8 @@
 
 #include "pastml.h"
 
+void output_marginal_anc_PP(Node *nd, int nb, int nbanno, char **character, FILE *outfile);
+
 void output_state_anc_PP(Node *nd, int nb, int nbanno, char **character, FILE *outfile);
 
 void output_state_tip_PP(Node *nd, int nb, int nbanno, char **character, FILE *outfile);

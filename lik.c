@@ -110,6 +110,7 @@ void calc_lik_bfgs(Node *nd, char **tipnames, int *states, int nb, int nbanno, d
         }
         for (i = 0; i < nbanno; i++) {
             nd->mar_prob[i] = nd->condlike[i] / sum;
+            nd->condlike_mar[i] = nd->condlike[i] / sum;
         }
         global_like = scaled_lk;
         global_factor = factors;

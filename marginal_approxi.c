@@ -79,7 +79,7 @@ void order_marginal(Node *nd, int nb, int nbanno) {
     } else if (nd == root) {
         pupko = 1;
         for (j = 0; j < nbanno; j++) {
-            tmpmarginal[j] = root->mar_prob[j];
+            tmpmarginal[j] = nd->mar_prob[j];
             if (tmpmarginal[j] == 0.0) {
                 zerostate[zero_count] = j;
                 zero_count++;

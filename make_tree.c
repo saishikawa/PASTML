@@ -14,7 +14,7 @@ int min_int(int a, int b) {
 
 
 /* collapsing a branch */
-void collapse_branch(Edge *branch, Tree *tree, int nbanno) {
+void collapse_branch(Edge *branch, Tree *tree, int nbanno, int collapse_count) {
     /* this function collapses the said branch and creates a higher-order multifurcation (n1 + n2 - 2 neighbours for the resulting node).
        We also have to remove the extra node from tree->a_nodes and the extra edge from t->a_edges.
        to be done:
@@ -42,7 +42,8 @@ void collapse_branch(Edge *branch, Tree *tree, int nbanno) {
     new->neigh = malloc(degree * sizeof(Node *));
     new->br = malloc(degree * sizeof(Edge *));
     new->id = node1->id; /* because we are going to store the node at this index in tree->a_nodes */
-    new->name = strdup("collapsed");
+    new->name = (char *) malloc((MAX_NAMELENGTH) * sizeof(char));
+    sprintf(new->name, "CollapsedNode%d", collapse_count);
     new->comment = NULL;
     new->depth = min_int(node1->depth, node2->depth);
 
@@ -586,25 +587,46 @@ Tree *parse_nh_string(char *in_str, int nbanno, char *keep_ID, int input_length)
     /* SANITY CHECKS AFTER READING THE TREE */
 
     /* Collapse branches */
-    if(input_length > 0) collapse_length = 1.0 / (double) input_length;
-    collapsed_internal = 0;
-    do {
-      collapsed_one = 0; /* flag that will be set to one as soon as we collapse one branch */
-      uncollapsed_terminal = 0;
-      for(i=0; i < t->nb_edges; i++) {
-	if (t->a_edges[i]->brlen <= collapse_length) {
-	  if (t->a_edges[i]->right->nneigh == 1) { /* don't collapse terminal edges */
-	    uncollapsed_terminal++;
-	  }else{
-	    collapse_branch(t->a_edges[i], t, nbanno);
-	    collapsed_one = 1;
-	    collapsed_internal++;
-	    break; /* breaking the for so that we start again from the beginning because tree->a_edges has changed */
+    if(input_length > 0) {
+      collapse_length = 1.0 / (double) input_length;
+      collapsed_internal = 0;
+      do {
+        collapsed_one = 0; /* flag that will be set to one as soon as we collapse one branch */
+        uncollapsed_terminal = 0;
+        for(i=0; i < t->nb_edges; i++) {
+	  if (t->a_edges[i]->brlen <= collapse_length) {
+	    if (t->a_edges[i]->right->nneigh == 1) { /* don't collapse terminal edges */
+	      uncollapsed_terminal++;
+	    }else{
+              collapsed_internal++;
+	      collapse_branch(t->a_edges[i], t, nbanno, collapsed_internal);
+	      collapsed_one = 1;
+	      break; /* breaking the for so that we start again from the beginning because tree->a_edges has changed */
+	    }
 	  }
-	}
-      } /* end for */
-    } while (collapsed_one);
-    if(collapsed_internal > 0) printf("\n*** Collapsed %d branches those have shorter branch length than %.1e\n",collapsed_internal, collapse_length);
+        } /* end for */
+      } while (collapsed_one);
+      if(collapsed_internal > 0) printf("\n*** Collapsed %d internal branches of length < %.1e\n",collapsed_internal, collapse_length);
+    } else {
+      collapsed_internal = 0;
+      do {
+        collapsed_one = 0; /* flag that will be set to one as soon as we collapse one branch */
+        uncollapsed_terminal = 0;
+        for(i=0; i < t->nb_edges; i++) {
+	  if (t->a_edges[i]->brlen <= 0.0) {
+	    if (t->a_edges[i]->right->nneigh == 1) { /* don't collapse terminal edges */
+	      uncollapsed_terminal++;
+	    }else{
+              collapsed_internal++;
+	      collapse_branch(t->a_edges[i], t, nbanno, collapsed_internal);
+	      collapsed_one = 1;
+	      break; /* breaking the for so that we start again from the beginning because tree->a_edges has changed */
+	    }
+	  }
+        } /* end for */
+      } while (collapsed_one);
+      if(collapsed_internal > 0) printf("\n*** Collapsed %d internal branches of 0.0 length\n",collapsed_internal, collapse_length);
+    }
     
 
     if (strcmp(keep_ID, "F") == 0) {

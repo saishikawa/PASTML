@@ -98,16 +98,16 @@ void free_tree(Tree *tree, int num_anno) {
 }
 
 int runpastml(char *annotation_name, char* tree_name, char *out_annotation_name, char *out_tree_name,
-              char *model, double *frequency, char* scaling, char* keep_ID, int input_length) {
+              char *model, double *frequency, char* scaling, char* keep_ID, int input_length, char* marginal_out) {
     int i, line = 0, check, sum_freq = 0, count_miss;
     int *states, *count;
     double sum = 0., mu, lnl = 0., scale, maxlnl = 0., nano, sec;
     double *parameter;
     char **annotations, **character, **tips, *c_tree;
     int num_anno = 0, num_tips = 0;
-    FILE *treefile, *annotationfile;
+    FILE *treefile, *annotationfile, *fpanno;
     struct timespec samp_ini, samp_fin;
-    char anno_line[MAXLNAME];
+    char anno_line[MAXLNAME], fname[256];
     int *iteration, ite;
     double *optlnl, scaleup;
 
@@ -311,6 +311,22 @@ int runpastml(char *annotation_name, char* tree_name, char *out_annotation_name,
     //Marginal likelihood calculation
     printf("\n*** Calculating Marginal Likelihoods ***\n");
     down_like_marginal(root, num_tips, num_anno, mu, scale, parameter);
+
+    if(strcmp(marginal_out, "T") == 0) {
+      sprintf(fname, "%s.marginalPP.csv", annotation_name);
+      fpanno = fopen(fname, "w");
+      if (!fpanno) {
+        fprintf(stderr, "Output annotation file %s is impossible to access.", fname);
+        fprintf(stderr, "Value of errno: %d\n", errno);
+        fprintf(stderr, "Error opening the file: %s\n", strerror(errno));
+        return ENOENT;
+      }
+      output_marginal_anc_PP(root, num_tips, num_anno, character, fpanno);
+      output_state_tip_PP(root, num_tips, num_anno, character, fpanno);
+      fclose(fpanno);
+      printf("All posterior probabilities are written to %s in csv format\n",
+           fname);
+    }
 
     printf("\n*** Predicting likely ancestral statesby the Marginal Approximation method ***\n\n");
     int res_code = make_samples(tips, states, num_tips, num_anno, character, parameter, out_annotation_name, out_tree_name);

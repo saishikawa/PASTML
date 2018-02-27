@@ -1,6 +1,6 @@
 PASTML infers ancestral states on a phylogenetical tree with annotated tips.
 
-usage: PASTML -a ANNOTATION_FILE -t TREE_NWK [-m MODEL] [-o OUTPUT_ANNOTATION_FILE] [-n OUTPUT_TREE_NWK] [-s SCALING_ON_OFF] [-I KEEP_INTERNAL_NODE_IDS_ON_OFF] [-L SEQUENCE_LENGTH]
+usage: PASTML -a ANNOTATION_FILE -t TREE_NWK [-m MODEL] [-o OUTPUT_ANNOTATION_FILE] [-n OUTPUT_TREE_NWK] [-s SCALING_ON_OFF] [-I KEEP_INTERNAL_NODE_IDS_ON_OFF] [-L SEQUENCE_LENGTH] [-P POSTERIORS]
 
 required arguments:
    -a ANNOTATION_FILE                  path to the annotation csv file containing tip states
@@ -13,4 +13,5 @@ optional arguments:
    -s SCALING_ON_OFF                   branch length scaling on (T, by default) or off (F)
    -I KEEP_INTERNAL_NODE_IDS_ON_OFF    keep internal node ids from the input tree: T (true) or F (false)
    -L SEQUENCE_LENGTH                  the length of the molecular sequence from which the input tree was inferred
+   -P POSTERIORS                       output the posterior probabilities of all ancestral states before marginal approximation: T (true) or F (false, by default)
 

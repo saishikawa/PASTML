@@ -11,7 +11,7 @@ int get_scaling_pow(double value) {
     return (int) (POW * LOG2 - log(value)) / LOG2;
 }
 
-int upscale_node_probs(double* array, int n) {
+int upscale_node_probs(double* array, size_t n) {
     /**
      * The rescaling is done to avoid underflow problems:
      * if a certain node probability is too small, we multiply this node probabilities by a scaling factor,

@@ -1,9 +1,7 @@
 #include "pastml.h"
 #include "scaling.h"
 
-extern Tree *s_tree;
-
-int get_max(int *array, int n) {
+int get_max(const int *array, size_t n) {
     /**
      * Finds the maximum in an array of positive integers.
      */
@@ -16,7 +14,7 @@ int get_max(int *array, int n) {
     return max_value;
 }
 
-void normalize(double *array, int n) {
+void normalize(double *array, size_t n) {
     /**
      * Divides array members by their sum.
      */
@@ -29,53 +27,8 @@ void normalize(double *array, int n) {
     }
 }
 
-void set_p_ij(const Node *nd, int num_frequencies, const double *parameters);
 
-int calculate_node_probabilities(const Node *nd, int num_annotations, int first_child_index);
-
-double remove_upscaling_factors(double log_likelihood, int factors);
-
-int process_node(Node *nd, Node *root, int num_annotations, double *parameters) {
-    /**
-     * Calculates node probabilities.
-     * parameters = [frequency_char_1, .., frequency_char_n, scaling_factor, epsilon].
-     */
-    int factors = 0, add_factors;
-
-    /* set probabilities of substitution */
-    if (nd != root) {
-        set_p_ij(nd, num_annotations, parameters);
-    }
-
-    /* not a tip */
-    if (nd->nb_neigh != 1) {
-        int first_child_index = (nd == root) ? 0 : 1;
-        /* recursively calculate probabilities for children */
-        for (int i = first_child_index; i < nd->nb_neigh; i++) {
-            add_factors = process_node(nd->neigh[i], root, num_annotations, parameters);
-            /* if all the probabilities are zero (shown by add_factors == -1),
-             * there is no point to go any further
-             */
-            if (add_factors == -1) {
-                return -1;
-            }
-            factors += add_factors;
-        }
-        /* calculate own probabilities */
-        add_factors = calculate_node_probabilities(nd, num_annotations, first_child_index);
-        /* if all the probabilities are zero (shown by add_factors == -1),
-         * there is no point to go any further
-         */
-        if (add_factors == -1) {
-            return -1;
-        }
-        factors += add_factors;
-    }
-    return factors;
-}
-
-
-double get_mu(const double *frequencies, int n) {
+double get_mu(const double *frequencies, size_t n) {
     /**
      * Calculates the mutation rate for F81 (and JC that is a simplification of it),
      * as \mu = 1 / (1 - sum_i \pi_i^2). This way the overall rate of mutation -\mu trace(\Pi Q) is 1.
@@ -88,48 +41,65 @@ double get_mu(const double *frequencies, int n) {
     return 1.0 / (1.0 - sum);
 }
 
-double calculate_bottom_up_likelihood(Node *root, int num_annotations, double *parameters) {
+double get_pij(const double *frequencies, double mu, double t, int i, int j) {
     /**
-     * Calculates tree log likelihood.
-     * parameters = [frequency_char_1, .., frequency_char_n, scaling_factor, epsilon].
+     * Calculate the probability of substitution i->j over time t, given the mutation rate mu:
+     *
+     * For K81 (and JC which is a simpler version of it)
+     * Pxy(t) = \pi_y (1 - exp(-mu t)) + exp(-mu t), if x ==y, \pi_y (1 - exp(-mu t)), otherwise
+     * [Gascuel "Mathematics of Evolution and Phylogeny" 2005].
      */
-    double scaled_lk = 0;
+    double exp_mu_t = exp(-mu * t);
 
-    int factors = process_node(root, root, num_annotations, parameters);
-
-    for (int i = 0; i < num_annotations; i++) {
-        /* multiply the probability by character frequency */
-        root->bottom_up_likelihood[i] = root->bottom_up_likelihood[i] * parameters[i];
+    double p_ij = frequencies[j] * (1.0 - exp_mu_t);
+    if (i == j) {
+        p_ij += exp_mu_t;
     }
+    return p_ij;
+}
 
-    /* if factors == -1, it means that the bottom_up_likelihood is 0 */
-    if (factors != -1) {
-        for (int i = 0; i < num_annotations; i++) {
-            scaled_lk += root->bottom_up_likelihood[i];
+double get_rescaled_branch_len(const Node *nd, double avg_br_len, double scaling_factor, double epsilon) {
+    /**
+     * Returns the node branch length multiplied by the scaling factor.
+     *
+     * For tips, before multiplying, the branch length is adjusted with epsilon:
+     * bl = (bl + eps) / (avg_tip_len / (avg_tip_len + eps)).
+     * This removes zero tip branches, while keeping the average branch length intact.
+     */
+    double bl = nd->branch_len;
+    if (nd->nb_neigh == 1) { /*a tip*/
+        bl = (bl + epsilon) * (avg_br_len / (avg_br_len + epsilon));
+    }
+    return bl * scaling_factor;
+}
+
+void set_p_ij(const Node *nd, double avg_br_len, size_t num_frequencies, const double *parameters) {
+    /**
+     * Sets node probabilities of substitution: p[i][j]:
+     *
+     * For K81 (and JC which is a simpler version of it)
+     * Pxy(t) = \pi_y (1 - exp(-mu t)) + exp(-mu t), if x ==y, \pi_y (1 - exp(-mu t)), otherwise
+     * [Gascuel "Mathematics of Evolution and Phylogeny" 2005]
+     *
+     * parameters = [frequency_1, .., frequency_n, scaling_factor, epsilon]
+     */
+    int i, j;
+
+    double scaling_factor = parameters[num_frequencies];
+    double epsilon = parameters[num_frequencies + 1];
+    double t = get_rescaled_branch_len(nd, avg_br_len, scaling_factor, epsilon);
+    // TODO: do we need to recalculate mu each time
+    // or we fix it in the beginning and play with the scaling factor instead?
+    double mu = get_mu(parameters, num_frequencies);
+
+    for (i = 0; i < num_frequencies; i++) {
+        for (j = 0; j < num_frequencies; j++) {
+            nd->pij[i][j] = get_pij(parameters, mu, t, i, j);
         }
     }
-    return remove_upscaling_factors(log(scaled_lk), factors);
 }
 
-
-double remove_upscaling_factors(double log_likelihood, int factors) {
-    /**
-     * While calculating the node probabilities, the upscaling was done to avoid underflow problems:
-     * if a certain node probability was too small, we multiplied this node probabilities by a scaling factor,
-     * and kept the factor in mind to remove it from the final likelihood.
-     *
-     * Now its time to remove all the factors from the final likelihood.
-     */
-    int piecewise_scaler_pow;
-    do {
-        piecewise_scaler_pow = MIN(factors, 63);
-        log_likelihood -= LOG2 * piecewise_scaler_pow;
-        factors -= piecewise_scaler_pow;
-    } while (factors != 0);
-    return log_likelihood;
-}
-
-int calculate_node_probabilities(const Node *nd, int num_annotations, int first_child_index) {
+int calculate_node_probabilities(const Node *nd, size_t num_annotations, int first_child_index) {
     int factors = 0;
     for (int ii = first_child_index; ii < nd->nb_neigh; ii++) {
         Node *child = nd->neigh[ii];
@@ -166,9 +136,90 @@ int calculate_node_probabilities(const Node *nd, int num_annotations, int first_
     return factors;
 }
 
+int process_node(Node *nd, Tree *s_tree, size_t num_annotations, double *parameters) {
+    /**
+     * Calculates node probabilities.
+     * parameters = [frequency_char_1, .., frequency_char_n, scaling_factor, epsilon].
+     */
+    int factors = 0, add_factors;
+
+    /* set probabilities of substitution */
+    if (nd != s_tree->root) {
+        set_p_ij(nd, s_tree->avg_tip_branch_len, num_annotations, parameters);
+    }
+
+    /* not a tip */
+    if (nd->nb_neigh != 1) {
+        int first_child_index = (nd == s_tree->root) ? 0 : 1;
+        /* recursively calculate probabilities for children */
+        for (int i = first_child_index; i < nd->nb_neigh; i++) {
+            add_factors = process_node(nd->neigh[i], s_tree, num_annotations, parameters);
+            /* if all the probabilities are zero (shown by add_factors == -1),
+             * there is no point to go any further
+             */
+            if (add_factors == -1) {
+                return -1;
+            }
+            factors += add_factors;
+        }
+        /* calculate own probabilities */
+        add_factors = calculate_node_probabilities(nd, num_annotations, first_child_index);
+        /* if all the probabilities are zero (shown by add_factors == -1),
+         * there is no point to go any further
+         */
+        if (add_factors == -1) {
+            return -1;
+        }
+        factors += add_factors;
+    }
+    return factors;
+}
+
+
+double remove_upscaling_factors(double log_likelihood, int factors) {
+    /**
+     * While calculating the node probabilities, the upscaling was done to avoid underflow problems:
+     * if a certain node probability was too small, we multiplied this node probabilities by a scaling factor,
+     * and kept the factor in mind to remove it from the final likelihood.
+     *
+     * Now its time to remove all the factors from the final likelihood.
+     */
+    int piecewise_scaler_pow;
+    do {
+        piecewise_scaler_pow = MIN(factors, 63);
+        log_likelihood -= LOG2 * piecewise_scaler_pow;
+        factors -= piecewise_scaler_pow;
+    } while (factors != 0);
+    return log_likelihood;
+}
+
+double calculate_bottom_up_likelihood(Tree *s_tree, size_t num_annotations, double *parameters) {
+    /**
+     * Calculates tree log likelihood.
+     * parameters = [frequency_char_1, .., frequency_char_n, scaling_factor, epsilon].
+     */
+    double scaled_lk = 0;
+
+    int factors = process_node(s_tree->root, s_tree, num_annotations, parameters);
+
+    for (int i = 0; i < num_annotations; i++) {
+        /* multiply the probability by character frequency */
+        s_tree->root->bottom_up_likelihood[i] = s_tree->root->bottom_up_likelihood[i] * parameters[i];
+    }
+
+    /* if factors == -1, it means that the bottom_up_likelihood is 0 */
+    if (factors != -1) {
+        for (int i = 0; i < num_annotations; i++) {
+            scaled_lk += s_tree->root->bottom_up_likelihood[i];
+        }
+    }
+    return remove_upscaling_factors(log(scaled_lk), factors);
+}
+
+
 void
-initialise_tip_probabilities(Tree *s_tree, char *const *tipnames, const int *states, int num_tips,
-                             int num_annotations) {
+initialise_tip_probabilities(Tree *s_tree, char *const *tip_names, const int *states, size_t num_tips,
+                             size_t num_annotations) {
     /**
      * Sets the state and likelihoods for a tip
      * by setting the likelihood of its real state (given in the metadata file) to 1
@@ -182,7 +233,7 @@ initialise_tip_probabilities(Tree *s_tree, char *const *tipnames, const int *sta
         /* if a tip, process it */
         if (nd->nb_neigh == 1) {
             for (i = 0; i < num_tips; i++) {
-                if (strcmp(nd->name, tipnames[i]) == 0) {
+                if (strcmp(nd->name, tip_names[i]) == 0) {
                     // states[i] == num_annotations means that the annotation is missing
                     if (states[i] == num_annotations) {
                         // and therefore any state is possible
@@ -199,21 +250,6 @@ initialise_tip_probabilities(Tree *s_tree, char *const *tipnames, const int *sta
     }
 }
 
-double get_rescaled_branch_len(const Node *nd, double scaling_factor, double epsilon) {
-    /**
-     * Returns the node branch length multiplied by the scaling factor.
-     *
-     * For tips, before multiplying, the branch length is adjusted with epsilon:
-     * bl = (bl + eps) / (avg_tip_len / (avg_tip_len + eps)).
-     * This removes zero tip branches, while keeping the average branch length intact.
-     */
-    double bl = nd->branch_len;
-    if (nd->nb_neigh == 1) { /*a tip*/
-        bl = (bl + epsilon) * (s_tree->avg_tip_branch_len / (s_tree->avg_tip_branch_len + epsilon));
-    }
-    return bl * scaling_factor;
-}
-
 void rescale_branch_lengths(Tree *s_tree, double scaling_factor, double epsilon) {
     /**
      * Rescales all the branches in the tree.
@@ -221,51 +257,8 @@ void rescale_branch_lengths(Tree *s_tree, double scaling_factor, double epsilon)
     Node *nd;
     for (int i = 0; i < s_tree->nb_nodes; i++) {
         nd = s_tree->nodes[i];
-        nd->branch_len = get_rescaled_branch_len(nd, scaling_factor, epsilon);
+        nd->branch_len = get_rescaled_branch_len(nd, s_tree->avg_tip_branch_len, scaling_factor, epsilon);
     }
 }
 
-
-double get_pij(const double *frequencies, double mu, double t, int i, int j) {
-    /**
-     * Calculate the probability of substitution i->j over time t, given the mutation rate mu:
-     *
-     * For K81 (and JC which is a simpler version of it)
-     * Pxy(t) = \pi_y (1 - exp(-mu t)) + exp(-mu t), if x ==y, \pi_y (1 - exp(-mu t)), otherwise
-     * [Gascuel "Mathematics of Evolution and Phylogeny" 2005].
-     */
-    double exp_mu_t = exp(-mu * t);
-
-    double p_ij = frequencies[j] * (1.0 - exp_mu_t);
-    if (i == j) {
-        p_ij += exp_mu_t;
-    }
-    return p_ij;
-}
-
-void set_p_ij(const Node *nd, int num_frequencies, const double *parameters) {
-    /**
-     * Sets node probabilities of substitution: p[i][j]:
-     *
-     * For K81 (and JC which is a simpler version of it)
-     * Pxy(t) = \pi_y (1 - exp(-mu t)) + exp(-mu t), if x ==y, \pi_y (1 - exp(-mu t)), otherwise
-     * [Gascuel "Mathematics of Evolution and Phylogeny" 2005]
-     *
-     * parameters = [frequency_1, .., frequency_n, scaling_factor, epsilon]
-     */
-    int i, j;
-
-    double scaling_factor = parameters[num_frequencies];
-    double epsilon = parameters[num_frequencies + 1];
-    double t = get_rescaled_branch_len(nd, scaling_factor, epsilon);
-    // TODO: do we need to recalculate mu each time
-    // or we fix it in the beginning and play with the scaling factor instead?
-    double mu = get_mu(parameters, num_frequencies);
-
-    for (i = 0; i < num_frequencies; i++) {
-        for (j = 0; j < num_frequencies; j++) {
-            nd->pij[i][j] = get_pij(parameters, mu, t, i, j);
-        }
-    }
-}
 

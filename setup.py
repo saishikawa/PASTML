@@ -2,7 +2,6 @@ from distutils.core import setup, Extension
 import subprocess
 import sys
 
-
 # Look for GSL
 try:
     proc = subprocess.Popen(['gsl-config', '--version'], stdout=subprocess.PIPE)

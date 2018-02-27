@@ -3,7 +3,7 @@
 #include "likelihood.h"
 
 
-int *calculate_top_down_likelihoods(const Node *nd, const Node *root, int num_annotations, double *frequencies) {
+int *calculate_top_down_likelihoods(const Node *nd, const Node *root, size_t num_annotations, double *frequencies) {
     /**
      * The up-likelihood of a given node is computed based on the information
      * coming from all the tips that are not descending from the studied node
@@ -104,7 +104,7 @@ int *calculate_top_down_likelihoods(const Node *nd, const Node *root, int num_an
     return scaling_factors;
 }
 
-void calculate_marginal_probabilities(Node *nd, Node *root, int num_annotations, double *frequency) {
+void calculate_node_marginal_probabilities(Node *nd, Node *root, size_t num_annotations, double *frequency) {
     /**
      * The up-likelihood of a given node is computed based on the information
      * coming from all the tips that are not descending from the studied node
@@ -154,8 +154,15 @@ void calculate_marginal_probabilities(Node *nd, Node *root, int num_annotations,
 
     // recursively calculate marginal probabilities for the children
     for (i = (nd == root) ? 0 : 1; i < nd->nb_neigh; i++) {
-        calculate_marginal_probabilities(nd->neigh[i], root, num_annotations, frequency);
+        calculate_node_marginal_probabilities(nd->neigh[i], root, num_annotations, frequency);
     }
+}
+
+void calculate_marginal_probabilities(Tree *s_tree, size_t num_annotations, double *frequency) {
+    /**
+     * Calculates marginal probabilities of tree nodes.
+     */
+    calculate_node_marginal_probabilities(s_tree->root, s_tree->root, num_annotations, frequency);
 }
 
 

@@ -3,10 +3,10 @@
 #include "pastml.h"
 
 
-int output_state_ancestral_states(Tree *tree, int num_annotations, char **character, char *output_filepath) {
-    FILE* outfile = fopen(output_filepath, "w");
+int output_state_ancestral_states(Tree *tree, size_t num_annotations, char **character, char *output_file_path) {
+    FILE* outfile = fopen(output_file_path, "w");
     if (!outfile) {
-        fprintf(stderr, "Output annotation file %s is impossible to access.", output_filepath);
+        fprintf(stderr, "Output annotation file %s is impossible to access.", output_file_path);
         fprintf(stderr, "Value of errno: %d\n", errno);
         fprintf(stderr, "Error opening the file: %s\n", strerror(errno));
         return ENOENT;

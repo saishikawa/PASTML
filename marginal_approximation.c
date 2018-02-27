@@ -4,7 +4,7 @@
 
 
 void
-order_marginal(Tree* tree, int num_annotations)
+order_marginal(Tree* tree, size_t num_annotations)
 {
     /**
      * Recursively sets node's marginal field to marginal state probabilities in decreasing order,
@@ -38,16 +38,16 @@ order_marginal(Tree* tree, int num_annotations)
     free(indices);
 }
 
-void calc_correct(Tree *tree, int n) {
+void calc_correct(Tree *tree, size_t n) {
     /**
      * Chooses an optimal number of non-zero probabilities to keep, and sets all of them to be equal.
      */
 
-    int i, j, best_num_states;
+    size_t i, j, best_num_states;
     double smallest_correction, correction_i, equal_p_i;
     Node* nd;
 
-    for (int k = 0; k < tree->nb_nodes; k++) {
+    for (size_t k = 0; k < tree->nb_nodes; k++) {
         nd = tree->nodes[k];
         smallest_correction = INFINITY;
         best_num_states = n;
@@ -77,7 +77,7 @@ void calc_correct(Tree *tree, int n) {
     }
 }
 
-void choose_likely_states(Tree *tree, int n) {
+void choose_likely_states(Tree *tree, size_t n) {
     /**
      * Chooses an optimal number of non-zero probabilities to keep, and sets all of them to be equal.
      */

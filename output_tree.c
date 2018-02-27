@@ -1,6 +1,5 @@
 #include <errno.h>
 #include "pastml.h"
-#include "likelihood.h"
 
 int dir_a_to_b(Node *a, Node *b) {
     /* this returns the direction from a to b when a and b are two neighbours, otherwise return -1 */
@@ -45,7 +44,7 @@ int write_subtree_to_stream(Node *node, Node *node_from, FILE *stream, double ep
     return EXIT_SUCCESS;
 } /* end write_subtree_to_stream */
 
-int write_nh_tree(Node *root, char *output_filepath, double epsilon, double scaling) {
+int write_nh_tree(Tree *s_tree, char *output_filepath, double epsilon, double scaling) {
 
     FILE* output_file = fopen(output_filepath, "w");
     if (!output_file) {
@@ -55,21 +54,22 @@ int write_nh_tree(Node *root, char *output_filepath, double epsilon, double scal
         return ENOENT;
     }
     /* writing the tree from the current position in the file */
-    int i, n = root->nb_neigh;
+    int i, n = s_tree->root->nb_neigh;
     putc('(', output_file);
     for (i = 0; i < n - 1; i++) {
-        if (EXIT_SUCCESS != write_subtree_to_stream(root->neigh[i], root, output_file, epsilon, scaling)) {
+        if (EXIT_SUCCESS != write_subtree_to_stream(s_tree->root->neigh[i], s_tree->root,
+                                                    output_file, epsilon, scaling)) {
             return EXIT_FAILURE;
         } /* a son */
         putc(',', output_file);
     }
-    if (EXIT_SUCCESS != write_subtree_to_stream(root->neigh[i], root, output_file, epsilon, scaling)) {
+    if (EXIT_SUCCESS != write_subtree_to_stream(s_tree->root->neigh[i], s_tree->root, output_file, epsilon, scaling)) {
         return EXIT_FAILURE;
     } /* last son */
     putc(')', output_file);
 
-    if (root->name) {
-        fprintf(output_file, "%s", root->name);
+    if (s_tree->root->name) {
+        fprintf(output_file, "%s", s_tree->root->name);
     }
     /* terminate with a semicol AND and end of line */
     putc(';', output_file);

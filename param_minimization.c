@@ -2,9 +2,9 @@
 #include <gsl/gsl_multimin.h>
 #include "likelihood.h"
 
-#define STEP_EPSILON 1.0e-6
+#define GRADIENT_STEP 1.0e-7
 
-double softmax(double* xs, int n) {
+double softmax(double* xs, size_t n) {
     /**
      * transforms an array of n arbitrary values x in such a way that all of them become between 0 and 1 and sum to 1,
      * using the softmax function.
@@ -34,18 +34,16 @@ double anti_sigmoid(double x, const double lower_bound, const double upper_bound
     return -log((upper_bound - lower_bound) / (x - lower_bound) - 1.0);
 }
 
-void *get_likelihood_parameters(const gsl_vector *v, int num_annotations, double scale_low, double scale_up,
+void *get_likelihood_parameters(const gsl_vector *v, size_t num_annotations, double scale_low, double scale_up,
                                 double epsilon_low, double epsilon_up, double* cur_parameters, char* model) {
-    size_t j;
-
     if (strcmp("F81", model) == 0) {
         /* 1. Frequencies */
-        for (j = 0; j < num_annotations; j++) {
+        for (size_t j = 0; j < num_annotations; j++) {
             cur_parameters[j] = gsl_vector_get(v, j);
         }
         softmax(cur_parameters, num_annotations);
     }
-    int scaling_factor_index = (strcmp("F81", model) == 0) ? num_annotations: 0;
+    size_t scaling_factor_index = (strcmp("F81", model) == 0) ? num_annotations: 0;
     /* 2. Scaling factor */
     cur_parameters[num_annotations] = sigmoid(gsl_vector_get(v, scaling_factor_index), scale_low, scale_up);
 
@@ -54,21 +52,21 @@ void *get_likelihood_parameters(const gsl_vector *v, int num_annotations, double
 }
 
 double
-minus_loglikelihood (const gsl_vector *v, void *params, double* cur_parameters, char* model, Node* root)
+minus_loglikelihood (const gsl_vector *v, void *params, double* cur_parameters, char* model, Tree* s_tree)
 {
     /**
      * Calculates the -log likelihood value.
      */
     double *p = (double *)params;
-    int num_annotations = (int) p[0];
+    size_t num_annotations = (size_t) p[0];
     double scale_low = p[1], scale_up = p[2], epsilon_low = p[3], epsilon_up = p[4];
     get_likelihood_parameters(v, num_annotations, scale_low, scale_up, epsilon_low, epsilon_up, cur_parameters, model);
 
-    return -calculate_bottom_up_likelihood(root, num_annotations, cur_parameters);
+    return -calculate_bottom_up_likelihood(s_tree, num_annotations, cur_parameters);
 }
 void
-d_minus_loglikelihood (const gsl_vector *v, void *params, gsl_vector *df, double* cur_parameters,
-                       double cur_minus_log_likelihood, char* model, Node* root)
+d_minus_loglikelihood (gsl_vector *v, void *params, gsl_vector *df, double* cur_parameters,
+                       double cur_minus_log_likelihood, char* model, Tree* s_tree)
 {
     /** Fills in the gradient vector for each of the parameters.
      * parameters = [frequency_char_1, .., frequency_char_n, scaling_factor, epsilon].
@@ -76,7 +74,7 @@ d_minus_loglikelihood (const gsl_vector *v, void *params, gsl_vector *df, double
      * otherwise should be put to a negative value to show that it needs recalculation.
      */
     double *p = (double *)params;
-    int num_annotations = (int) p[0];
+    size_t num_annotations = (size_t) p[0];
     double scale_low = p[1], scale_up = p[2], epsilon_low = p[3], epsilon_up = p[4];
     double diff_log_likelihood;
 
@@ -85,31 +83,31 @@ d_minus_loglikelihood (const gsl_vector *v, void *params, gsl_vector *df, double
     if (cur_minus_log_likelihood < 0) {
         get_likelihood_parameters(v, num_annotations, scale_low, scale_up, epsilon_low, epsilon_up,
                                   cur_parameters, model);
-        cur_minus_log_likelihood = -calculate_bottom_up_likelihood(root, num_annotations, cur_parameters);
+        cur_minus_log_likelihood = -calculate_bottom_up_likelihood(s_tree, num_annotations, cur_parameters);
     }
 
-    int n = (strcmp("F81", model) == 0) ? (num_annotations + 2): 2;
+    size_t n = (strcmp("F81", model) == 0) ? (num_annotations + 2): 2;
     for (size_t i = 0; i < n; i++) {
         /* create a next_step_parameters array, where all the values but the i-th are the same as in parameters,
          * and the i-th value is increased by the corresponding step.*/
         if (i > 0) {
-            gsl_vector_set(v, i - 1, gsl_vector_get(v, i - 1) - STEP_EPSILON);
+            gsl_vector_set(v, i - 1, gsl_vector_get(v, i - 1) - GRADIENT_STEP);
         }
-        gsl_vector_set(v, i, gsl_vector_get(v, i) + STEP_EPSILON);
+        gsl_vector_set(v, i, gsl_vector_get(v, i) + GRADIENT_STEP);
         get_likelihood_parameters(v, num_annotations, scale_low, scale_up, epsilon_low, epsilon_up,
                                   cur_parameters, model);
 
-        diff_log_likelihood = -calculate_bottom_up_likelihood(root, num_annotations, cur_parameters)
+        diff_log_likelihood = -calculate_bottom_up_likelihood(s_tree, num_annotations, cur_parameters)
                               - cur_minus_log_likelihood;
 
         /* calculate the gradients*/
-        gsl_vector_set(df, i, diff_log_likelihood / STEP_EPSILON);
+        gsl_vector_set(df, i, diff_log_likelihood / GRADIENT_STEP);
     }
-    gsl_vector_set(v, n - 1, gsl_vector_get(v, n - 1) - STEP_EPSILON);
+    gsl_vector_set(v, n - 1, gsl_vector_get(v, n - 1) - GRADIENT_STEP);
 }
 
-double minimize_params(Node* root, int num_annotations, double *parameters, char **character, char *model, double scale_low,
-                       double scale_up, double epsilon_low, double epsilon_up) {
+double minimize_params(Tree* s_tree, size_t num_annotations, double *parameters, char **character, char *model,
+                       double scale_low, double scale_up, double epsilon_low, double epsilon_up) {
     /**
      * Optimises the following parameters:
      * parameters = [frequency_char_1, .., frequency_char_n, scaling_factor, epsilon],
@@ -122,6 +120,9 @@ double minimize_params(Node* root, int num_annotations, double *parameters, char
     size_t iter = 0;
     int status;
 
+    printf("Scaling factor can vary between %.10f and %.10f\n", scale_low, scale_up);
+    printf("Epsilon can vary between %.10f and %.10f\n", epsilon_low, epsilon_up);
+
     size_t n = (size_t) ((strcmp("JC", model) == 0) ? 2 : (num_annotations + 2));
 
     const gsl_multimin_fdfminimizer_type *T;
@@ -130,16 +131,16 @@ double minimize_params(Node* root, int num_annotations, double *parameters, char
     double par[5] = {(double) num_annotations, scale_low, scale_up, epsilon_low, epsilon_up};
 
     double my_f(const gsl_vector *v, void *params) {
-        return minus_loglikelihood(v, params, parameters, model, root);
+        return minus_loglikelihood(v, params, parameters, model, s_tree);
     }
 
     void my_df(const gsl_vector *v, void *params, gsl_vector *df) {
-        return d_minus_loglikelihood (v, params, df, parameters, -1, model, root);
+        return d_minus_loglikelihood (v, params, df, parameters, -1, model, s_tree);
     }
 
-    void my_fdf (const gsl_vector *v, void *params, double *f, gsl_vector *df) {
-        *f = minus_loglikelihood(v, params, parameters, model, root);
-        d_minus_loglikelihood (v, params, df, parameters, *f, model, root);
+    void my_fdf(const gsl_vector *v, void *params, double *f, gsl_vector *df) {
+        *f = minus_loglikelihood(v, params, parameters, model, s_tree);
+        d_minus_loglikelihood (v, params, df, parameters, *f, model, s_tree);
     }
 
     gsl_vector *x;
@@ -174,42 +175,51 @@ double minimize_params(Node* root, int num_annotations, double *parameters, char
         }
     }
     printf ("scaling\tepsilon\n");
-    double epsabs = .1;
+    double epsabs = 1e-3;
     do
     {
         iter++;
         status = gsl_multimin_fdfminimizer_iterate(s);
 
-        if (status) {// if only few iterations were made let's adjust the settings to make sure we are at the minimum
+        if (status) {
+            // if the iteration is not making progress towards solution let's try to reduce the step size
+            if (GSL_ENOPROG == status && step_size > GRADIENT_STEP) {
+                step_size /= 10.0;
+                iter--;
+                status = GSL_CONTINUE;
+                gsl_multimin_fdfminimizer_set(s, &my_func, gsl_multimin_fdfminimizer_x(s), step_size, tol);
+                printf("\t\t(decreased the step size to %.1e)\n", step_size);
+                continue;
+            }
             printf("\t\t(stopping minimization as %s)\n", gsl_strerror(status));
             break;
         }
 
         status = gsl_multimin_test_gradient(s->gradient, epsabs);
-
-        if (status == GSL_SUCCESS) {
-            // if only few iterations were made let's adjust the settings to make sure we are at the minimum
-            if (iter < 10 && epsabs > 0.0001) {
-                epsabs /= 10.0;
-                iter--;
-                status = GSL_CONTINUE;
-                printf("\t\t(decreased the gradient tolerance to %f)\n", epsabs);
-                continue;
-            }
-            printf("\t\t(minimum found!)\n");
-        }
         get_likelihood_parameters(s->x, num_annotations, scale_low, scale_up, epsilon_low, epsilon_up, parameters,
                                   model);
 
-        printf ("\t%3d\t%5.10f\t\t", iter, -s->f);
+        printf ("\t%3zd\t%5.10f\t\t", iter, -s->f);
         if (strcmp("F81", model) == 0) {
             for (size_t j = 0; j < num_annotations; j++) {
                 printf("%.10f\t", parameters[j]);
             }
         }
         printf ("%.10f\t%.10f\n", parameters[num_annotations], parameters[num_annotations + 1]);
+
+        if (status == GSL_SUCCESS) {
+            // let's adjust the tolerance to make sure we are at the minimum
+            if (iter < 10 && epsabs > 1e-5) {
+                epsabs /= 10.0;
+                status = GSL_CONTINUE;
+                printf("\t\t(found an optimum candidate, but to be sure decreased the gradient tolerance to %.1e)\n",
+                       epsabs);
+            } else {
+                printf("\t\t(optimum found!)\n");
+            }
+        }
     }
-    while (status == GSL_CONTINUE && iter < 150);
+    while (status == GSL_CONTINUE && iter < 200);
 
     /* Make sure that the parameters contain the best value */
     get_likelihood_parameters(gsl_multimin_fdfminimizer_x(s), num_annotations, scale_low, scale_up,

@@ -1,9 +1,6 @@
 #include "pastml.h"
 
-void free_node(Node *node, int count, int num_anno);
-
-
-int index_toplevel_colon(char *in_str, int begin, int end) {
+int index_toplevel_colon(const char *in_str, int begin, int end) {
     /* returns the index of the (first) toplevel colon only, -1 if not found */
     int level = 0, i;
     for (i = end; i >= begin; i--) {/* more efficient to proceed from the end in this case */
@@ -40,7 +37,7 @@ int parse_double(char *in_str, int begin, int end, double *location) {
     return EXIT_SUCCESS;
 } /* end parse_double */
 
-int strip_toplevel_parentheses(char *in_str, int begin, int end, int *pair) {
+int strip_toplevel_parentheses(const char *in_str, int begin, int end, int *pair) {
     /* returns the new (begin,end) pair comprising all chars found strictly inside the toplevel parentheses.
        The input "pair" is an array of two integers, we are passing the output values through it.
        It is intended that here, in_str[pair[0]-1] == '(' and in_str[pair[1]+1] == ')'.
@@ -81,7 +78,7 @@ int strip_toplevel_parentheses(char *in_str, int begin, int end, int *pair) {
     return EXIT_SUCCESS;
 }
 
-int count_outer_commas(char *in_str, int begin, int end) {
+int count_outer_commas(const char *in_str, int begin, int end) {
     /* returns the number of toplevel commas found, from position begin included, up to position end. */
     int count = 0, level = 0, i;
     for (i = begin; i <= end; i++) {
@@ -134,7 +131,7 @@ int process_name_and_brlen(Node *son_node, char *in_str, int begin, int end) {
     } /* endfor */
 
     name_begin = (closing_par == -1 ? begin : closing_par + 1);
-    if (opening_bracket != -1) name_end = opening_bracket - 1; else name_end = (colon == -1 ? end : colon - 1);
+    name_end = (opening_bracket != -1) ? (opening_bracket - 1): (colon == -1 ? end : colon - 1);
     /* but now if the name starts and ends with single or double quotes, remove them */
     if (in_str[name_begin] == in_str[name_end] && (in_str[name_begin] == '"' || in_str[name_begin] == '\'')) {
         name_begin++;
@@ -144,7 +141,7 @@ int process_name_and_brlen(Node *son_node, char *in_str, int begin, int end) {
     effective_length = (name_length > MAX_NAMELENGTH ? MAX_NAMELENGTH : name_length);
     son_node->name = (char *) malloc((MAX_NAMELENGTH) * sizeof(char));
     if (name_length >= 1) {
-        strncpy(son_node->name, in_str + name_begin, effective_length);
+        strncpy(son_node->name, in_str + name_begin, (size_t) effective_length);
         son_node->name[effective_length] = '\0'; /* terminating the string */
     }
     return EXIT_SUCCESS;
@@ -191,7 +188,7 @@ Node *create_son_and_connect_to_father(Node *current_node, Tree *current_tree, i
 
 
 
-int index_next_toplevel_comma(char *in_str, int begin, int end) {
+int index_next_toplevel_comma(const char *in_str, int begin, int end) {
     /* returns the index of the next toplevel comma, from position begin included, up to position end.
        the result is -1 if none is found. */
     int level = 0, i;
@@ -213,7 +210,7 @@ int index_next_toplevel_comma(char *in_str, int begin, int end) {
 
 
 int parse_substring_into_node(char *in_str, int begin, int end, Node *current_node, int has_father, Tree *current_tree,
-                               int nbanno) {
+                               size_t nbanno) {
     /* this function supposes that current_node is already allocated, but not the data structures in there.
        It reads starting from character of in_str at index begin and stops at character at index end.
        It is supposed that the input to this function is what has been seen immediately within a set of parentheses.
@@ -295,13 +292,14 @@ int parse_substring_into_node(char *in_str, int begin, int end, Node *current_no
 } /* end parse_substring_into_node */
 
 
-Tree *parse_nh_string(char *in_str, int nbanno) {
+Tree *parse_nh_string(char *in_str, size_t nbanno) {
     /* this function allocates, populates and returns a new tree. */
     /* returns NULL if the file doesn't correspond to NH format */
     int in_length = (int) strlen(in_str);
     int i; /* loop counter */
     int begin, end; /* to delimitate the string to further process */
-    int n_otu = 0, nodecount = 0;
+    int nodecount = 0;
+    size_t n_otu = 0;
     int maxpoly;
     double tip_branch_len_sum=0.0;
 
@@ -388,12 +386,12 @@ Tree *parse_nh_string(char *in_str, int nbanno) {
     t->avg_branch_len = branch_len_sum / (double) t->nb_edges;
 
     printf("BASIC TREE STATISTICS:\n\n");
-    printf("\tNumber of taxa:\t%d\n", t->nb_taxa);
+    printf("\tNumber of taxa:\t%zd\n", t->nb_taxa);
     if (t->nb_taxa > MAXNSP) {
         fprintf(stderr, "Fatal error: too many taxa: more than %d.\n", MAXNSP);
         return NULL;
     }
-    printf("\tNumber of nodes:\t%d\n", t->nb_nodes - t->nb_taxa);
+    printf("\tNumber of nodes:\t%zd\n", t->nb_nodes - t->nb_taxa);
     printf("\tNumber of edges:\t%d\n", t->nb_edges);
     printf("\tAvg branch length:\t%.4f\n", t->avg_branch_len);
     printf("\tAvg tip branch length:\t%.4f\n", t->avg_tip_branch_len);
@@ -406,7 +404,7 @@ Tree *parse_nh_string(char *in_str, int nbanno) {
 } /* end parse_nh_string */
 
 
-Tree *complete_parse_nh(char *big_string, int nbanno) {
+Tree *complete_parse_nh(char *big_string, size_t nbanno) {
     Tree *mytree = parse_nh_string(big_string, nbanno);
     if (mytree == NULL) {
         fprintf(stderr, "Not a syntactically correct NH tree.\n");

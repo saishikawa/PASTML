@@ -10,7 +10,7 @@ try:
     GSL_V = version
     print("GSL version ", version, " found.")
 except:
-    sys.exit("GSL found. Please install the GNU Scientific Library (https://www.gnu.org/software/gsl).")
+    sys.exit("GSL not found. Please install the GNU Scientific Library (https://www.gnu.org/software/gsl).")
 
 
 # the C extension module
@@ -33,7 +33,7 @@ setup(
         'Topic :: Software Development',
         'Topic :: Software Development :: Libraries :: Python Modules',
     ],
-    version='0.5.1',
+    version='0.5.2',
     description='Python wrapper for PASTML.',
     maintainer='Anna Zhukova',
     maintainer_email='anna.zhukova@pasteur.fr',

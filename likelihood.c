@@ -6,7 +6,8 @@ int get_max(const int *array, size_t n) {
      * Finds the maximum in an array of positive integers.
      */
     int max_value = 0;
-    for (int i = 0; i < n; i++) {
+    size_t i;
+    for (i = 0; i < n; i++) {
         if (max_value < array[i]) {
             max_value = array[i];
         }
@@ -18,11 +19,12 @@ void normalize(double *array, size_t n) {
     /**
      * Divides array members by their sum.
      */
-    double sum = 0.0;;
-    for (int i = 0; i < n; i++) {
+    double sum = 0.0;
+    size_t i;
+    for (i = 0; i < n; i++) {
         sum += array[i];
     }
-    for (int i = 0; i < n; i++) {
+    for (i = 0; i < n; i++) {
         array[i] /= sum;
     }
 }
@@ -35,7 +37,8 @@ double get_mu(const double *frequencies, size_t n) {
      * See [Gascuel "Mathematics of Evolution and Phylogeny" 2005] for further details.
      */
     double sum = 0.0;
-    for (int i = 0; i < n; i++) {
+    size_t i;
+    for (i = 0; i < n; i++) {
         sum += pow(frequencies[i], 2);
     }
     return 1.0 / (1.0 - sum);
@@ -99,16 +102,17 @@ void set_p_ij(const Node *nd, double avg_br_len, size_t num_frequencies, const d
     }
 }
 
-int calculate_node_probabilities(const Node *nd, size_t num_annotations, int first_child_index) {
+int calculate_node_probabilities(const Node *nd, size_t num_annotations, size_t first_child_index) {
     int factors = 0;
-    for (int ii = first_child_index; ii < nd->nb_neigh; ii++) {
-        Node *child = nd->neigh[ii];
-        for (int i = 0; i < num_annotations; i++) {
+    size_t i, j, k;
+    for (k = first_child_index; k < nd->nb_neigh; k++) {
+        Node *child = nd->neigh[k];
+        for (i = 0; i < num_annotations; i++) {
             /* Calculate the probability of having a branch from the node to its child node,
              * given that the node is in state i: p_child_branch_from_i = sum_j(p_ij * p_child_j)
              */
             double p_child_branch_from_i = 0.;
-            for (int j = 0; j < num_annotations; j++) {
+            for (j = 0; j < num_annotations; j++) {
                 p_child_branch_from_i += child->pij[i][j] * child->bottom_up_likelihood[j];
             }
 
@@ -116,7 +120,7 @@ int calculate_node_probabilities(const Node *nd, size_t num_annotations, int fir
              * the probabilities of p_child_branch_from_i for all child branches:
              * condlike_i = mult_ii(p_child_ii_branch_from_i)
              */
-            if (ii == first_child_index) {
+            if (k == first_child_index) {
                 nd->bottom_up_likelihood[i] = p_child_branch_from_i;
             } else {
                 nd->bottom_up_likelihood[i] *= p_child_branch_from_i;
@@ -142,6 +146,7 @@ int process_node(Node *nd, Tree *s_tree, size_t num_annotations, double *paramet
      * parameters = [frequency_char_1, .., frequency_char_n, scaling_factor, epsilon].
      */
     int factors = 0, add_factors;
+    size_t i, first_child_index;
 
     /* set probabilities of substitution */
     if (nd != s_tree->root) {
@@ -150,9 +155,9 @@ int process_node(Node *nd, Tree *s_tree, size_t num_annotations, double *paramet
 
     /* not a tip */
     if (nd->nb_neigh != 1) {
-        int first_child_index = (nd == s_tree->root) ? 0 : 1;
+        first_child_index = (nd == s_tree->root) ? 0 : 1;
         /* recursively calculate probabilities for children */
-        for (int i = first_child_index; i < nd->nb_neigh; i++) {
+        for (i = first_child_index; i < nd->nb_neigh; i++) {
             add_factors = process_node(nd->neigh[i], s_tree, num_annotations, parameters);
             /* if all the probabilities are zero (shown by add_factors == -1),
              * there is no point to go any further
@@ -199,17 +204,18 @@ double calculate_bottom_up_likelihood(Tree *s_tree, size_t num_annotations, doub
      * parameters = [frequency_char_1, .., frequency_char_n, scaling_factor, epsilon].
      */
     double scaled_lk = 0;
+    size_t i;
 
     int factors = process_node(s_tree->root, s_tree, num_annotations, parameters);
 
-    for (int i = 0; i < num_annotations; i++) {
+    for (i = 0; i < num_annotations; i++) {
         /* multiply the probability by character frequency */
         s_tree->root->bottom_up_likelihood[i] = s_tree->root->bottom_up_likelihood[i] * parameters[i];
     }
 
     /* if factors == -1, it means that the bottom_up_likelihood is 0 */
     if (factors != -1) {
-        for (int i = 0; i < num_annotations; i++) {
+        for (i = 0; i < num_annotations; i++) {
             scaled_lk += s_tree->root->bottom_up_likelihood[i];
         }
     }
@@ -226,9 +232,9 @@ initialise_tip_probabilities(Tree *s_tree, char *const *tip_names, const int *st
      * and the other to 0.
      */
     Node *nd;
-    int j, i;
+    size_t j, i, k;
 
-    for (int k = 0; k < s_tree->nb_nodes; k++) {
+    for (k = 0; k < s_tree->nb_nodes; k++) {
         nd = s_tree->nodes[k];
         /* if a tip, process it */
         if (nd->nb_neigh == 1) {
@@ -255,7 +261,8 @@ void rescale_branch_lengths(Tree *s_tree, double scaling_factor, double epsilon)
      * Rescales all the branches in the tree.
      */
     Node *nd;
-    for (int i = 0; i < s_tree->nb_nodes; i++) {
+    size_t i;
+    for (i = 0; i < s_tree->nb_nodes; i++) {
         nd = s_tree->nodes[i];
         nd->branch_len = get_rescaled_branch_len(nd, s_tree->avg_tip_branch_len, scaling_factor, epsilon);
     }

@@ -11,11 +11,12 @@ double softmax(double* xs, size_t n) {
      * using the softmax function.
      */
     double exp_sum = 0.0;
-    for (int i = 0; i < n; i++) {
+    size_t i;
+    for (i = 0; i < n; i++) {
         xs[i] = exp(xs[i]);
         exp_sum += xs[i];
     }
-    for (int i = 0; i < n; i++) {
+    for (i = 0; i < n; i++) {
         xs[i] /= exp_sum;
     }
 }

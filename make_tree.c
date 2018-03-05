@@ -259,7 +259,7 @@ int parse_substring_into_node(char *in_str, int begin, int end, Node *current_no
     for (i = 0; i < nbanno; i++) {
         current_node->pij[i] = calloc(nbanno_size_t, sizeof(double));
     }
-    current_node->best_states = calloc(nbanno_size_t, sizeof(int));
+    current_node->best_states = calloc(nbanno_size_t, sizeof(size_t));
     current_node->top_down_likelihood = calloc(nbanno_size_t, sizeof(double));
 
     if (nb_commas != 0) { /* at least one comma, so at least two sons: */

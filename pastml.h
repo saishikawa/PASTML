@@ -32,7 +32,7 @@ typedef struct __Node {
     double **pij;           /* probability of substitution from i to j */
     double *bottom_up_likelihood;       /* conditional likelihoods at the node*/
     double *marginal;
-    int *best_states;
+    size_t *best_states;
     double *top_down_likelihood;
     double branch_len;
 } Node;

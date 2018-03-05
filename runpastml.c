@@ -161,13 +161,15 @@ int calculate_frequencies(size_t num_annotations, size_t num_tips, int *states, 
     /* we would need an additional spot in the count array for the missing data,
      * therefore num_annotations + 1*/
     int *count_array = calloc(num_annotations + 1, sizeof(int));
+    size_t i;
+
     if (count_array == NULL) {
         fprintf(stderr, "Memory problems: %s\n", strerror(errno));
         fprintf(stderr, "Value of errno: %d\n", errno);
         return ENOMEM;
     }
 
-    for (int i = 0; i < num_tips; i++) {
+    for (i = 0; i < num_tips; i++) {
         if (states[i] == -1) {
             states[i] = (int) num_annotations;
             sprintf(character[num_annotations], "?");
@@ -176,12 +178,12 @@ int calculate_frequencies(size_t num_annotations, size_t num_tips, int *states, 
     }
 
     int sum_freq = 0;
-    for (int i = 0; i <= num_annotations; i++) {
+    for (i = 0; i <= num_annotations; i++) {
         sum_freq += count_array[i];
     }
     log_info("MODEL:\t%s\n\n", model);
     log_info("INITIAL FREQUENCIES:\n\n");
-    for (int i = 0; i < num_annotations; i++) {
+    for (i = 0; i < num_annotations; i++) {
         if (strcmp(model, "JC") == 0) {
             parameters[i] = ((double) 1) / num_annotations;
         } else if (strcmp(model, "F81") == 0) {

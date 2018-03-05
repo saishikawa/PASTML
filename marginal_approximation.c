@@ -10,24 +10,25 @@ order_marginal(Tree* tree, size_t num_annotations)
      * Recursively sets node's marginal field to marginal state probabilities in decreasing order,
      * and node's tmp_best field to the corresponding state indices.
      */
-    int i;
+    size_t i, k;
     Node* nd;
-    int* indices = malloc(num_annotations * sizeof(int));
+    size_t * indices = malloc(num_annotations * sizeof(size_t));
     for (i = 0; i < num_annotations; i++) {
         indices[i] = i;
     }
 
-    for (int k = 0; k < tree->nb_nodes; k++) {
+    for (k = 0; k < tree->nb_nodes; k++) {
         nd = tree->nodes[k];
         /* put index array in the nd->best_states
          * and sort it by marginal probabilities in marginal array, in decreasing order */
-        memcpy(nd->best_states, indices, num_annotations * sizeof(int));
+        memcpy(nd->best_states, indices, num_annotations * sizeof(size_t));
         int cmp_index(const void *a, const void *b) {
-            int ia = *(int *) a;
-            int ib = *(int *) b;
+            size_t ia = *(size_t *) a;
+            size_t ib = *(size_t *) b;
             return -(nd->marginal[ia] < nd->marginal[ib] ? -1 : nd->marginal[ia] > nd->marginal[ib]);
         }
-        qsort(nd->best_states, num_annotations, sizeof(int), cmp_index);
+        qsort(nd->best_states, num_annotations, sizeof(size_t), cmp_index);
+
         int cmp_value(const void *a, const void *b) {
             double da = *(double *) a;
             double db = *(double *) b;

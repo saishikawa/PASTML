@@ -20,9 +20,11 @@ int upscale_node_probs(double* array, size_t n) {
 
     /* find the smallest non-zero probability */
     double smallest = 1.1;
-    for (int j = 0; j < n; j++) {
-        if (array[j] > 0.0 && array[j] < smallest) {
-            smallest = array[j];
+    size_t i;
+
+    for (i = 0; i < n; i++) {
+        if (array[i] > 0.0 && array[i] < smallest) {
+            smallest = array[i];
         }
     }
 
@@ -41,8 +43,8 @@ int upscale_node_probs(double* array, size_t n) {
         do {
             piecewise_scaler_pow = MIN(curr_scaler_pow, 63);
             curr_scaler = ((unsigned long long) (1) << piecewise_scaler_pow);
-            for (int j = 0; j < n; j++) {
-                array[j] *= curr_scaler;
+            for (i = 0; i < n; i++) {
+                array[i] *= curr_scaler;
             }
             curr_scaler_pow -= piecewise_scaler_pow;
         } while (curr_scaler_pow != 0);

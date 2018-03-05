@@ -44,11 +44,11 @@ void calc_correct(Tree *tree, size_t n) {
      * Chooses an optimal number of non-zero probabilities to keep, and sets all of them to be equal.
      */
 
-    size_t i, j, best_num_states;
+    size_t i, j, k, best_num_states;
     double smallest_correction, correction_i, equal_p_i;
     Node* nd;
 
-    for (size_t k = 0; k < tree->nb_nodes; k++) {
+    for (k = 0; k < tree->nb_nodes; k++) {
         nd = tree->nodes[k];
         smallest_correction = INFINITY;
         best_num_states = n;

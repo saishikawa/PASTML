@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <gsl/gsl_multimin.h>
 #include "likelihood.h"
+#include "logger.h"
 
 #define GRADIENT_STEP 1.0e-7
 
@@ -121,7 +122,7 @@ double minimize_params(Tree* s_tree, size_t num_annotations, double *parameters,
     int status;
 
     log_info("Scaling factor can vary between %.10f and %.10f\n", scale_low, scale_up);
-    log_info("Epsilon can vary between %.10f and %.10f\n", epsilon_low, epsilon_up);
+    log_info("Epsilon can vary between %.e and %.e\n", epsilon_low, epsilon_up);
 
     size_t n = (size_t) ((strcmp("JC", model) == 0) ? 2 : (num_annotations + 2));
 
@@ -199,13 +200,13 @@ double minimize_params(Tree* s_tree, size_t num_annotations, double *parameters,
         get_likelihood_parameters(s->x, num_annotations, scale_low, scale_up, epsilon_low, epsilon_up, parameters,
                                   model);
 
-        log_info ("\t%3zd\t%5.10f\t\t", iter, -s->f);
+        log_info("\t%3zd\t%5.10f\t\t", iter, -s->f);
         if (strcmp("F81", model) == 0) {
             for (size_t j = 0; j < num_annotations; j++) {
                 log_info("%.10f\t", parameters[j]);
             }
         }
-        log_info ("%.10f\t%.10f\n", parameters[num_annotations], parameters[num_annotations + 1]);
+        log_info("%.10f\t%e\n", parameters[num_annotations], parameters[num_annotations + 1]);
 
         if (status == GSL_SUCCESS) {
             // let's adjust the tolerance to make sure we are at the minimum

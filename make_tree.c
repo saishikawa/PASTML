@@ -1,4 +1,5 @@
 #include "pastml.h"
+#include "logger.h"
 
 int index_toplevel_colon(const char *in_str, int begin, int end) {
     /* returns the index of the (first) toplevel colon only, -1 if not found */
@@ -393,9 +394,9 @@ Tree *parse_nh_string(char *in_str, size_t nbanno) {
     }
     log_info("\tNumber of nodes:\t%zd\n", t->nb_nodes - t->nb_taxa);
     log_info("\tNumber of edges:\t%d\n", t->nb_edges);
-    log_info("\tAvg branch length:\t%.4f\n", t->avg_branch_len);
-    log_info("\tAvg tip branch length:\t%.4f\n", t->avg_tip_branch_len);
-    log_info("\tMin branch length:\t%.4f\n", t->min_branch_len);
+    log_info("\tAvg branch length:\t%e\n", t->avg_branch_len);
+    log_info("\tAvg tip branch length:\t%e\n", t->avg_tip_branch_len);
+    log_info("\tMin branch length:\t%e\n", t->min_branch_len);
     log_info("\tMax number of children per node:\t%d\n", maxpoly-1);
     log_info("\n");
 

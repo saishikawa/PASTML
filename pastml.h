@@ -21,6 +21,7 @@
 #define LIM_P pow(2, POW)
 #define LOG2 0.69314718055994528623
 #define MIN(a, b) ((a)<(b)?(a):(b))
+#define MAX(a, b) ((a)>(b)?(a):(b))
 
 typedef struct __Node {
     char *name;

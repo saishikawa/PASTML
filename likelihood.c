@@ -1,5 +1,6 @@
 #include "pastml.h"
 #include "scaling.h"
+#include "logger.h"
 
 int get_max(const int *array, size_t n) {
     /**
@@ -132,7 +133,6 @@ int calculate_node_probabilities(const Node *nd, size_t num_annotations, size_t 
          * there is no point to go any further
          */
         if (add_factors == -1) {
-            fprintf(stderr, "Likelihood of one of the nodes is already 0, no need to go further.\n");
             return -1;
         }
         factors += add_factors;
@@ -208,14 +208,11 @@ double calculate_bottom_up_likelihood(Tree *s_tree, size_t num_annotations, doub
 
     int factors = process_node(s_tree->root, s_tree, num_annotations, parameters);
 
-    for (i = 0; i < num_annotations; i++) {
-        /* multiply the probability by character frequency */
-        s_tree->root->bottom_up_likelihood[i] = s_tree->root->bottom_up_likelihood[i] * parameters[i];
-    }
-
     /* if factors == -1, it means that the bottom_up_likelihood is 0 */
     if (factors != -1) {
         for (i = 0; i < num_annotations; i++) {
+            /* multiply the probability by character frequency */
+            s_tree->root->bottom_up_likelihood[i] = s_tree->root->bottom_up_likelihood[i] * parameters[i];
             scaled_lk += s_tree->root->bottom_up_likelihood[i];
         }
     }

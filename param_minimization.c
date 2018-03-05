@@ -228,7 +228,7 @@ double minimize_params(Tree* s_tree, size_t num_annotations, double *parameters,
     /* Make sure that the parameters contain the best value */
     get_likelihood_parameters(gsl_multimin_fdfminimizer_x(s), num_annotations, scale_low, scale_up,
                               epsilon_low, epsilon_up, parameters, model);
-    double optimum = -gsl_multimin_fminimizer_minimum(s);
+    double optimum = -gsl_multimin_fdfminimizer_minimum(s);
 
     gsl_multimin_fdfminimizer_free(s);
     gsl_vector_free(x);

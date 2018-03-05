@@ -303,6 +303,7 @@ Tree *parse_nh_string(char *in_str, size_t nbanno) {
     size_t n_otu = 0;
     int maxpoly;
     double tip_branch_len_sum=0.0;
+    Node *cur_node;
 
     /* SYNTACTIC CHECKS on the input string */
     i = 0;
@@ -347,6 +348,7 @@ Tree *parse_nh_string(char *in_str, size_t nbanno) {
 
     t->root->id = 0;
     t->root->name = "ROOT";
+    t->root->branch_len = 0.0;
 
     t->next_avail_node_id = 1; /* root node has id 0 */
 
@@ -359,28 +361,31 @@ Tree *parse_nh_string(char *in_str, size_t nbanno) {
 
     /* name tree nodes if needed */
     for (i = 0; i < t->nb_nodes; i++) {
-        if (t->nodes[i]->nb_neigh > 1 && i > 0) {
+        cur_node = t->nodes[i];
+        if (cur_node->nb_neigh > 1 && i > 0) {
             nodecount++;
-            if (!t->nodes[i]->name || strcmp(t->nodes[i]->name, "") == 0 || strcmp(t->nodes[i]->name, "\0") == 0) {
-                sprintf(t->nodes[i]->name, "Pastml_Node_%d", nodecount);
+            if (!cur_node->name || strcmp(cur_node->name, "") == 0 || strcmp(cur_node->name, "\0") == 0) {
+                sprintf(cur_node->name, "Pastml_Node_%d", nodecount);
             }
         }
     }
-    t->min_branch_len = DBL_MAX;
+    t->min_branch_len = -1.0;
     maxpoly=0;
 
     double branch_len_sum = 0.;
     for (i = 0; i < t->nb_nodes; i++) {
-        if(t->nodes[i]->nb_neigh == 1){ //tips
-          tip_branch_len_sum += t->nodes[i]->branch_len;
+        cur_node = t->nodes[i];
+        if(cur_node->nb_neigh == 1){ //tips
+          tip_branch_len_sum += cur_node->branch_len;
         }
-        if(maxpoly < t->nodes[i]->nb_neigh)  {
-            maxpoly = t->nodes[i]->nb_neigh;
+        if(maxpoly < cur_node->nb_neigh)  {
+            maxpoly = cur_node->nb_neigh;
         }
-        if (t->min_branch_len > t->nodes[i]->branch_len && t->nodes[i]->branch_len != 0.0)
-            t->min_branch_len = t->nodes[i]->branch_len;
-        if (i != 0) {
-            branch_len_sum += t->nodes[i]->branch_len;
+        if (cur_node != t->root) {
+            if ((t->min_branch_len < 0 || t->min_branch_len > cur_node->branch_len) && cur_node->branch_len > 0.0) {
+                t->min_branch_len = cur_node->branch_len;
+            }
+            branch_len_sum += cur_node->branch_len;
         }
     }
     t->avg_tip_branch_len = tip_branch_len_sum / (double) t->nb_taxa;

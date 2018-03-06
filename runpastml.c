@@ -306,7 +306,7 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
                 " and the number of tips (%zd) do not match", num_tips, s_tree->nb_taxa);
     }
     num_tips = s_tree->nb_taxa;
-    parameters[num_annotations] = 1.0;
+    parameters[num_annotations] = 1.0 / s_tree->avg_branch_len;
     parameters[num_annotations + 1] = s_tree->min_branch_len;
 
     initialise_tip_probabilities(s_tree, tips, states, num_tips, num_annotations);
@@ -322,7 +322,8 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
 
 
     log_info("OPTIMISING PARAMETERS...\n\n");
-    log_likelihood = minimize_params(s_tree, num_annotations, parameters, character, model, 1.0 / 10000, 10000.0,
+    log_likelihood = minimize_params(s_tree, num_annotations, parameters, character, model,
+                                     0.01 / s_tree->avg_branch_len, 10.0 / s_tree->avg_branch_len,
                                      MIN(s_tree->min_branch_len / 10.0, s_tree->avg_tip_branch_len / 100.0),
                                      s_tree->avg_tip_branch_len / 10.0);
     log_info("\n");

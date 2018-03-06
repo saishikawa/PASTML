@@ -323,8 +323,8 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
 
     log_info("OPTIMISING PARAMETERS...\n\n");
     log_likelihood = minimize_params(s_tree, num_annotations, parameters, character, model, 1.0 / 10000, 10000.0,
-                                     MIN(s_tree->min_branch_len / 10.0, s_tree->avg_branch_len / 100.0),
-                                     s_tree->avg_branch_len / 10.0);
+                                     MIN(s_tree->min_branch_len / 10.0, s_tree->avg_tip_branch_len / 100.0),
+                                     s_tree->avg_tip_branch_len / 10.0);
     log_info("\n");
 
     log_info("OPTIMISED PARAMETERS:\n\n");

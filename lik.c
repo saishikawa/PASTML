@@ -18,7 +18,7 @@ void calc_lik_bfgs(Node *nd, char **tipnames, int *states, int nb, int nbanno, d
     
     count++;
     sum = 0.;
-    for (i = 0; i < num_anno; i++) {
+    for (i = 0; i < nbanno; i++) {
 	    sum += p[i] * p[i];
     }
     mu = 1 / (1 - sum);	

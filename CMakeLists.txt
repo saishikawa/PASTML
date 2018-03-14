@@ -4,8 +4,10 @@ project(pastml)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_INCLUDE_PATH .)
 
-set(SOURCE_FILES main.c fletcher.c fletcherJC.c golden.c lik.c make_tree.c marginal_approxi.c marginal_lik.c nrutil.c
-        output_states.c output_tree.c runpastml.c lik.h marginal_lik.h make_tree.h golden.h fletcher.h fletcherJC.h
-        marginal_approxi.h output_tree.h output_states.h pastml.h runpastml.h)
+set(SOURCE_FILES main.c likelihood.c make_tree.c marginal_approximation.c marginal_likelihood.c
+        output_states.c output_tree.c runpastml.c likelihood.h marginal_likelihood.h make_tree.h
+        marginal_approximation.h output_tree.h output_states.h pastml.h runpastml.h param_minimization.c param_minimization.h scaling.c scaling.h logger.c logger.h)
 add_executable(pastml ${SOURCE_FILES})
-target_link_libraries(pastml -lm)
+
+find_package(GSL REQUIRED)    # See below (2)
+target_link_libraries(pastml GSL::gsl -lm)

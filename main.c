@@ -3,15 +3,8 @@
 #include <getopt.h>
 #include <errno.h>
 
-void *check_alloc(int nbrelt, int sizelt){
-    void *retval;
-    if( (retval=calloc(nbrelt,sizelt)) != NULL ) {
-        return retval;
-    }
-    sprintf(stderr, "Not enough memory\n");
-    return NULL;
-}
-
+int* SIMULATION = FALSE;
+extern QUIET;
 
 int main(int argc, char **argv) {
     char *model = "JC";
@@ -19,20 +12,14 @@ int main(int argc, char **argv) {
     char *tree_name = NULL;
     char *out_annotation_name = NULL;
     char *out_tree_name = NULL;
-    int i, argnum;
     struct timespec;
-    double *frequency, collapse_BRLEN= -1.0;
     int opt;
-    int check_freq = 0;
-    char *scaling = "T", *keep_ID = "T", *marginal_out = "F";
     char *arg_error_string = malloc(sizeof(char) * 1024);
-    int input_length = 0;
 
     opterr = 0;
 
     const char *help_string = "usage: PASTML -a ANNOTATION_FILE -t TREE_NWK [-m MODEL] "
-            "[-o OUTPUT_ANNOTATION_FILE] [-n OUTPUT_TREE_NWK] "
-            "[-s SCALING_ON_OFF] [-I KEEP_INTERNAL_NODE_IDS_ON_OFF] [-L SEQUENCE_LENGTH] [-P POSTERIORS]\n"
+            "[-o OUTPUT_ANNOTATION_FILE] [-n OUTPUT_TREE_NWK] [-q]\n"
             "\n"
             "required arguments:\n"
             "   -a ANNOTATION_FILE                  path to the annotation csv file containing tip states\n"
@@ -42,14 +29,9 @@ int main(int argc, char **argv) {
             "   -o OUTPUT_ANNOTATION_FILE           path where the output annotation csv file containing node states will be created\n"
             "   -n OUTPUT_TREE_NWK                  path where the output tree file will be created (in newick format)\n"
             "   -m MODEL                            state evolution model (JC or F81)\n"
-            "   -s SCALING_ON_OFF                   branch length scaling on (T, by default) or off (F)\n"
-            "   -I KEEP_INTERNAL_NODE_IDS_ON_OFF    keep internal node ids from the input tree: T (true, by default) or F (false)\n"
-            "   -L SEQUENCE_LENGTH                  the length of the molecular sequence from which the input tree was inferred\n"
-            "   -P POSTERIORS                       output the posterior probabilities of all ancestral states before marginal approximation: T (true) or F (false, by default)\n";
+            "   -q                                  quiet, do not print progress information\n";
 
-    //            "   -f USER_DEFINED_FREQUENCY           set number of state and each state frequencies, the sum must be 1.0 (e.g. -f 4 0.1 0.2 0.3 0.4)\n"
-
-    opt = getopt(argc, argv, "a:t:o:m:n:s:I:L:P:");
+    opt = getopt(argc, argv, "a:t:o:m:n:q:s");
     do {
         switch (opt) {
             case -1:
@@ -76,33 +58,12 @@ int main(int argc, char **argv) {
                 model = optarg;
                 break;
 
-		/*case 'f':
-                argnum = atoi(argv[optind-1]);
-                frequency = check_alloc(argnum, sizeof(double));
-                if (frequency == NULL) {
-                    return ENOMEM;
-                }
-                for (i = 1; i <= argnum; i++) {
-                    frequency[i - 1] = atof(argv[optind - 1 + i]);
-                    printf("Input Frequency No.%d = %lf\n", i, frequency[i-1]);
-                }
-                check_freq = 1;
-                break;*/
-
-            case 's':
-                scaling=optarg;
+            case 'q':
+                QUIET = TRUE;
                 break;
 
-            case 'L':
-	        input_length=atoi(optarg);
-                break;
-
-            case 'I':
-                keep_ID=optarg;
-                break;
-
-            case 'P':
-                marginal_out=optarg;
+	    case 's':
+	        SIMULATION = TRUE;
                 break;
 
             default: /* '?' */
@@ -111,7 +72,7 @@ int main(int argc, char **argv) {
                 free(arg_error_string);
                 return EINVAL;
         }
-    } while ((opt = getopt(argc, argv, "a:t:o:m:n:s:I:L:P:")) != -1);
+    } while ((opt = getopt(argc, argv, "a:t:o:m:n:q:s")) != -1);
     /* Make sure that the required arguments are set correctly */
     if (annotation_name == NULL) {
         snprintf(arg_error_string, 1024, "%s%s", "Annotation file (-a) must be specified.\n\n", help_string);
@@ -125,7 +86,7 @@ int main(int argc, char **argv) {
         free(arg_error_string);
         return EINVAL;
     }
-    if ((strcmp(model, "JC") != 0) && (strcmp(model, "F81") != 0)) {
+    if ((strcmp(model, "JC") != 0) && (strcmp(model, "F81") != 0) && (strcmp(model, "HKY") != 0) && (strcmp(model, "JTT") != 0)) {
         snprintf(arg_error_string, 1024, "%s%s", "Model (-m) must be either JC or F81.\n\n", help_string);
         printf(arg_error_string);
         free(arg_error_string);
@@ -134,13 +95,6 @@ int main(int argc, char **argv) {
     /* No error in arguments */
     free(arg_error_string);
 
-    /* Initialise optional arguments is needed */
-    if (check_freq == 0) {
-        frequency = calloc(MAXCHAR, sizeof(double));
-        if (frequency == NULL) {
-            return ENOMEM;
-        }
-    }
     if (out_annotation_name == NULL) {
         out_annotation_name = calloc(256, sizeof(char));
         sprintf(out_annotation_name, "%s.pastml.out.csv", annotation_name);
@@ -149,8 +103,5 @@ int main(int argc, char **argv) {
         out_tree_name = calloc(256, sizeof(char));
         sprintf(out_tree_name, "%s.pastml.out.nwk", tree_name);
     }
-    int res = runpastml(annotation_name, tree_name, out_annotation_name, out_tree_name, model, frequency, scaling, keep_ID, input_length, marginal_out);
-
-    free(frequency);
-    return res;
+    return runpastml(annotation_name, tree_name, out_annotation_name, out_tree_name, model);
 }

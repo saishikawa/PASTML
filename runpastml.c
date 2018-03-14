@@ -1,43 +1,47 @@
 #include "pastml.h"
-#include "marginal_lik.h"
-#include "lik.h"
-#include "marginal_approxi.h"
-#include "golden.h"
-#include "fletcher.h"
-#include "fletcherJC.h"
+#include "marginal_likelihood.h"
+#include "likelihood.h"
+#include "marginal_approximation.h"
+#include "param_minimization.h"
+#include "output_tree.h"
+#include "output_states.h"
+#include "logger.h"
 #include "make_tree.h"
 #include <time.h>
-#include <unistd.h>
 #include <errno.h>
 
-Tree *s_tree;
-Node *root;
-int have_miss = -1;
-double opt_param[MAXCHAR + 2];
-double epsilon_max, epsilon_min;
+extern QUIET;
+extern SIMULATION;
+char *global_model;
 
-unsigned int tell_size_of_one_tree(char *filename) {
-    /* the only purpose of this is to know about the size of a treefile (NH format) in order to save memspace in allocating the string later on */
-    /* wew open and close this file independently of any other fopen */
-    unsigned int mysize = 0;
-    char u;
+size_t tell_size_of_one_tree(char *filename) {
+    /* the only purpose of this is to know about the size of a treefile (NH format)
+     * in order to save memspace in allocating the string later on */
+    size_t mysize = 0;
+    int u;
     FILE *myfile = fopen(filename, "r");
     if (myfile) {
         while ((u = fgetc(myfile)) != ';') { /* termination character of the tree */
-            if (u == EOF) break; /* shouldn't happen anyway */
-            if (isspace(u)) continue; else mysize++;
+            if (feof(myfile)) {
+                break;
+            } /* shouldn't happen anyway */
+            if (!isspace(u)) {
+                mysize++;
+            }
         }
         fclose(myfile);
     } /* end if(myfile) */
-    return (mysize + 1);
+    return mysize + 1;
 }
 
 int copy_nh_stream_into_str(FILE *nh_stream, char *big_string) {
     int index_in_string = 0;
-    char u;
-    /* rewind(nh_stream); DO NOT go to the beginning of the stream if we want to make this flexible enough to read several trees per file */
+    int u;
+    /* rewind(nh_stream);
+     * DO NOT go to the beginning of the stream
+     * if we want to make this flexible enough to read several trees per file */
     while ((u = fgetc(nh_stream)) != ';') { /* termination character of the tree */
-        if (u == EOF) {
+        if (feof(nh_stream)) {
             big_string[index_in_string] = '\0';
             return EXIT_FAILURE;
         } /* error code telling that no tree has been read properly */
@@ -45,307 +49,389 @@ int copy_nh_stream_into_str(FILE *nh_stream, char *big_string) {
             fprintf(stderr, "Fatal error: tree file seems too big, are you sure it is a newick tree file?\n");
             return EXIT_FAILURE;
         }
-        if (isspace(u)) continue;
-        big_string[index_in_string++] = u;
+        if (!isspace(u)) {
+            big_string[index_in_string++] = (char) u;
+        }
     }
     big_string[index_in_string++] = ';';
     big_string[index_in_string] = '\0';
     return EXIT_SUCCESS; /* leaves the stream right after the terminal ';' */
 } /*end copy_nh_stream_into_str */
 
-void free_edge(Edge *edge) {
-    int i;
-    if (edge == NULL) return;
-    for (i = 0; i < 2; i++) if (edge->subtype_counts[i]) free(edge->subtype_counts[i]);
-
-    free(edge);
-}
-
-void free_node(Node *node, int count, int num_anno) {
+void free_node(Node *node, int count, size_t num_anno) {
     int j;
 
     if (node == NULL) return;
-    if (node->name && count != 0) free(node->name);
-    if (node->comment) free(node->comment);
+    if (node->name && count != 0) {
+        free(node->name);
+        free(node->sim_name);
+    }
     free(node->neigh);
-    free(node->br);
-    free(node->condlike);
-    free(node->condlike_mar);
+    free(node->bottom_up_likelihood);
     free(node->marginal);
-    free(node->tmp_best);
-    free(node->mar_prob);
-    free(node->up_like);
-    free(node->sum_down);
-    free(node->local_flag);
-    for (j = 0; j < num_anno; j++) free(node->pij[j]);
+    free(node->sim_marginal_prob);
+    free(node->joint_likelihood);
+    free(node->joint_state);
+    free(node->best_states);
+    free(node->top_down_likelihood);
+    for (j = 0; j < num_anno; j++) {
+        free(node->pij[j]);
+    }
     free(node->pij);
-    for (j = 0; j < num_anno; j++) free(node->rootpij[j]);
-    free(node->rootpij);
     free(node);
 }
 
-void free_tree(Tree *tree, int num_anno) {
+void free_tree(Tree *tree, size_t num_anno) {
     int i;
     if (tree == NULL) return;
-    for (i = 0; i < tree->nb_nodes; i++) free_node(tree->a_nodes[i], i, num_anno);
-    for (i = 0; i < tree->nb_edges; i++) free_edge(tree->a_edges[i]);
-    for (i = 0; i < tree->nb_taxa; i++) free(tree->taxa_names[i]);
-    free(tree->taxa_names);
-    free(tree->a_nodes);
-    free(tree->a_edges);
+    for (i = 0; i < tree->nb_nodes; i++) {
+        free_node(tree->nodes[i], i, num_anno);
+    }
+    free(tree->nodes);
     free(tree);
-
 }
 
-int runpastml(char *annotation_name, char* tree_name, char *out_annotation_name, char *out_tree_name,
-              char *model, double *frequency, char* scaling, char* keep_ID, int input_length, char* marginal_out) {
-    int i, line = 0, check, sum_freq = 0, count_miss;
-    int *states, *count;
-    double sum = 0., mu, lnl = 0., scale, maxlnl = 0., nano, sec;
-    double *parameter;
-    char **annotations, **character, **tips, *c_tree;
-    int num_anno = 0, num_tips = 0;
-    FILE *treefile, *annotationfile, *fpanno;
-    struct timespec samp_ini, samp_fin;
-    char anno_line[MAXLNAME], fname[256];
-    int *iteration, ite;
-    double *optlnl, scaleup;
 
-    if ((strcmp(model, "JC") != 0) && (strcmp(model, "F81") != 0)) {
+char **read_annotations(char *annotation_file_path, char **tips, int *states,
+                        size_t *num_annotations, size_t *num_tips) {
+    char annotation_line[MAXLNAME];
+    int found_new_annotation;
+    size_t i;
+    size_t max_characters = 50;
+    char **character = calloc(max_characters, sizeof(char *));
+    for (i = 0; i < max_characters; i++) {
+        character[i] = calloc(MAXLNAME, sizeof(char));
+    }
+    *num_annotations = 0;
+    *num_tips = 0;
+
+    char **annotations = calloc(MAXNSP, sizeof(char *));
+    for (i = 0; i < MAXNSP; i++) {
+        annotations[i] = calloc(MAXLNAME, sizeof(char));
+    }
+
+    /*Read annotation from file*/
+    FILE *annotation_file = fopen(annotation_file_path, "r");
+    if (!annotation_file) {
+        fprintf(stderr, "Annotation file %s is not found or is impossible to access.", annotation_file_path);
+        fprintf(stderr, "Value of errno: %d\n", errno);
+        fprintf(stderr, "Error opening the file: %s\n", strerror(errno));
+        return NULL;
+    }
+
+    while (fgets(annotation_line, MAXLNAME, annotation_file)) {
+        sscanf(annotation_line, "%[^\n,],%[^\n\r]", tips[*num_tips], annotations[*num_tips]);
+        char *annotation_value = annotations[*num_tips];
+        if (strcmp(annotation_value, "") == 0) sprintf(annotation_value, "?");
+        if (strcmp(annotation_value, "?") == 0) {
+            states[*num_tips] = -1;
+        } else {
+            found_new_annotation = TRUE;
+            for (i = 0; i < *num_tips; i++) {
+                if (strcmp(annotations[i], "?") != 0 && strcmp(annotation_value, annotations[i]) == 0) {
+                    states[*num_tips] = states[i];
+                    strcpy(character[states[*num_tips]], annotation_value);
+                    found_new_annotation = FALSE;
+                    break;
+                }
+            }
+            if (found_new_annotation == TRUE) {
+                states[*num_tips] = (int) *num_annotations;
+                if (*num_annotations >= max_characters) {
+                    /* Annotations do not fit in the character array (of size max_characters) anymore,
+                     * so we gonna double reallocate the memory for the array (of double size) and copy data there */
+                    max_characters *= 2;
+                    character = realloc(character, max_characters * sizeof(char *));
+                    if (character == NULL) {
+                        fprintf(stderr, "Problems with allocating memory: %s\n", strerror(errno));
+                        fprintf(stderr, "Value of errno: %d\n", errno);
+                        return NULL;
+                    }
+                    for (i = *num_annotations; i < max_characters; i++) {
+                        character[i] = calloc(MAXLNAME, sizeof(char));
+                    }
+                }
+                strcpy(character[*num_annotations], annotation_value);
+                *num_annotations = *num_annotations + 1;
+            }
+        }
+        *num_tips = *num_tips + 1;
+    }
+    fclose(annotation_file);
+    free(annotations);
+    return character;
+}
+
+int calculate_frequencies(size_t num_annotations, size_t num_tips, int *states, char **character, char *model,
+                          double *parameters) {
+    /* we would need an additional spot in the count array for the missing data,
+     * therefore num_annotations + 1*/
+    int *count_array = calloc(num_annotations + 1, sizeof(int));
+    size_t i;
+
+    if (count_array == NULL) {
+        fprintf(stderr, "Memory problems: %s\n", strerror(errno));
+        fprintf(stderr, "Value of errno: %d\n", errno);
+        return ENOMEM;
+    }
+
+    for (i = 0; i < num_tips; i++) {
+        if (states[i] == -1) {
+            states[i] = (int) num_annotations;
+            sprintf(character[num_annotations], "?");
+        }
+        count_array[states[i]]++;
+    }
+
+    int sum_freq = 0;
+    for (i = 0; i <= num_annotations; i++) {
+        sum_freq += count_array[i];
+    }
+    log_info("MODEL:\t%s\n\n", model);
+    log_info("INITIAL FREQUENCIES:\n\n");
+    for (i = 0; i < num_annotations; i++) {
+        if (strcmp(model, "JC") == 0) {
+            parameters[i] = ((double) 1) / num_annotations;
+        } else if (strcmp(model, "F81") == 0) {
+            parameters[i] = ((double) count_array[i]) / sum_freq;
+        } else {
+            parameters[i] = ((double) count_array[i]) / sum_freq;
+        }
+        log_info("\t%s:\t%.10f\n", character[i], parameters[i]);
+    }
+    if (count_array[num_annotations] > 0.0) {
+        log_info("\n\tMissing data:\t%.10f\n", (double) count_array[num_annotations] / (double) sum_freq);
+    }
+    log_info("\n");
+    free(count_array);
+    return EXIT_SUCCESS;
+}
+
+Tree *read_tree(char *nwk, size_t num_anno) {
+    /**
+     * Read a tree from newick file
+     */
+
+    Tree *s_tree;
+
+    FILE *tree_file = fopen(nwk, "r");
+    if (tree_file == NULL) {
+        fprintf(stderr, "Tree file %s is not found or is impossible to access.\n", nwk);
+        fprintf(stderr, "Value of errno: %d\n", errno);
+        fprintf(stderr, "Error opening the file: %s\n", strerror(errno));
+        return NULL;
+    }
+
+    size_t tree_file_size = 3 * tell_size_of_one_tree(nwk);
+    if (tree_file_size > MAX_TREELENGTH) {
+        fprintf(stderr, "Tree filesize for %s is more than %d bytes: are you sure it's a valid newick tree?\n",
+                nwk, MAX_TREELENGTH / 3);
+        return NULL;
+    }
+
+    void *retval;
+    if ((retval = calloc(tree_file_size + 1, sizeof(char))) == NULL) {
+        fprintf(stderr, "Not enough memory\n");
+        return NULL;
+    }
+    char *c_tree = (char *) retval;
+
+    if (EXIT_SUCCESS != copy_nh_stream_into_str(tree_file, c_tree)) {
+        fprintf(stderr, "A problem occurred while parsing the reference tree.\n");
+        return NULL;
+    }
+    fclose(tree_file);
+
+    /*Make Tree structure*/
+    s_tree = complete_parse_nh(c_tree, num_anno);
+    if (NULL == s_tree) {
+        fprintf(stderr, "A problem occurred while parsing the reference tree.\n");
+        return NULL;
+    }
+    return s_tree;
+}
+
+int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name, char *out_tree_name, char *model) {
+    int i;
+    int *states;
+    double log_likelihood, sec;
+    int minutes;
+    double *parameters;
+    char **character, **tips, fname[50];
+    size_t num_annotations, num_tips = 0;
+    struct timespec time_start, time_end;
+    int exit_val;
+    Tree *s_tree;
+    FILE *fp;
+
+    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time_start);
+    srand((unsigned) time(NULL));
+    global_model = model;
+    
+
+    if ((strcmp(model, "JC") != 0) && (strcmp(model, "F81") != 0) && (strcmp(model, "HKY") != 0) && (strcmp(model, "JTT") != 0)) {
         sprintf(stderr, "Model must be either JC or F81, not %s", model);
         return EINVAL;
     }
 
-    opterr = 0;
-    parameter = calloc(MAXCHAR + 2, sizeof(double));
+    /* Allocate memory */
     states = calloc(MAXNSP, sizeof(int));
-    count = calloc(MAXCHAR, sizeof(int));
-    annotations = calloc(MAXNSP, sizeof(char *));
     tips = calloc(MAXNSP, sizeof(char *));
     for (i = 0; i < MAXNSP; i++) {
-        annotations[i] = calloc(MAXLNAME, sizeof(char));
         tips[i] = calloc(MAXLNAME, sizeof(char));
     }
-    character = calloc(MAXCHAR, sizeof(char *));
-    for (i = 0; i < MAXCHAR; i++) {
-        character[i] = calloc(MAXLNAME, sizeof(char));
-    }
-    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &samp_ini);
-    srand((unsigned) time(NULL));
-    
-    /*Read annotation from file*/
-
-    annotationfile = fopen(annotation_name, "r");
-    if (!annotationfile) {
-        fprintf(stderr, "Annotation file %s is not found or is impossible to access.", annotation_name);
-        fprintf(stderr, "Value of errno: %d\n", errno);
-        fprintf(stderr, "Error opening the file: %s\n", strerror(errno));
-        return ENOENT;
-    }
-    num_anno = -1;
-    count_miss = 0;
-    line = 0;
     states[0] = 0;
-    while (fgets(anno_line, MAXLNAME, annotationfile)) {
-        sscanf(anno_line, "%[^\n,],%[^\n\r]", tips[line], annotations[line]);
-        char *annotation_value = annotations[line];
-        if (strcmp(annotation_value, "") == 0) sprintf(annotation_value, "?");
-        if (strcmp(annotation_value, "?") == 0) {
-            count_miss++;
-            states[line] = -1;
-        } else {
-            check = 0;
-            for (i = 0; i < line; i++) {
-                if (strcmp(annotations[i], "?") == 0) {
-                } else {
-                    if (strcmp(annotation_value, annotations[i]) == 0) {
-                        states[line] = states[i];
-                        strcpy(character[states[line]], annotation_value);
-                        check = 1;
-                        break;
-                    }
-                }
-            }
-            if (check == 0) {
-                num_anno++;
-                states[line] = num_anno;
-                if (num_anno >= MAXCHAR) {
-                    fprintf(stderr, "Maximal number of annotations (%d) is exceeded:", MAXCHAR);
-                    for (i = 0; i < num_anno; i++) {
-                        fprintf(stderr, " %s, ", character[i]);
-                    }
-                    fprintf(stderr, " %s, etc.", annotation_value);
-                    return EINVAL;
-                }
-                strcpy(character[num_anno], annotation_value);
-            }
-        }
-        line++;
-    }
-    fclose(annotationfile);
-    num_anno++;
 
-    for (i = 0; i < line; i++) {
-        if (states[i] == -1) {
-            states[i] = num_anno;
-            sprintf(character[num_anno], "?");
-        }
-        count[states[i]]++;
+    size_t *num_anno_arr = calloc(1, sizeof(int));
+    size_t *num_tips_arr = calloc(1, sizeof(int));
+    character = read_annotations(annotation_name, tips, states, num_anno_arr, num_tips_arr);
+    if (character == NULL) {
+        return EXIT_FAILURE;
     }
-    have_miss = num_anno;
+    num_annotations = *num_anno_arr;
+    num_tips = *num_tips_arr;
+    free(num_anno_arr);
+    free(num_tips_arr);
 
-    for (i = 0; i < num_anno; i++) {
-        sum_freq = sum_freq + count[i];
-    }
-    sum_freq = sum_freq + count_miss;
-    printf("\n*** Information of the primary annotation, frequency of the %d character in the data ***\n\n", num_anno);
-    for (i = 0; i < num_anno; i++) {
-        if (strcmp(model, "JC") == 0) {
-            frequency[i] = (double) 1 / num_anno;
-        } else if (strcmp(model, "F81") == 0) {
-            frequency[i] = (double) count[i] / sum_freq;
-        }
-        printf("%s = %lf\n", character[i], (double) count[i] / sum_freq);
-        if (strcmp(character[i], character[i + 1]) == 0) {
-            fprintf(stderr,
-                    "PASTML cannot recognize the characters in the input annotation file.\n"
-                            "Check your file format (must be csv), character encoding (must be UTF-8), "
-                            "and newline encoding (must be Unix/Linux)\n");
-            return EINVAL;
-        }
-    }
-    printf("Frequency of the unknown or missing data %s = %lf\n", character[num_anno], (double) count_miss / (double) sum_freq);
-    for (i = 0; i < num_anno; i++) {
-        parameter[i] = frequency[i];
-    }
-
-    /*Read tree from file*/
-
-    treefile = fopen(tree_name, "r");
-    if (treefile == NULL) {
-        fprintf(stderr, "Tree file %s is not found or is impossible to access.\n", tree_name);
+    /* we would need two additional spots in the parameters array: for the scaling factor, and for the epsilon,
+     * therefore num_annotations + 2*/
+    parameters = calloc(num_annotations + 2, sizeof(double));
+    if (parameters == NULL) {
+        fprintf(stderr, "Memory problems: %s\n", strerror(errno));
         fprintf(stderr, "Value of errno: %d\n", errno);
-        fprintf(stderr, "Error opening the file: %s\n", strerror(errno));
-        return ENOENT;
-    }
-
-    unsigned int treefilesize = 3 * tell_size_of_one_tree(tree_name);
-    if (treefilesize > MAX_TREELENGTH) {
-        fprintf(stderr, "Tree filesize for %s is bigger than %d bytes: are you sure it's a valid newick tree?\n",
-                tree_name, MAX_TREELENGTH / 3);
-        return EFBIG;
-    }
-
-    void *retval;
-    if( (retval=calloc(treefilesize + 1, sizeof(char))) == NULL ) {
-        printf("Not enough memory\n");
         return ENOMEM;
     }
-    c_tree = (char *) retval;
 
-    if (EXIT_SUCCESS != copy_nh_stream_into_str(treefile, c_tree)) {
-        fprintf(stderr, "A problem occurred while parsing the reference tree.\n");
-        return EINVAL;
+    exit_val = calculate_frequencies(num_annotations, num_tips, states, character, model, parameters);
+    if (EXIT_SUCCESS != exit_val) {
+        return exit_val;
     }
-    fclose(treefile);
 
-    /*Make Tree structure*/
-    s_tree = complete_parse_nh(c_tree, num_anno, keep_ID, input_length); /* sets taxname_lookup_table en passant */
-    if (NULL == s_tree) {
-        fprintf(stderr, "A problem occurred while parsing the reference tree.\n");
-        return EINVAL;
+    /*Re-order states, characters and frequencies for the HKY and JTT models*/
+    if ((strcmp(model, "HKY") == 0) || (strcmp(model, "JTT") == 0))
+	exchange_params(num_annotations, num_tips, states, character, model, parameters);
+
+    s_tree = read_tree(tree_name, num_annotations);
+    if (s_tree == NULL) {
+        return EXIT_FAILURE;
     }
-    root = s_tree->a_nodes[0];
+
+    if (s_tree->nb_taxa != num_tips) {
+        fprintf(stderr, "Number of annotations (even empty ones) specified in the annotation file (%zd)"
+                " and the number of tips (%zd) do not match", num_tips, s_tree->nb_taxa);
+    }
     num_tips = s_tree->nb_taxa;
-    for (i = 0; i < num_anno; i++) {
-        sum += frequency[i] * frequency[i];
+    parameters[num_annotations] = 1.0 / s_tree->avg_branch_len;
+    parameters[num_annotations + 1] = s_tree->min_branch_len;
+
+    initialise_tip_probabilities(s_tree, tips, states, num_tips, num_annotations);
+    free(tips);
+
+    if ((strcmp(model, "HKY") == 0) || (strcmp(model, "JTT") == 0)) { parameters[num_annotations] = 1.0; parameters[num_annotations + 1] = 0.0; }
+    log_likelihood = calculate_bottom_up_likelihood(s_tree, num_annotations, parameters);
+    if (log_likelihood == log(0)) {
+        fprintf(stderr, "A problem occurred while calculating the bottom up likelihood: "
+                "Is your tree ok and has at least 2 children per every inner node?\n");
+        return EXIT_FAILURE;
     }
-    mu = 1 / (1 - sum);
-    parameter[num_anno] = 1.0;
-    if(input_length > 0) {
-      parameter[num_anno + 1] = 1.0 / (double) input_length / 100.0;
-      epsilon_max = 1.0 / (double) input_length;
-      epsilon_min = 1.0 / (double) input_length / 10000.0;
-    } else {
-      parameter[num_anno + 1] = s_tree->ex_avgbl/1000.0;
-      epsilon_max = s_tree->ex_avgbl/10.0;
-      epsilon_min = s_tree->ex_avgbl/100000.0;
+    log_info("INITIAL LOG LIKELIHOOD:\t%.10f\n\n", log_likelihood);
+
+    if ((strcmp(model, "JC") == 0) || (strcmp(model, "F81") == 0)) {
+      log_info("OPTIMISING PARAMETERS...\n\n");
+      log_likelihood = minimize_params(s_tree, num_annotations, parameters, character, model,
+                                     0.01 / s_tree->avg_branch_len, 10.0 / s_tree->avg_branch_len,
+                                     MIN(s_tree->min_branch_len / 10.0, s_tree->avg_tip_branch_len / 100.0),
+                                     s_tree->avg_tip_branch_len / 10.0);
+      log_info("\n");
     }
 
-    calc_lik_bfgs(root, tips, states, num_tips, num_anno, mu, model, parameter, &lnl);
-    printf("\n*** Initial likelihood of the tree ***\n\n %lf\n\n", lnl * (-1.0));
-
-    scale = 1.0;
-    ite = 0;
-    iteration = &ite;
-    optlnl = &maxlnl;
-    scaleup = 5.0 / s_tree->avgbl;
-    if (strcmp(scaling, "T") == 0) {
-        golden(root, tips, states, num_tips, num_anno, mu, model, parameter, scaleup);
-        printf("Golden Section Search method roughly optimized the scaling factor to %.5e\n",parameter[num_anno]);
-        if (strcmp(model, "F81") == 0) {
-            frprmn(root, tips, states, num_tips, num_anno, mu, model, parameter, num_anno + 2, 1.0e-3, iteration,
-                   optlnl, character);
-        } else if (strcmp(model, "JC") == 0) {
-            parameter[0] = parameter[num_anno];
-            parameter[1] = parameter[num_anno + 1];
-            frprmnJC(root, tips, states, num_tips, num_anno, mu, model, parameter, 2, 1.0e-3, iteration, optlnl,
-                     character, frequency);
-            parameter[num_anno] = parameter[0];
-            parameter[num_anno + 1] = parameter[1];
-            for (i = 0; i < num_anno; i++) {
-                parameter[i] = frequency[i];
-            }
-
+    log_info("OPTIMISED PARAMETERS:\n\n");
+    if (0 == strcmp("F81", model) || (strcmp(model, "HKY") == 0) || (strcmp(model, "JTT") == 0)) {
+        for (i = 0; i < num_annotations; i++) {
+            log_info("\tFrequency of %s:\t%.10f\n", character[i], parameters[i]);
         }
+        log_info("\n");
     }
-    printf("\n*** Character frequencies in the %s Model ***\n\n", model);
-    for (i = 0; i < num_anno; i++) {
-        printf("%s = %.5f\n", character[i], parameter[i]);
-    }
-    printf("\n*** Optimized tree scaling factor ***\n\n %.5e \n\n*** The epsilon parameter for approximating external branches with zero mutations ***\n\n %.5e",
-           parameter[num_anno], parameter[num_anno + 1]);
-    calc_lik_bfgs(root, tips, states, num_tips, num_anno, mu, model, parameter, optlnl);
-    printf("\n\n*** Optimised likelihood ***\n\n %lf\n", (*optlnl)*(-1.0));
+    log_info("\tScaling factor:\t%.10f \n", parameters[num_annotations]);
+    log_info("\tEpsilon:\t%e\n", parameters[num_annotations + 1]);
+    log_info("\n");
+    log_info("OPTIMISED LOG LIKELIHOOD:\t%.10f\n", log_likelihood);
+    log_info("\n");
 
-    //Marginal likelihood calculation
-    printf("\n*** Calculating Marginal Likelihoods ***\n");
-    down_like_marginal(root, num_tips, num_anno, mu, scale, parameter);
+    rescale_branch_lengths(s_tree, parameters[num_annotations], parameters[num_annotations + 1]);
 
-    if(strcmp(marginal_out, "T") == 0) {
-      sprintf(fname, "%s.marginalPP.csv", annotation_name);
-      fpanno = fopen(fname, "w");
-      if (!fpanno) {
-        fprintf(stderr, "Output annotation file %s is impossible to access.", fname);
-        fprintf(stderr, "Value of errno: %d\n", errno);
-        fprintf(stderr, "Error opening the file: %s\n", strerror(errno));
-        return ENOENT;
+    //Marginal bottom_up_likelihood calculation
+    log_info("\nCALCULATING MARGINAL PROBABILITIES...\n\n");
+    calculate_marginal_probabilities(s_tree, num_annotations, parameters);
+    log_info("PREDICTING MOST LIKELY ANCESTRAL STATES...\n\n");
+    choose_likely_states(s_tree, num_annotations);
+
+    //For reproduction of the simulation results proposed by Ishikawa et al. 201X
+    if(SIMULATION == TRUE) {
+      calculate_joint_probabilities(s_tree, num_annotations, parameters);
+      log_info("CALCULATING JOINT PROBABILITIES...\n\n");
+      sprintf(fname,"joint.txt");
+      exit_val = output_simulation(s_tree, num_annotations, character, fname, 0);
+      if (EXIT_SUCCESS != exit_val) {
+        return exit_val;
       }
-      output_marginal_anc_PP(root, num_tips, num_anno, character, fpanno);
-      output_state_tip_PP(root, num_tips, num_anno, character, fpanno);
-      fclose(fpanno);
-      printf("All posterior probabilities are written to %s in csv format\n",
-           fname);
+      log_info("\tJoint prediction is written to %s in csv format.\n", fname);
+      log_info("\n");
+      sprintf(fname,"marginal.txt");
+      exit_val = output_simulation(s_tree, num_annotations, character, fname, 1);
+      if (EXIT_SUCCESS != exit_val) {
+        return exit_val;
+      }
+      log_info("\tMarginal prediction is written to %s in csv format.\n", fname);
+      log_info("\n"); 
+      sprintf(fname,"maximum_posteriori.txt");
+      exit_val = output_simulation(s_tree, num_annotations, character, fname, 2);
+      if (EXIT_SUCCESS != exit_val) {
+        return exit_val;
+      }
+      log_info("\tMAP prediction is written to %s in csv format.\n", fname);
+      log_info("\n"); 
+      sprintf(fname,"marginal_approximation.txt");
+      exit_val = output_simulation(s_tree, num_annotations, character, fname, 3);
+      if (EXIT_SUCCESS != exit_val) {
+        return exit_val;
+      }
+      log_info("\tMA prediction is written to %s in csv format.\n", fname);
+      log_info("\n");   
+      sprintf(fname,"scaling_factor.txt");
+      fp = fopen(fname, "w");
+      fprintf(fp, "%lf\n", parameters[num_annotations]);
+      fclose(fp);
+      log_info("\tOptimized scaling factor is written to %s.\n", fname);
+      log_info("\n");   
     }
 
-    printf("\n*** Predicting likely ancestral statesby the Marginal Approximation method ***\n\n");
-    int res_code = make_samples(tips, states, num_tips, num_anno, character, parameter, out_annotation_name, out_tree_name);
-    if (EXIT_SUCCESS != res_code) {
-        return res_code;
+    exit_val = write_nh_tree(s_tree, out_tree_name, parameters[num_annotations], parameters[num_annotations + 1]);
+    if (EXIT_SUCCESS != exit_val) {
+        return exit_val;
     }
+    log_info("SAVING THE RESULTS...\n\n");
+    log_info("\tScaled tree with internal node ids is written to %s.\n", out_tree_name);
+
+    exit_val = output_state_ancestral_states(s_tree, num_annotations, character, out_annotation_name);
+    if (EXIT_SUCCESS != exit_val) {
+        return exit_val;
+    }
+    log_info("\tState predictions are written to %s in csv format.\n", out_annotation_name);
+    log_info("\n");
 
     //free all
-    free(annotations);
-    free(tips);
     free(character);
     free(states);
-    free(count);
-    free_tree(s_tree, num_anno);
+    free_tree(s_tree, num_annotations);
 
-    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &samp_fin);
-    sec = (double) (samp_fin.tv_sec - samp_ini.tv_sec);
-    nano = (double) (samp_fin.tv_nsec - samp_ini.tv_nsec) / 1000.0 / 1000.0 / 1000.0;
+    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time_end);
+    sec = (double) (time_end.tv_sec - time_start.tv_sec)
+          + (time_end.tv_nsec - time_start.tv_nsec) / 1000.0 / 1000.0 / 1000.0;
 
-    printf("\nTotal execution time = %3.10lf seconds\n\n", (sec + nano));
+    minutes = (int) (sec / 60.0);
+    log_info("TOTAL EXECUTION TIME:\t%d minute%s %.2f seconds\n\n", minutes, (minutes != 1) ? "s" : "",
+             sec - (60.0 * minutes));
+
     return EXIT_SUCCESS;
 }

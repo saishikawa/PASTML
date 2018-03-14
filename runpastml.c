@@ -338,6 +338,7 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
 
     if ((strcmp(model, "JC") == 0) || (strcmp(model, "F81") == 0)) {
       log_info("OPTIMISING PARAMETERS...\n\n");
+      if(parameters[num_annotations+1] > s_tree->avg_tip_branch_len / 10.0) parameters[num_annotations + 1] = s_tree->avg_tip_branch_len / 10.0;
       log_likelihood = minimize_params(s_tree, num_annotations, parameters, character, model,
                                      0.01 / s_tree->avg_branch_len, 10.0 / s_tree->avg_branch_len,
                                      MIN(s_tree->min_branch_len / 10.0, s_tree->avg_tip_branch_len / 100.0),

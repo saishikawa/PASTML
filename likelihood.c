@@ -53,7 +53,8 @@ double get_pij(const double *frequencies, double mu, double t, int i, int j) {
      * Pxy(t) = \pi_y (1 - exp(-mu t)) + exp(-mu t), if x ==y, \pi_y (1 - exp(-mu t)), otherwise
      * [Gascuel "Mathematics of Evolution and Phylogeny" 2005].
      */
-    double exp_mu_t = exp(-mu * t);
+    // if mu == inf (e.g. just one state) and t == 0, we should prioritise mu
+    double exp_mu_t = (mu == INFINITY) ? 0.0: exp(-mu * t);
 
     double p_ij = frequencies[j] * (1.0 - exp_mu_t);
     if (i == j) {
@@ -92,8 +93,6 @@ void set_p_ij(const Node *nd, double avg_br_len, size_t num_frequencies, const d
     double scaling_factor = parameters[num_frequencies];
     double epsilon = parameters[num_frequencies + 1];
     double t = get_rescaled_branch_len(nd, avg_br_len, scaling_factor, epsilon);
-    // TODO: do we need to recalculate mu each time
-    // or we fix it in the beginning and play with the scaling factor instead?
     double mu = get_mu(parameters, num_frequencies);
 
     for (i = 0; i < num_frequencies; i++) {

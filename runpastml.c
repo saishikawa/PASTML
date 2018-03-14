@@ -319,27 +319,30 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
         return EXIT_FAILURE;
     }
     log_info("INITIAL LOG LIKELIHOOD:\t%.10f\n\n", log_likelihood);
+    if (log_likelihood == log(1)) {
+        log_info("INITIAL LIKELIHOOD IS PERFECT, CANNOT DO BETTER THAN THAT.\n\n");
+    } else {
 
+        log_info("OPTIMISING PARAMETERS...\n\n");
+        log_likelihood = minimize_params(s_tree, num_annotations, parameters, character, model,
+                                         0.01 / s_tree->avg_branch_len, 10.0 / s_tree->avg_branch_len,
+                                         MIN(s_tree->min_branch_len / 10.0, s_tree->avg_tip_branch_len / 100.0),
+                                         MIN(s_tree->min_branch_len * 10.0, s_tree->avg_tip_branch_len / 10.0));
+        log_info("\n");
 
-    log_info("OPTIMISING PARAMETERS...\n\n");
-    log_likelihood = minimize_params(s_tree, num_annotations, parameters, character, model,
-                                     0.01 / s_tree->avg_branch_len, 10.0 / s_tree->avg_branch_len,
-                                     MIN(s_tree->min_branch_len / 10.0, s_tree->avg_tip_branch_len / 100.0),
-                                     s_tree->avg_tip_branch_len / 10.0);
-    log_info("\n");
-
-    log_info("OPTIMISED PARAMETERS:\n\n");
-    if (0 == strcmp("F81", model)) {
-        for (i = 0; i < num_annotations; i++) {
-            log_info("\tFrequency of %s:\t%.10f\n", character[i], parameters[i]);
+        log_info("OPTIMISED PARAMETERS:\n\n");
+        if (0 == strcmp("F81", model)) {
+            for (i = 0; i < num_annotations; i++) {
+                log_info("\tFrequency of %s:\t%.10f\n", character[i], parameters[i]);
+            }
+            log_info("\n");
         }
+        log_info("\tScaling factor:\t%.10f \n", parameters[num_annotations]);
+        log_info("\tEpsilon:\t%e\n", parameters[num_annotations + 1]);
+        log_info("\n");
+        log_info("OPTIMISED LOG LIKELIHOOD:\t%.10f\n", log_likelihood);
         log_info("\n");
     }
-    log_info("\tScaling factor:\t%.10f \n", parameters[num_annotations]);
-    log_info("\tEpsilon:\t%e\n", parameters[num_annotations + 1]);
-    log_info("\n");
-    log_info("OPTIMISED LOG LIKELIHOOD:\t%.10f\n", log_likelihood);
-    log_info("\n");
 
     rescale_branch_lengths(s_tree, parameters[num_annotations], parameters[num_annotations + 1]);
 

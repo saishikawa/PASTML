@@ -308,8 +308,11 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
     }
 
     /*Re-order states, characters and frequencies for the HKY and JTT models*/
-    if ((strcmp(model, "HKY") == 0) || (strcmp(model, "JTT") == 0))
-	exchange_params(num_annotations, num_tips, states, character, model, parameters);
+    if ((strcmp(model, "HKY") == 0) || (strcmp(model, "JTT") == 0)) {
+      if(strcmp(model, "HKY") == 0)  num_annotations = 4;
+      if(strcmp(model, "JTT") == 0)  num_annotations = 20;
+      exchange_params(num_annotations, num_tips, states, character, model, parameters);
+    }
 
     s_tree = read_tree(tree_name, num_annotations);
     if (s_tree == NULL) {

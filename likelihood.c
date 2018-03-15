@@ -280,6 +280,7 @@ initialise_tip_probabilities(Tree *s_tree, char *const *tip_names, const int *st
                     } else {
                         nd->bottom_up_likelihood[states[i]] = 1.0;
                         nd->joint_likelihood[states[i]] = 1.0;
+			nd->best_joint_state = states[i];
                     }
                     break;
                 }

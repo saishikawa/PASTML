@@ -68,6 +68,8 @@ void free_node(Node *node, int count, size_t num_anno) {
     free(node->marginal);
     free(node->best_states);
     free(node->top_down_likelihood);
+    free(node->scaling_factor_down);
+    free(node->scaling_factor_up);
     for (j = 0; j < num_anno; j++) {
         free(node->pij[j]);
     }
@@ -346,9 +348,12 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
 
     rescale_branch_lengths(s_tree, parameters[num_annotations], parameters[num_annotations + 1]);
 
-    //Marginal bottom_up_likelihood calculation
+    log_info("CALCULATING TOP-DOWN LIKELIHOOD...\n\n");
+    calculate_top_down_likelihood(s_tree, num_annotations);
+
     log_info("CALCULATING MARGINAL PROBABILITIES...\n\n");
     calculate_marginal_probabilities(s_tree, num_annotations, parameters);
+
     log_info("PREDICTING MOST LIKELY ANCESTRAL STATES...\n\n");
     choose_likely_states(s_tree, num_annotations);
 

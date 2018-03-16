@@ -34,6 +34,8 @@ typedef struct __Node {
     double *marginal;
     size_t *best_states;
     double *top_down_likelihood;
+    int *scaling_factor_down;
+    int *scaling_factor_up;
     double branch_len;
 } Node;
 

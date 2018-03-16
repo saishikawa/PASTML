@@ -168,7 +168,7 @@ double minimize_params(Tree* s_tree, size_t num_annotations, double *parameters,
     T = gsl_multimin_fdfminimizer_vector_bfgs2;
     s = gsl_multimin_fdfminimizer_alloc(T, n);
 
-    double step_size = 10.0;
+    double step_size = 1.0;
     double tol = .1;
     gsl_multimin_fdfminimizer_set(s, &my_func, x, step_size, tol);
 

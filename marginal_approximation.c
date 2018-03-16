@@ -1,6 +1,6 @@
 
 #include "pastml.h"
-
+#include "likelihood.h"
 
 
 void
@@ -19,6 +19,7 @@ order_marginal(Tree* tree, size_t num_annotations)
 
     for (k = 0; k < tree->nb_nodes; k++) {
         nd = tree->nodes[k];
+        normalize(nd->marginal, num_annotations);
         /* put index array in the nd->best_states
          * and sort it by marginal probabilities in marginal array, in decreasing order */
         memcpy(nd->best_states, indices, num_annotations * sizeof(size_t));
@@ -82,7 +83,6 @@ void choose_likely_states(Tree *tree, size_t n) {
     /**
      * Chooses an optimal number of non-zero probabilities to keep, and sets all of them to be equal.
      */
-
     // order marginal probabilities
     order_marginal(tree, n);
 

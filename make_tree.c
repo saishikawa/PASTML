@@ -252,15 +252,16 @@ int parse_substring_into_node(char *in_str, int begin, int end, Node *current_no
     current_node->nb_neigh = (nb_commas == 0 ? 1 : nb_commas + 1 + has_father);
     current_node->neigh = malloc(current_node->nb_neigh * sizeof(Node *));
 
-    size_t nbanno_size_t = (size_t) nbanno;
-    current_node->bottom_up_likelihood = calloc(nbanno_size_t, sizeof(double));
-    current_node->marginal = calloc(nbanno_size_t, sizeof(double));
-    current_node->pij = calloc(nbanno_size_t, sizeof(double *));
+    current_node->bottom_up_likelihood = calloc(nbanno, sizeof(double));
+    current_node->marginal = calloc(nbanno, sizeof(double));
+    current_node->pij = calloc(nbanno, sizeof(double *));
     for (i = 0; i < nbanno; i++) {
-        current_node->pij[i] = calloc(nbanno_size_t, sizeof(double));
+        current_node->pij[i] = calloc(nbanno, sizeof(double));
     }
-    current_node->best_states = calloc(nbanno_size_t, sizeof(size_t));
-    current_node->top_down_likelihood = calloc(nbanno_size_t, sizeof(double));
+    current_node->best_states = calloc(nbanno, sizeof(size_t));
+    current_node->top_down_likelihood = calloc(nbanno, sizeof(double));
+    current_node->scaling_factor_down = calloc(1, sizeof(int));
+    current_node->scaling_factor_up = calloc(1, sizeof(int));
 
     if (nb_commas != 0) { /* at least one comma, so at least two sons: */
         for (i = 0; i <= nb_commas; i++) { /* e.g. three iterations for two commas */

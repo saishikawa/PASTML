@@ -7,6 +7,7 @@
 
 #include "pastml.h"
 
-void calculate_marginal_probabilities(Tree *s_tree, size_t num_annotations, double *frequency);
+void calculate_marginal_probabilities(Tree *s_tree, size_t num_annotations, double *frequencies);
+void calculate_top_down_likelihood(Tree *s_tree, size_t num_annotations);
 
 #endif //PASTML_MARGINAL_LIK_H_H

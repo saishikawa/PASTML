@@ -1,6 +1,5 @@
 #include "pastml.h"
 #include "scaling.h"
-#include "logger.h"
 
 int get_max(const int *array, size_t n) {
     /**
@@ -50,7 +49,7 @@ double get_pij(const double *frequencies, double mu, double t, int i, int j) {
      * Calculate the probability of substitution i->j over time t, given the mutation rate mu:
      *
      * For K81 (and JC which is a simpler version of it)
-     * Pxy(t) = \pi_y (1 - exp(-mu t)) + exp(-mu t), if x ==y, \pi_y (1 - exp(-mu t)), otherwise
+     * Pxy(t) = \pi_y (1 - exp(-mu t)) + exp(-mu t), if x == y, \pi_y (1 - exp(-mu t)), otherwise
      * [Gascuel "Mathematics of Evolution and Phylogeny" 2005].
      */
     // if mu == inf (e.g. just one state) and t == 0, we should prioritise mu
@@ -104,6 +103,7 @@ void set_p_ij(const Node *nd, double avg_br_len, size_t num_frequencies, const d
 
 int calculate_node_probabilities(const Node *nd, size_t num_annotations, size_t first_child_index) {
     int factors = 0;
+    double p_child_branch_from_i;
     size_t i, j, k;
     for (k = first_child_index; k < nd->nb_neigh; k++) {
         Node *child = nd->neigh[k];
@@ -111,14 +111,13 @@ int calculate_node_probabilities(const Node *nd, size_t num_annotations, size_t 
             /* Calculate the probability of having a branch from the node to its child node,
              * given that the node is in state i: p_child_branch_from_i = sum_j(p_ij * p_child_j)
              */
-            double p_child_branch_from_i = 0.;
+            p_child_branch_from_i = 0.;
             for (j = 0; j < num_annotations; j++) {
                 p_child_branch_from_i += child->pij[i][j] * child->bottom_up_likelihood[j];
             }
 
             /* The probability of having the node in state i is a multiplication of
-             * the probabilities of p_child_branch_from_i for all child branches:
-             * condlike_i = mult_ii(p_child_ii_branch_from_i)
+             * the probabilities of p_child_branch_from_i for all child branches.
              */
             if (k == first_child_index) {
                 nd->bottom_up_likelihood[i] = p_child_branch_from_i;
@@ -127,10 +126,7 @@ int calculate_node_probabilities(const Node *nd, size_t num_annotations, size_t 
             }
         }
         int add_factors = upscale_node_probs(nd->bottom_up_likelihood, num_annotations);
-
-        /* if all the probabilities are zero (shown by add_factors == -1),
-         * there is no point to go any further
-         */
+        // if all the probabilities are zero (shown by add_factors == -1), stop here
         if (add_factors == -1) {
             return -1;
         }
@@ -145,56 +141,33 @@ int process_node(Node *nd, Tree *s_tree, size_t num_annotations, double *paramet
      * parameters = [frequency_char_1, .., frequency_char_n, scaling_factor, epsilon].
      */
     int factors = 0, add_factors;
-    size_t i, first_child_index;
+    size_t i;
+    Node* child;
+    size_t first_child_index = (nd == s_tree->root) ? 0 : 1;
+    
+    /* recursively calculate probabilities for children if there are any children */
+    for (i = first_child_index; i < nd->nb_neigh; i++) {
+        child = nd->neigh[i];
+        
+        /* set probabilities of substitution */
+        set_p_ij(child, s_tree->avg_tip_branch_len, num_annotations, parameters);
 
-    /* set probabilities of substitution */
-    if (nd != s_tree->root) {
-        set_p_ij(nd, s_tree->avg_tip_branch_len, num_annotations, parameters);
-    }
-
-    /* not a tip */
-    if (nd->nb_neigh != 1) {
-        first_child_index = (nd == s_tree->root) ? 0 : 1;
-        /* recursively calculate probabilities for children */
-        for (i = first_child_index; i < nd->nb_neigh; i++) {
-            add_factors = process_node(nd->neigh[i], s_tree, num_annotations, parameters);
-            /* if all the probabilities are zero (shown by add_factors == -1),
-             * there is no point to go any further
-             */
-            if (add_factors == -1) {
-                return -1;
-            }
-            factors += add_factors;
-        }
-        /* calculate own probabilities */
-        add_factors = calculate_node_probabilities(nd, num_annotations, first_child_index);
-        /* if all the probabilities are zero (shown by add_factors == -1),
-         * there is no point to go any further
-         */
+        add_factors = process_node(child, s_tree, num_annotations, parameters);
+        // if all the probabilities are zero (shown by add_factors == -1), stop here
         if (add_factors == -1) {
             return -1;
         }
         factors += add_factors;
     }
+    /* calculate own probabilities */
+    add_factors = calculate_node_probabilities(nd, num_annotations, first_child_index);
+    // if all the probabilities are zero (shown by add_factors == -1), stop here
+    if (add_factors == -1) {
+        return -1;
+    }
+    factors += add_factors;
+    nd->scaling_factor_down[0] = factors;
     return factors;
-}
-
-
-double remove_upscaling_factors(double log_likelihood, int factors) {
-    /**
-     * While calculating the node probabilities, the upscaling was done to avoid underflow problems:
-     * if a certain node probability was too small, we multiplied this node probabilities by a scaling factor,
-     * and kept the factor in mind to remove it from the final likelihood.
-     *
-     * Now its time to remove all the factors from the final likelihood.
-     */
-    int piecewise_scaler_pow;
-    do {
-        piecewise_scaler_pow = MIN(factors, 63);
-        log_likelihood -= LOG2 * piecewise_scaler_pow;
-        factors -= piecewise_scaler_pow;
-    } while (factors != 0);
-    return log_likelihood;
 }
 
 double calculate_bottom_up_likelihood(Tree *s_tree, size_t num_annotations, double *parameters) {
@@ -211,8 +184,7 @@ double calculate_bottom_up_likelihood(Tree *s_tree, size_t num_annotations, doub
     if (factors != -1) {
         for (i = 0; i < num_annotations; i++) {
             /* multiply the probability by character frequency */
-            s_tree->root->bottom_up_likelihood[i] = s_tree->root->bottom_up_likelihood[i] * parameters[i];
-            scaled_lk += s_tree->root->bottom_up_likelihood[i];
+            scaled_lk += s_tree->root->bottom_up_likelihood[i] * parameters[i];
         }
     }
     return remove_upscaling_factors(log(scaled_lk), factors);

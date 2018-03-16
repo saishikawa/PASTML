@@ -289,6 +289,8 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
         return EXIT_FAILURE;
     }
     num_annotations = *num_anno_arr;
+    if(strcmp(model, "HKY") == 0)  num_annotations = 4;
+    if(strcmp(model, "JTT") == 0)  num_annotations = 20;
     num_tips = *num_tips_arr;
     free(num_anno_arr);
     free(num_tips_arr);
@@ -302,15 +304,15 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
         return ENOMEM;
     }
 
-    exit_val = calculate_frequencies(num_annotations, num_tips, states, character, model, parameters);
-    if (EXIT_SUCCESS != exit_val) {
+    if ((strcmp(model, "JC") == 0) || (strcmp(model, "F81") == 0)) {
+      exit_val = calculate_frequencies(num_annotations, num_tips, states, character, model, parameters);
+      if (EXIT_SUCCESS != exit_val) {
         return exit_val;
+      }
     }
 
     /*Re-order states, characters and frequencies for the HKY and JTT models*/
     if ((strcmp(model, "HKY") == 0) || (strcmp(model, "JTT") == 0)) {
-      if(strcmp(model, "HKY") == 0)  num_annotations = 4;
-      if(strcmp(model, "JTT") == 0)  num_annotations = 20;
       exchange_params(num_annotations, num_tips, states, character, model, parameters);
     }
 

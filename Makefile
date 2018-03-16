@@ -1,5 +1,5 @@
 
-PRG    = PASTML
+PRG    = PASTML-test
 OBJ    = main.o runpastml.o make_tree.o likelihood.o marginal_likelihood.o joint_likelihood.o marginal_approximation.o output_tree.o output_states.o output_simulation.o param_minimization.o scaling.o logger.o eigen.o models.o
 
 CFLAGS = -mcmodel=medium -w

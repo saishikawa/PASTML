@@ -6,7 +6,7 @@
 extern QUIET;
 
 int main(int argc, char **argv) {
-    char *model = "JC", *prob_method = "a";
+    char *model = JC, *prob_method = MARGINAL_APPROXIMATION;
     char *annotation_name = NULL;
     char *tree_name = NULL;
     char *out_annotation_name = NULL;
@@ -67,7 +67,7 @@ int main(int argc, char **argv) {
                 break;
 
             default: /* '?' */
-                snprintf(arg_error_string, 1024, "%s%s", "Unknown arguments...\n\n", help_string);
+                snprintf(arg_error_string, 1024, "Unknown arguments...\n\n%s", help_string);
                 printf(arg_error_string);
                 free(arg_error_string);
                 return EINVAL;
@@ -75,26 +75,26 @@ int main(int argc, char **argv) {
     } while ((opt = getopt(argc, argv, "a:t:o:m:n:p:q")) != -1);
     /* Make sure that the required arguments are set correctly */
     if (annotation_name == NULL) {
-        snprintf(arg_error_string, 1024, "%s%s", "Annotation file (-a) must be specified.\n\n", help_string);
+        snprintf(arg_error_string, 1024, "Annotation file (-a) must be specified.\n\n%s", help_string);
         printf(arg_error_string);
         free(arg_error_string);
         return EINVAL;
     }
     if (tree_name == NULL) {
-        snprintf(arg_error_string, 1024, "%s%s", "Tree file (-t) must be specified.\n\n", help_string);
+        snprintf(arg_error_string, 1024, "Tree file (-t) must be specified.\n\n%s", help_string);
         printf(arg_error_string);
         free(arg_error_string);
         return EINVAL;
     }
-    if ((strcmp(model, "JC") != 0) && (strcmp(model, "F81") != 0)) {
-        snprintf(arg_error_string, 1024, "%s%s", "Model (-m) must be either JC or F81.\n\n", help_string);
+    if ((strcmp(model, JC) != 0) && (strcmp(model, F81) != 0)) {
+        snprintf(arg_error_string, 1024, "Model (-m) must be either %s or %s.\n\n%s", JC, F81, help_string);
         printf(arg_error_string);
         free(arg_error_string);
         return EINVAL;
     }
     if ((strcmp(prob_method, MARGINAL) != 0) && (strcmp(prob_method, MARGINAL_APPROXIMATION) != 0)
         && (strcmp(prob_method, MAX_POSTERIORI) != 0) && (strcmp(prob_method, JOINT) != 0)) {
-        snprintf(arg_error_string, 1024, "Probability calculation method (-p) must be one of the following: %s, %s, %s, %s.\n\n%s\n",
+        snprintf(arg_error_string, 1024, "Probability calculation method (-p) must be one of the following: %s, %s, %s, %s.\n\n%s",
                  MARGINAL_APPROXIMATION, MARGINAL, MAX_POSTERIORI, JOINT, help_string);
         printf(arg_error_string);
         free(arg_error_string);

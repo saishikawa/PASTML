@@ -26,6 +26,8 @@
 #define MARGINAL "marginal"
 #define MARGINAL_APPROXIMATION "marginal_approx"
 #define MAX_POSTERIORI "max_posteriori"
+#define JC "JC"
+#define F81 "F81"
 
 typedef struct __Node {
     char *name;

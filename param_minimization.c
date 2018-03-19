@@ -39,14 +39,14 @@ double anti_sigmoid(double x, const double lower_bound, const double upper_bound
 void *get_likelihood_parameters(const gsl_vector *v, size_t num_annotations, double scale_low, double scale_up,
                                 double epsilon_low, double epsilon_up, double* cur_parameters, char* model) {
     size_t i;
-    if (strcmp("F81", model) == 0) {
+    if (strcmp(F81, model) == 0) {
         /* 1. Frequencies */
         for (i = 0; i < num_annotations; i++) {
             cur_parameters[i] = gsl_vector_get(v, i);
         }
         softmax(cur_parameters, num_annotations);
     }
-    size_t scaling_factor_index = (strcmp("F81", model) == 0) ? num_annotations: 0;
+    size_t scaling_factor_index = (strcmp(F81, model) == 0) ? num_annotations: 0;
     /* 2. Scaling factor */
     cur_parameters[num_annotations] = sigmoid(gsl_vector_get(v, scaling_factor_index), scale_low, scale_up);
 
@@ -90,7 +90,7 @@ d_minus_loglikelihood (gsl_vector *v, void *params, gsl_vector *df, double* cur_
         cur_minus_log_likelihood = -calculate_bottom_up_likelihood(s_tree, num_annotations, cur_parameters, is_marginal);
     }
 
-    size_t n = (strcmp("F81", model) == 0) ? (num_annotations + 2): 2;
+    size_t n = (strcmp(F81, model) == 0) ? (num_annotations + 2): 2;
     for (i = 0; i < n; i++) {
         /* create a next_step_parameters array, where all the values but the i-th are the same as in parameters,
          * and the i-th value is increased by the corresponding step.*/
@@ -127,7 +127,7 @@ double minimize_params(Tree* s_tree, size_t num_annotations, double *parameters,
     log_info("Scaling factor can vary between %.10f and %.10f\n", scale_low, scale_up);
     log_info("Epsilon can vary between %.e and %.e\n", epsilon_low, epsilon_up);
 
-    size_t n = (size_t) ((strcmp("JC", model) == 0) ? 2 : (num_annotations + 2));
+    size_t n = (size_t) ((strcmp(JC, model) == 0) ? 2 : (num_annotations + 2));
 
     const gsl_multimin_fdfminimizer_type *T;
     gsl_multimin_fdfminimizer *s;
@@ -157,7 +157,7 @@ double minimize_params(Tree* s_tree, size_t num_annotations, double *parameters,
 
     /* Starting point */
     x = gsl_vector_alloc(n);
-    if (strcmp("F81", model) == 0) {
+    if (strcmp(F81, model) == 0) {
         for (i = 0; i < num_annotations; i++) {
             gsl_vector_set(x, i, log(parameters[i]));
         }
@@ -173,7 +173,7 @@ double minimize_params(Tree* s_tree, size_t num_annotations, double *parameters,
     gsl_multimin_fdfminimizer_set(s, &my_func, x, step_size, tol);
 
     log_info ("\tstep\tlog-lh\t\t");
-    if (strcmp("F81", model) == 0) {
+    if (strcmp(F81, model) == 0) {
         for (i = 0; i < num_annotations; i++) {
             log_info("%s\t", character[i]);
         }
@@ -204,7 +204,7 @@ double minimize_params(Tree* s_tree, size_t num_annotations, double *parameters,
                                   model);
 
         log_info("\t%3zd\t%5.10f\t\t", iter, -s->f);
-        if (strcmp("F81", model) == 0) {
+        if (strcmp(F81, model) == 0) {
             for (i = 0; i < num_annotations; i++) {
                 log_info("%.10f\t", parameters[i]);
             }

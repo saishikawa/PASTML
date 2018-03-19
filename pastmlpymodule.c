@@ -13,12 +13,12 @@ static PyObject *infer_ancestral_states(PyObject *self, PyObject *args) {
     char *tree_name;
     char *out_annotation_name;
     char *out_tree_name;
-    char *model;
+    char *model = JC;
     char *prob_method = MARGINAL_APPROXIMATION;
     int *quiet = FALSE;
     int sts;
 
-    if (!PyArg_ParseTuple(args, "sssss|si", &annotation_name, &tree_name, &out_annotation_name, &out_tree_name, &model,
+    if (!PyArg_ParseTuple(args, "ssss|ssi", &annotation_name, &tree_name, &out_annotation_name, &out_tree_name, &model,
     &prob_method, &quiet)) {
         return NULL;
     }
@@ -46,9 +46,9 @@ static PyMethodDef PastmlMethods[] =
                         "   :param tree_file: str, path to the tree in newick format.\n"
                         "   :param out_annotation_file: str, path where the csv file with the inferred annotations will be stored.\n"
                         "   :param out_tree_file: str, path where the output tree (with named internal nodes) in newick format will be stored.\n"
-                        "   :param model: str, the model of state evolution, must be either JC or F81.\n"
-                        "   :param prob_method: str, probability calculation method, can be , can be 'marginal_approx' (default), 'marginal', 'max_posteriori', or 'joint'.\n"
-                        "   :param quiet: int, set to non-zero value to prevent PASTMl from printing log information.\n"},
+                        "   :param model: str, the model of state evolution: 'JC' or 'F81'.\n"
+                        "   :param prob_method: str, probability calculation method: 'marginal_approx' (default), 'marginal', 'max_posteriori', or 'joint'.\n"
+                        "   :param quiet: int, set to non-zero value to prevent PASTML from printing log information.\n"},
                 {NULL, NULL, 0, NULL}
         };
 
@@ -66,7 +66,14 @@ static struct PyModuleDef cModPyDem =
 PyMODINIT_FUNC
 PyInit_pastml(void)
 {
-    return PyModule_Create(&cModPyDem);
+    PyObject *m = PyModule_Create(&cModPyDem);
+    PyModule_AddStringMacro(m, MARGINAL_APPROXIMATION);
+    PyModule_AddStringMacro(m, MARGINAL);
+    PyModule_AddStringMacro(m, MAX_POSTERIORI);
+    PyModule_AddStringMacro(m, JOINT);
+    PyModule_AddStringMacro(m, JC);
+    PyModule_AddStringMacro(m, F81);
+    return m;
 }
 
 #else

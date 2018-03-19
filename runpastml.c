@@ -185,9 +185,9 @@ int calculate_frequencies(size_t num_annotations, size_t num_tips, int *states, 
     }
     log_info("INITIAL FREQUENCIES:\n\n");
     for (i = 0; i < num_annotations; i++) {
-        if (strcmp(model, "JC") == 0) {
+        if (strcmp(model, JC) == 0) {
             parameters[i] = ((double) 1) / num_annotations;
-        } else if (strcmp(model, "F81") == 0) {
+        } else if (strcmp(model, F81) == 0) {
             parameters[i] = ((double) count_array[i]) / sum_freq;
         }
         log_info("\t%s:\t%.10f\n", character[i], parameters[i]);
@@ -261,8 +261,8 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
     clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time_start);
     srand((unsigned) time(NULL));
 
-    if ((strcmp(model, "JC") != 0) && (strcmp(model, "F81") != 0)) {
-        sprintf(stderr, "Model must be either JC or F81, not %s", model);
+    if ((strcmp(model, JC) != 0) && (strcmp(model, F81) != 0)) {
+        sprintf(stderr, "Model must be either %s or %s, not %s", JC, F81, model);
         return EINVAL;
     }
 
@@ -345,7 +345,7 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
         log_info("\n");
 
         log_info("OPTIMISED PARAMETERS:\n\n");
-        if (0 == strcmp("F81", model)) {
+        if (0 == strcmp(F81, model)) {
             for (i = 0; i < num_annotations; i++) {
                 log_info("\tFrequency of %s:\t%.10f\n", character[i], parameters[i]);
             }

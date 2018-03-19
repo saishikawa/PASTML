@@ -14,11 +14,11 @@ static PyObject *infer_ancestral_states(PyObject *self, PyObject *args) {
     char *out_annotation_name;
     char *out_tree_name;
     char *model;
-    char *prob_method;
+    char *prob_method = "a";
     int *quiet = FALSE;
     int sts;
 
-    if (!PyArg_ParseTuple(args, "ssssss|i", &annotation_name, &tree_name, &out_annotation_name, &out_tree_name, &model,
+    if (!PyArg_ParseTuple(args, "sssss|si", &annotation_name, &tree_name, &out_annotation_name, &out_tree_name, &model,
     &prob_method, &quiet)) {
         return NULL;
     }
@@ -47,6 +47,7 @@ static PyMethodDef PastmlMethods[] =
                         "   :param out_annotation_file: str, path where the csv file with the inferred annotations will be stored.\n"
                         "   :param out_tree_file: str, path where the output tree (with named internal nodes) in newick format will be stored.\n"
                         "   :param model: str, the model of state evolution, must be either JC or F81.\n"
+                        "   :param prob_method: str, probability calculation method, can be 'a' (marginal approximation, default), 'm' (marginal), 'p' (max posteriori), or 'j' (joint).\n"
                         "   :param quiet: int, set to non-zero value to prevent PASTMl from printing log information.\n"},
                 {NULL, NULL, 0, NULL}
         };

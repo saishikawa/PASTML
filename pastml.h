@@ -22,10 +22,10 @@
 #define LOG2 0.69314718055994528623
 #define MIN(a, b) ((a)<(b)?(a):(b))
 #define MAX(a, b) ((a)>(b)?(a):(b))
-#define JOINT "j"
-#define MARGINAL "m"
-#define MARGINAL_APPROXIMATION "a"
-#define MAX_POSTERIORI "p"
+#define JOINT "joint"
+#define MARGINAL "marginal"
+#define MARGINAL_APPROXIMATION "marginal_approx"
+#define MAX_POSTERIORI "max_posteriori"
 
 typedef struct __Node {
     char *name;

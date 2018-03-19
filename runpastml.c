@@ -244,22 +244,6 @@ Tree *read_tree(char *nwk, size_t num_anno) {
     return s_tree;
 }
 
-char* get_full_prob_method_name(char* short_name) {
-    if (strcmp(short_name, MARGINAL) == 0) {
-        return "marginal";
-    }
-    if (strcmp(short_name, MAX_POSTERIORI) == 0) {
-        return "max posteriori";
-    }
-    if (strcmp(short_name, MARGINAL_APPROXIMATION) == 0) {
-        return "marginal approximation";
-    }
-    if (strcmp(short_name, JOINT) == 0) {
-        return "joint";
-    }
-    return "unknown";
-}
-
 int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name, char *out_tree_name, char *model,
               char* prob_method) {
     int i;
@@ -284,15 +268,12 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
 
     if ((strcmp(prob_method, MARGINAL) != 0) && (strcmp(prob_method, MARGINAL_APPROXIMATION) != 0)
         && (strcmp(prob_method, MAX_POSTERIORI) != 0) && (strcmp(prob_method, JOINT) != 0)) {
-        sprintf(stderr, "Probability calculation method must be one of the following: %s (%s), %s (%s), %s (%s), %s (%s), got %s instead",
-                JOINT, get_full_prob_method_name(JOINT), MARGINAL, get_full_prob_method_name(MARGINAL),
-                MARGINAL_APPROXIMATION, get_full_prob_method_name(MARGINAL_APPROXIMATION),
-                MAX_POSTERIORI, get_full_prob_method_name(MAX_POSTERIORI),
-                prob_method);
+        sprintf(stderr, "Probability calculation method must be one of the following: %s, %s, %s, %s, got %s instead",
+                JOINT, MARGINAL, MARGINAL_APPROXIMATION, MAX_POSTERIORI, prob_method);
         return EINVAL;
     }
     log_info("MODEL:\t%s\n\n", model);
-    log_info("PROBABILITY CALCULATION METHOD:\t%s (%s)\n\n", prob_method, get_full_prob_method_name(prob_method));
+    log_info("PROBABILITY CALCULATION METHOD:\t%s\n\n", prob_method);
 
     /* Allocate memory */
     states = calloc(MAXNSP, sizeof(int));

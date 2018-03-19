@@ -27,8 +27,8 @@ int main(int argc, char **argv) {
             "optional arguments:\n"
             "   -o OUTPUT_ANNOTATION_FILE           path where the output annotation csv file containing node states will be created\n"
             "   -n OUTPUT_TREE_NWK                  path where the output tree file will be created (in newick format)\n"
-            "   -m MODEL                            state evolution model (JC or F81)\n"
-            "   -p PROBABILITY_CALCULATION_METHOD   probability calculation method, can be 'a' (marginal approximation, default), 'm' (marginal), 'p' (max posteriori), or 'j' (joint)\n"
+            "   -m MODEL                            state evolution model (\"JC\" (default) or \"F81\")\n"
+            "   -p PROBABILITY_CALCULATION_METHOD   probability calculation method (\"marginal_approx\" (default), \"marginal\", \"max_posteriori\", or \"joint\")\n"
             "   -q                                  quiet, do not print progress information\n";
 
     opt = getopt(argc, argv, "a:t:o:m:n:p:q");
@@ -94,7 +94,8 @@ int main(int argc, char **argv) {
     }
     if ((strcmp(prob_method, MARGINAL) != 0) && (strcmp(prob_method, MARGINAL_APPROXIMATION) != 0)
         && (strcmp(prob_method, MAX_POSTERIORI) != 0) && (strcmp(prob_method, JOINT) != 0)) {
-        snprintf(arg_error_string, 1024, "%s%s", "Probability calculation method (-p) must be one of the following: a, p, m, j.\n\n", help_string);
+        snprintf(arg_error_string, 1024, "Probability calculation method (-p) must be one of the following: %s, %s, %s, %s.\n\n%s\n",
+                 MARGINAL_APPROXIMATION, MARGINAL, MAX_POSTERIORI, JOINT, help_string);
         printf(arg_error_string);
         free(arg_error_string);
         return EINVAL;

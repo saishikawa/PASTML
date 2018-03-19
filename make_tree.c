@@ -253,7 +253,7 @@ int parse_substring_into_node(char *in_str, int begin, int end, Node *current_no
     current_node->neigh = malloc(current_node->nb_neigh * sizeof(Node *));
 
     current_node->bottom_up_likelihood = calloc(nbanno, sizeof(double));
-    current_node->marginal = calloc(nbanno, sizeof(double));
+    current_node->result_probs = calloc(nbanno, sizeof(double));
     current_node->pij = calloc(nbanno, sizeof(double *));
     for (i = 0; i < nbanno; i++) {
         current_node->pij[i] = calloc(nbanno, sizeof(double));

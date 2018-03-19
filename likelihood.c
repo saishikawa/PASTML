@@ -101,9 +101,9 @@ void set_p_ij(const Node *nd, double avg_br_len, size_t num_frequencies, const d
     }
 }
 
-int calculate_node_probabilities(const Node *nd, size_t num_annotations, size_t first_child_index) {
+int calculate_node_probabilities(const Node *nd, size_t num_annotations, size_t first_child_index, int is_marginal) {
     int factors = 0;
-    double p_child_branch_from_i;
+    double p_child_branch_from_i, cur_child_branch_from_i;
     size_t i, j, k;
     for (k = first_child_index; k < nd->nb_neigh; k++) {
         Node *child = nd->neigh[k];
@@ -112,8 +112,20 @@ int calculate_node_probabilities(const Node *nd, size_t num_annotations, size_t 
              * given that the node is in state i: p_child_branch_from_i = sum_j(p_ij * p_child_j)
              */
             p_child_branch_from_i = 0.;
-            for (j = 0; j < num_annotations; j++) {
-                p_child_branch_from_i += child->pij[i][j] * child->bottom_up_likelihood[j];
+            if (is_marginal == TRUE) {
+                // for marginal sum over all possible child states
+                for (j = 0; j < num_annotations; j++) {
+                    p_child_branch_from_i += child->pij[i][j] * child->bottom_up_likelihood[j];
+                }
+            } else {
+                // for joint pick the best child state
+                for (j = 0; j < num_annotations; j++) {
+                    cur_child_branch_from_i = child->pij[i][j] * child->bottom_up_likelihood[j];
+                    if (cur_child_branch_from_i > p_child_branch_from_i) {
+                        p_child_branch_from_i = cur_child_branch_from_i;
+                        child->best_states[i] = j;
+                    }
+                }
             }
 
             /* The probability of having the node in state i is a multiplication of
@@ -135,7 +147,7 @@ int calculate_node_probabilities(const Node *nd, size_t num_annotations, size_t 
     return factors;
 }
 
-int process_node(Node *nd, Tree *s_tree, size_t num_annotations, double *parameters) {
+int process_node(Node *nd, Tree *s_tree, size_t num_annotations, double *parameters, int is_marginal) {
     /**
      * Calculates node probabilities.
      * parameters = [frequency_char_1, .., frequency_char_n, scaling_factor, epsilon].
@@ -152,7 +164,7 @@ int process_node(Node *nd, Tree *s_tree, size_t num_annotations, double *paramet
         /* set probabilities of substitution */
         set_p_ij(child, s_tree->avg_tip_branch_len, num_annotations, parameters);
 
-        add_factors = process_node(child, s_tree, num_annotations, parameters);
+        add_factors = process_node(child, s_tree, num_annotations, parameters, is_marginal);
         // if all the probabilities are zero (shown by add_factors == -1), stop here
         if (add_factors == -1) {
             return -1;
@@ -160,7 +172,7 @@ int process_node(Node *nd, Tree *s_tree, size_t num_annotations, double *paramet
         factors += add_factors;
     }
     /* calculate own probabilities */
-    add_factors = calculate_node_probabilities(nd, num_annotations, first_child_index);
+    add_factors = calculate_node_probabilities(nd, num_annotations, first_child_index, is_marginal);
     // if all the probabilities are zero (shown by add_factors == -1), stop here
     if (add_factors == -1) {
         return -1;
@@ -170,7 +182,7 @@ int process_node(Node *nd, Tree *s_tree, size_t num_annotations, double *paramet
     return factors;
 }
 
-double calculate_bottom_up_likelihood(Tree *s_tree, size_t num_annotations, double *parameters) {
+double calculate_bottom_up_likelihood(Tree *s_tree, size_t num_annotations, double *parameters, int is_marginal) {
     /**
      * Calculates tree log likelihood.
      * parameters = [frequency_char_1, .., frequency_char_n, scaling_factor, epsilon].
@@ -178,7 +190,7 @@ double calculate_bottom_up_likelihood(Tree *s_tree, size_t num_annotations, doub
     double scaled_lk = 0;
     size_t i;
 
-    int factors = process_node(s_tree->root, s_tree, num_annotations, parameters);
+    int factors = process_node(s_tree->root, s_tree, num_annotations, parameters, is_marginal);
 
     /* if factors == -1, it means that the bottom_up_likelihood is 0 */
     if (factors != -1) {
@@ -234,6 +246,38 @@ void rescale_branch_lengths(Tree *s_tree, double scaling_factor, double epsilon)
         nd = s_tree->nodes[i];
         nd->branch_len = get_rescaled_branch_len(nd, s_tree->avg_tip_branch_len, scaling_factor, epsilon);
     }
+}
+
+void _choose_joint_states(Node *nd, Node *root, size_t best_state_i) {
+    /**
+     * Chooses best joint states and sets the corresponding result_probs to one.
+     */
+    size_t i;
+    Node* child;
+
+    nd->result_probs[best_state_i] = 1.0;
+
+
+    /* recursively calculate best states for children if there are any children */
+    for (i = (nd == root) ? 0: 1; i < nd->nb_neigh; i++) {
+        child = nd->neigh[i];
+        _choose_joint_states(child, root, child->best_states[best_state_i]);
+    }
+}
+
+
+void choose_joint_states(Tree *s_tree, size_t num_annotations, const double* frequencies) {
+    size_t best_root_state_i = 0;
+    size_t i;
+    double best_p = 0, cur_p;
+    for (i = 0; i < num_annotations; i++) {
+        cur_p = s_tree->root->bottom_up_likelihood[i] * frequencies[i];
+        if (best_p < cur_p) {
+            best_p = cur_p;
+            best_root_state_i = i;
+        }
+    }
+    _choose_joint_states(s_tree->root, s_tree->root, best_root_state_i);
 }
 
 

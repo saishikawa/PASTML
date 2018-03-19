@@ -22,6 +22,10 @@
 #define LOG2 0.69314718055994528623
 #define MIN(a, b) ((a)<(b)?(a):(b))
 #define MAX(a, b) ((a)>(b)?(a):(b))
+#define JOINT "j"
+#define MARGINAL "m"
+#define MARGINAL_APPROXIMATION "a"
+#define MAX_POSTERIORI "p"
 
 typedef struct __Node {
     char *name;
@@ -31,7 +35,7 @@ typedef struct __Node {
 
     double **pij;           /* probability of substitution from i to j */
     double *bottom_up_likelihood;       /* conditional likelihoods at the node*/
-    double *marginal;
+    double *result_probs;
     size_t *best_states;
     double *top_down_likelihood;
     int *scaling_factor_down;

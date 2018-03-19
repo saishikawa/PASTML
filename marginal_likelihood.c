@@ -100,7 +100,7 @@ void _calculate_node_marginal_probabilities(Node *nd, Node *root, size_t num_ann
     // Finally, the marginal likelihood of a certain state can be computed
     // by multiplying its up-, down-likelihoods, and its frequency.
     for (i = 0; i < num_annotations; i++) {
-        nd->marginal[i] = nd->top_down_likelihood[i] * nd->bottom_up_likelihood[i] * frequency[i];
+        nd->result_probs[i] = nd->top_down_likelihood[i] * nd->bottom_up_likelihood[i] * frequency[i];
     }
     // recursively calculate marginal probabilities for the children
     for (i = (nd == root) ? 0 : 1; i < nd->nb_neigh; i++) {
@@ -113,7 +113,7 @@ double get_marginal_likelihood(Node* nd, size_t num_annotations) {
     size_t i;
 
     for (i = 0; i < num_annotations; i++) {
-        lk += nd->marginal[i];
+        lk += nd->result_probs[i];
     }
     lk = remove_upscaling_factors(log(lk), nd->scaling_factor_down[0] + nd->scaling_factor_up[0]);
     return round(lk * 100.0) / 100.0;

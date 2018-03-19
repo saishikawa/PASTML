@@ -14,17 +14,18 @@ static PyObject *infer_ancestral_states(PyObject *self, PyObject *args) {
     char *out_annotation_name;
     char *out_tree_name;
     char *model;
+    char *prob_method;
     int *quiet = FALSE;
     int sts;
 
-    if (!PyArg_ParseTuple(args, "sssss|i", &annotation_name, &tree_name, &out_annotation_name, &out_tree_name, &model,
-                          &quiet)) {
+    if (!PyArg_ParseTuple(args, "ssssss|i", &annotation_name, &tree_name, &out_annotation_name, &out_tree_name, &model,
+    &prob_method, &quiet)) {
         return NULL;
     }
     if (quiet != FALSE) {
         QUIET = TRUE;
     }
-    sts = runpastml(annotation_name, tree_name, out_annotation_name, out_tree_name, model);
+    sts = runpastml(annotation_name, tree_name, out_annotation_name, out_tree_name, model, prob_method);
     if (sts != EXIT_SUCCESS) {
         if (errno) {
             return PyErr_SetFromErrno(PyErr_NewException("pastml.error", NULL, NULL));

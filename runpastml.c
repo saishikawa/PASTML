@@ -65,7 +65,7 @@ void free_node(Node *node, int count, size_t num_anno) {
     }
     free(node->neigh);
     free(node->bottom_up_likelihood);
-    free(node->marginal);
+    free(node->result_probs);
     free(node->best_states);
     free(node->top_down_likelihood);
     free(node->scaling_factor_down);
@@ -183,7 +183,6 @@ int calculate_frequencies(size_t num_annotations, size_t num_tips, int *states, 
     for (i = 0; i <= num_annotations; i++) {
         sum_freq += count_array[i];
     }
-    log_info("MODEL:\t%s\n\n", model);
     log_info("INITIAL FREQUENCIES:\n\n");
     for (i = 0; i < num_annotations; i++) {
         if (strcmp(model, "JC") == 0) {
@@ -245,7 +244,24 @@ Tree *read_tree(char *nwk, size_t num_anno) {
     return s_tree;
 }
 
-int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name, char *out_tree_name, char *model) {
+char* get_full_prob_method_name(char* short_name) {
+    if (strcmp(short_name, MARGINAL) == 0) {
+        return "marginal";
+    }
+    if (strcmp(short_name, MAX_POSTERIORI) == 0) {
+        return "max posteriori";
+    }
+    if (strcmp(short_name, MARGINAL_APPROXIMATION) == 0) {
+        return "marginal approximation";
+    }
+    if (strcmp(short_name, JOINT) == 0) {
+        return "joint";
+    }
+    return "unknown";
+}
+
+int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name, char *out_tree_name, char *model,
+              char* prob_method) {
     int i;
     int *states;
     double log_likelihood, sec;
@@ -256,6 +272,7 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
     struct timespec time_start, time_end;
     int exit_val;
     Tree *s_tree;
+    int is_marginal = strcmp(prob_method, JOINT) != 0;
 
     clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time_start);
     srand((unsigned) time(NULL));
@@ -264,6 +281,18 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
         sprintf(stderr, "Model must be either JC or F81, not %s", model);
         return EINVAL;
     }
+
+    if ((strcmp(prob_method, MARGINAL) != 0) && (strcmp(prob_method, MARGINAL_APPROXIMATION) != 0)
+        && (strcmp(prob_method, MAX_POSTERIORI) != 0) && (strcmp(prob_method, JOINT) != 0)) {
+        sprintf(stderr, "Probability calculation method must be one of the following: %s (%s), %s (%s), %s (%s), %s (%s), got %s instead",
+                JOINT, get_full_prob_method_name(JOINT), MARGINAL, get_full_prob_method_name(MARGINAL),
+                MARGINAL_APPROXIMATION, get_full_prob_method_name(MARGINAL_APPROXIMATION),
+                MAX_POSTERIORI, get_full_prob_method_name(MAX_POSTERIORI),
+                prob_method);
+        return EINVAL;
+    }
+    log_info("MODEL:\t%s\n\n", model);
+    log_info("PROBABILITY CALCULATION METHOD:\t%s (%s)\n\n", prob_method, get_full_prob_method_name(prob_method));
 
     /* Allocate memory */
     states = calloc(MAXNSP, sizeof(int));
@@ -314,7 +343,8 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
     initialise_tip_probabilities(s_tree, tips, states, num_tips, num_annotations);
     free(tips);
 
-    log_likelihood = calculate_bottom_up_likelihood(s_tree, num_annotations, parameters);
+    log_likelihood = calculate_bottom_up_likelihood(s_tree, num_annotations, parameters,
+                                                    is_marginal);
     if (log_likelihood == log(0)) {
         fprintf(stderr, "A problem occurred while calculating the bottom up likelihood: "
                 "Is your tree ok and has at least 2 children per every inner node?\n");
@@ -329,7 +359,8 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
         log_likelihood = minimize_params(s_tree, num_annotations, parameters, character, model,
                                          0.01 / s_tree->avg_branch_len, 10.0 / s_tree->avg_branch_len,
                                          MIN(s_tree->min_branch_len / 10.0, s_tree->avg_tip_branch_len / 100.0),
-                                         MIN(s_tree->min_branch_len * 10.0, s_tree->avg_tip_branch_len / 10.0));
+                                         MIN(s_tree->min_branch_len * 10.0, s_tree->avg_tip_branch_len / 10.0),
+                                         is_marginal);
         log_info("\n");
 
         log_info("OPTIMISED PARAMETERS:\n\n");
@@ -348,14 +379,28 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
 
     rescale_branch_lengths(s_tree, parameters[num_annotations], parameters[num_annotations + 1]);
 
-    log_info("CALCULATING TOP-DOWN LIKELIHOOD...\n\n");
-    calculate_top_down_likelihood(s_tree, num_annotations);
+    if (is_marginal) {
+        log_info("CALCULATING TOP-DOWN LIKELIHOOD...\n\n");
+        calculate_top_down_likelihood(s_tree, num_annotations);
 
-    log_info("CALCULATING MARGINAL PROBABILITIES...\n\n");
-    calculate_marginal_probabilities(s_tree, num_annotations, parameters);
+        log_info("CALCULATING MARGINAL PROBABILITIES...\n\n");
+        calculate_marginal_probabilities(s_tree, num_annotations, parameters);
 
-    log_info("PREDICTING MOST LIKELY ANCESTRAL STATES...\n\n");
-    choose_likely_states(s_tree, num_annotations);
+        normalize_result_probabilities(s_tree, num_annotations);
+        set_id_best_states(s_tree, num_annotations);
+
+        if (strcmp(prob_method, MARGINAL_APPROXIMATION) == 0) {
+            log_info("PREDICTING MOST LIKELY ANCESTRAL STATES...\n\n");
+            choose_likely_states(s_tree, num_annotations);
+        } else if (strcmp(prob_method, MAX_POSTERIORI) == 0) {
+            log_info("PREDICTING MOST LIKELY ANCESTRAL STATES...\n\n");
+            choose_best_marginal_states(s_tree, num_annotations);
+        }
+    } else {
+        log_info("PREDICTING MOST LIKELY ANCESTRAL STATES...\n\n");
+        choose_joint_states(s_tree, num_annotations, parameters);
+        set_id_best_states(s_tree, num_annotations);
+    }
 
     exit_val = write_nh_tree(s_tree, out_tree_name, parameters[num_annotations], parameters[num_annotations + 1]);
     if (EXIT_SUCCESS != exit_val) {
@@ -364,7 +409,7 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
     log_info("SAVING THE RESULTS...\n\n");
     log_info("\tScaled tree with internal node ids is written to %s.\n", out_tree_name);
 
-    exit_val = output_state_ancestral_states(s_tree, num_annotations, character, out_annotation_name);
+    exit_val = output_ancestral_states(s_tree, num_annotations, character, out_annotation_name);
     if (EXIT_SUCCESS != exit_val) {
         return exit_val;
     }

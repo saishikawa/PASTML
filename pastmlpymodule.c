@@ -19,8 +19,8 @@ static PyObject *infer_ancestral_states(PyObject *self, PyObject *args) {
     int *quiet = FALSE;
     int sts;
 
-    if (!PyArg_ParseTuple(args, "ss|sssssi", &annotation_name, &tree_name, &param_name, &out_annotation_name,
-                          &out_tree_name, &model, &prob_method, &quiet)) {
+    if (!PyArg_ParseTuple(args, "ss|sssssi", &annotation_name, &tree_name, &out_annotation_name,
+                          &out_tree_name, &out_param_name, &model, &prob_method, &quiet)) {
         return NULL;
     }
     if (quiet != FALSE) {
@@ -34,11 +34,11 @@ static PyObject *infer_ancestral_states(PyObject *self, PyObject *args) {
         out_tree_name = calloc(256, sizeof(char));
         sprintf(out_tree_name, "%s.%s.%s.pastml.out.nwk", tree_name, model, prob_method);
     }
-    if (out_parameter_name == NULL) {
-        out_parameter_name = calloc(256, sizeof(char));
-        sprintf(out_parameter_name, "%s.%s.%s.pastml.parameters.csv", annotation_name, model, prob_method);
+    if (out_param_name == NULL) {
+        out_param_name = calloc(256, sizeof(char));
+        sprintf(out_param_name, "%s.%s.%s.pastml.parameters.csv", annotation_name, model, prob_method);
     }
-    sts = runpastml(annotation_name, tree_name, out_annotation_name, out_tree_name, model, prob_method);
+    sts = runpastml(annotation_name, tree_name, out_annotation_name, out_tree_name, out_param_name, model, prob_method);
     if (sts != EXIT_SUCCESS) {
         if (errno) {
             return PyErr_SetFromErrno(PyErr_NewException("pastml.error", NULL, NULL));

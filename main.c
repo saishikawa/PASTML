@@ -10,6 +10,7 @@ int main(int argc, char **argv) {
     char *annotation_name = NULL;
     char *tree_name = NULL;
     char *out_annotation_name = NULL;
+    char *out_parameter_name = NULL;
     char *out_tree_name = NULL;
     struct timespec;
     int opt;
@@ -18,20 +19,21 @@ int main(int argc, char **argv) {
     opterr = 0;
 
     const char *help_string = "usage: PASTML -a ANNOTATION_FILE -t TREE_NWK [-m MODEL] "
-            "[-o OUTPUT_ANNOTATION_FILE] [-n OUTPUT_TREE_NWK] [-p PROBABILITY_CALCULATION_METHOD] [-q]\n"
+            "[-o OUTPUT_ANNOTATION_CSV] [-n OUTPUT_TREE_NWK] [-r OUTPUT_PARAMETERS_CSV] [-p PREDICTION_METHOD] [-q]\n"
             "\n"
             "required arguments:\n"
-            "   -a ANNOTATION_FILE                  path to the annotation csv file containing tip states\n"
+            "   -a ANNOTATION_FILE                  path to the annotation file containing tip states (in csv format)\n"
             "   -t TREE_NWK                         path to the tree file (in newick format)\n"
             "\n"
             "optional arguments:\n"
-            "   -o OUTPUT_ANNOTATION_FILE           path where the output annotation csv file containing node states will be created\n"
+            "   -o OUTPUT_ANNOTATION_CSV            path where the output annotation file containing node states will be created (in csv format)\n"
             "   -n OUTPUT_TREE_NWK                  path where the output tree file will be created (in newick format)\n"
+            "   -n OUTPUT_PARAMETERS_CSV            path where the output parameters file will be created (in csv format)\n"
             "   -m MODEL                            state evolution model (\"JC\" (default) or \"F81\")\n"
-            "   -p PROBABILITY_CALCULATION_METHOD   probability calculation method (\"marginal_approx\" (default), \"marginal\", \"max_posteriori\", or \"joint\")\n"
+            "   -p PROBABILITY_CALCULATION_METHOD   ancestral state prediction method (\"marginal_approx\" (default), \"marginal\", \"max_posteriori\", or \"joint\")\n"
             "   -q                                  quiet, do not print progress information\n";
 
-    opt = getopt(argc, argv, "a:t:o:m:n:p:q");
+    opt = getopt(argc, argv, "a:t:o:r:m:n:p:q");
     do {
         switch (opt) {
             case -1:
@@ -44,6 +46,10 @@ int main(int argc, char **argv) {
 
             case 'o':
                 out_annotation_name = optarg;
+                break;
+
+            case 'r':
+                out_parameter_name = optarg;
                 break;
 
             case 'n':
@@ -72,7 +78,7 @@ int main(int argc, char **argv) {
                 free(arg_error_string);
                 return EINVAL;
         }
-    } while ((opt = getopt(argc, argv, "a:t:o:m:n:p:q")) != -1);
+    } while ((opt = getopt(argc, argv, "a:t:o:r:m:n:p:q")) != -1);
     /* Make sure that the required arguments are set correctly */
     if (annotation_name == NULL) {
         snprintf(arg_error_string, 1024, "Annotation file (-a) must be specified.\n\n%s", help_string);
@@ -111,5 +117,10 @@ int main(int argc, char **argv) {
         out_tree_name = calloc(256, sizeof(char));
         sprintf(out_tree_name, "%s.%s.%s.pastml.out.nwk", tree_name, model, prob_method);
     }
-    return runpastml(annotation_name, tree_name, out_annotation_name, out_tree_name, model, prob_method);
+    if (out_parameter_name == NULL) {
+        out_parameter_name = calloc(256, sizeof(char));
+        sprintf(out_parameter_name, "%s.%s.%s.pastml.parameters.csv", annotation_name, model, prob_method);
+    }
+    return runpastml(annotation_name, tree_name, out_annotation_name, out_tree_name, out_parameter_name,
+                     model, prob_method);
 }

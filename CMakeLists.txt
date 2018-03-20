@@ -4,9 +4,9 @@ project(pastml)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_INCLUDE_PATH .)
 
-set(SOURCE_FILES main.c likelihood.c make_tree.c marginal_approximation.c marginal_likelihood.c
-        output_states.c output_tree.c runpastml.c likelihood.h marginal_likelihood.h make_tree.h
-        marginal_approximation.h output_tree.h output_states.h pastml.h runpastml.h param_minimization.c
+set(SOURCE_FILES main.c likelihood.c tree.c marginal_approximation.c marginal_likelihood.c
+        states.c runpastml.c likelihood.h marginal_likelihood.h tree.h
+        marginal_approximation.h states.h pastml.h runpastml.h param_minimization.c
         param_minimization.h scaling.c scaling.h logger.c logger.h)
 add_executable(pastml ${SOURCE_FILES})
 

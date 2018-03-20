@@ -15,10 +15,9 @@ except:
 
 # the C extension module
 pastml_module = Extension('pastml',
-                          sources=['pastmlpymodule.c', 'runpastml.c', 'make_tree.c',
+                          sources=['pastmlpymodule.c', 'runpastml.c', 'tree.c',
                                    'likelihood.c', 'marginal_likelihood.c', 'marginal_approximation.c',
-                                   'output_tree.c', 'output_states.c',
-                                   'scaling.c', 'param_minimization.c', 'logger.c'],
+                                   'states.c', 'scaling.c', 'param_minimization.c', 'logger.c'],
                           libraries=['gsl', 'gslcblas']
                           )
 
@@ -33,7 +32,7 @@ setup(
         'Topic :: Software Development',
         'Topic :: Software Development :: Libraries :: Python Modules',
     ],
-    version='0.5.9',
+    version='0.5.9.1',
     description='Python wrapper for PASTML.',
     maintainer='Anna Zhukova',
     maintainer_email='anna.zhukova@pasteur.fr',
@@ -41,8 +40,6 @@ setup(
     download_url='https://github.com/saishikawa/PASTML',
     keywords=['PASTML', 'phylogeny', 'ancestral state inference', 'likelihood'],
     ext_modules=[pastml_module],
-    headers=['pastml.h', 'runpastml.h', 'make_tree.h',
-             'likelihood.h', 'marginal_likelihood.h', 'marginal_approximation.h',
-             'output_tree.h', 'output_states.h',
-             'scaling.h', 'param_minimization.h', 'logger.h']
+    headers=['pastml.h', 'runpastml.h', 'tree.h', 'likelihood.h', 'marginal_likelihood.h', 'marginal_approximation.h',
+             'states.h', 'scaling.h', 'param_minimization.h', 'logger.h']
 )

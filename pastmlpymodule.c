@@ -11,19 +11,32 @@ extern QUIET;
 static PyObject *infer_ancestral_states(PyObject *self, PyObject *args) {
     char *annotation_name;
     char *tree_name;
-    char *out_annotation_name;
-    char *out_tree_name;
+    char *out_annotation_name = NULL;
+    char *out_tree_name = NULL;
+    char *out_param_name = NULL;
     char *model = JC;
     char *prob_method = MARGINAL_APPROXIMATION;
     int *quiet = FALSE;
     int sts;
 
-    if (!PyArg_ParseTuple(args, "ssss|ssi", &annotation_name, &tree_name, &out_annotation_name, &out_tree_name, &model,
-    &prob_method, &quiet)) {
+    if (!PyArg_ParseTuple(args, "ss|sssssi", &annotation_name, &tree_name, &param_name, &out_annotation_name,
+                          &out_tree_name, &model, &prob_method, &quiet)) {
         return NULL;
     }
     if (quiet != FALSE) {
         QUIET = TRUE;
+    }
+    if (out_annotation_name == NULL) {
+        out_annotation_name = calloc(256, sizeof(char));
+        sprintf(out_annotation_name, "%s.%s.%s.pastml.out.csv", annotation_name, model, prob_method);
+    }
+    if (out_tree_name == NULL) {
+        out_tree_name = calloc(256, sizeof(char));
+        sprintf(out_tree_name, "%s.%s.%s.pastml.out.nwk", tree_name, model, prob_method);
+    }
+    if (out_parameter_name == NULL) {
+        out_parameter_name = calloc(256, sizeof(char));
+        sprintf(out_parameter_name, "%s.%s.%s.pastml.parameters.csv", annotation_name, model, prob_method);
     }
     sts = runpastml(annotation_name, tree_name, out_annotation_name, out_tree_name, model, prob_method);
     if (sts != EXIT_SUCCESS) {
@@ -46,8 +59,9 @@ static PyMethodDef PastmlMethods[] =
                         "   :param tree_file: str, path to the tree in newick format.\n"
                         "   :param out_annotation_file: str, path where the csv file with the inferred annotations will be stored.\n"
                         "   :param out_tree_file: str, path where the output tree (with named internal nodes) in newick format will be stored.\n"
+                        "   :param out_param_file: str, path where the output parameter file in csv format will be stored.\n"
                         "   :param model: str, the model of state evolution: 'JC' or 'F81'.\n"
-                        "   :param prob_method: str, probability calculation method: 'marginal_approx' (default), 'marginal', 'max_posteriori', or 'joint'.\n"
+                        "   :param prediction_method: str, ancestral state prediction method: 'marginal_approx' (default), 'marginal', 'max_posteriori', or 'joint'.\n"
                         "   :param quiet: int, set to non-zero value to prevent PASTML from printing log information.\n"},
                 {NULL, NULL, 0, NULL}
         };

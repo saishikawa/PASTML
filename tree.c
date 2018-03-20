@@ -1,3 +1,4 @@
+#include <errno.h>
 #include "pastml.h"
 #include "logger.h"
 
@@ -419,4 +420,204 @@ Tree *complete_parse_nh(char *big_string, size_t nbanno) {
     }
 
     return mytree;
+}
+
+
+size_t tell_size_of_one_tree(char *filename) {
+    /* the only purpose of this is to know about the size of a treefile (NH format)
+     * in order to save memspace in allocating the string later on */
+    size_t mysize = 0;
+    int u;
+    FILE *myfile = fopen(filename, "r");
+    if (myfile) {
+        while ((u = fgetc(myfile)) != ';') { /* termination character of the tree */
+            if (feof(myfile)) {
+                break;
+            } /* shouldn't happen anyway */
+            if (!isspace(u)) {
+                mysize++;
+            }
+        }
+        fclose(myfile);
+    } /* end if(myfile) */
+    return mysize + 1;
+}
+
+int copy_nh_stream_into_str(FILE *nh_stream, char *big_string) {
+    int index_in_string = 0;
+    int u;
+    /* rewind(nh_stream);
+     * DO NOT go to the beginning of the stream
+     * if we want to make this flexible enough to read several trees per file */
+    while ((u = fgetc(nh_stream)) != ';') { /* termination character of the tree */
+        if (feof(nh_stream)) {
+            big_string[index_in_string] = '\0';
+            return EXIT_FAILURE;
+        } /* error code telling that no tree has been read properly */
+        if (index_in_string == MAX_TREELENGTH - 1) {
+            fprintf(stderr, "Fatal error: tree file seems too big, are you sure it is a newick tree file?\n");
+            return EXIT_FAILURE;
+        }
+        if (!isspace(u)) {
+            big_string[index_in_string++] = (char) u;
+        }
+    }
+    big_string[index_in_string++] = ';';
+    big_string[index_in_string] = '\0';
+    return EXIT_SUCCESS; /* leaves the stream right after the terminal ';' */
+} /*end copy_nh_stream_into_str */
+
+void free_node(Node *node, int count, size_t num_anno) {
+    int j;
+
+    if (node == NULL) return;
+    if (node->name && count != 0) {
+        free(node->name);
+    }
+    free(node->neigh);
+    free(node->bottom_up_likelihood);
+    free(node->result_probs);
+    free(node->best_states);
+    free(node->top_down_likelihood);
+    free(node->scaling_factor_down);
+    free(node->scaling_factor_up);
+    for (j = 0; j < num_anno; j++) {
+        free(node->pij[j]);
+    }
+    free(node->pij);
+    free(node);
+}
+
+void free_tree(Tree *tree, size_t num_anno) {
+    int i;
+    if (tree == NULL) return;
+    for (i = 0; i < tree->nb_nodes; i++) {
+        free_node(tree->nodes[i], i, num_anno);
+    }
+    free(tree->nodes);
+    free(tree);
+}
+
+
+Tree *read_tree(char *nwk, size_t num_anno) {
+    /**
+     * Read a tree from newick file
+     */
+
+    Tree *s_tree;
+
+    FILE *tree_file = fopen(nwk, "r");
+    if (tree_file == NULL) {
+        fprintf(stderr, "Tree file %s is not found or is impossible to access.\n", nwk);
+        fprintf(stderr, "Value of errno: %d\n", errno);
+        fprintf(stderr, "Error opening the file: %s\n", strerror(errno));
+        return NULL;
+    }
+
+    size_t tree_file_size = 3 * tell_size_of_one_tree(nwk);
+    if (tree_file_size > MAX_TREELENGTH) {
+        fprintf(stderr, "Tree filesize for %s is more than %d bytes: are you sure it's a valid newick tree?\n",
+                nwk, MAX_TREELENGTH / 3);
+        return NULL;
+    }
+
+    void *retval;
+    if ((retval = calloc(tree_file_size + 1, sizeof(char))) == NULL) {
+        fprintf(stderr, "Not enough memory\n");
+        return NULL;
+    }
+    char *c_tree = (char *) retval;
+
+    if (EXIT_SUCCESS != copy_nh_stream_into_str(tree_file, c_tree)) {
+        fprintf(stderr, "A problem occurred while parsing the reference tree.\n");
+        return NULL;
+    }
+    fclose(tree_file);
+
+    /*Make Tree structure*/
+    s_tree = complete_parse_nh(c_tree, num_anno);
+    if (NULL == s_tree) {
+        fprintf(stderr, "A problem occurred while parsing the reference tree.\n");
+        return NULL;
+    }
+    return s_tree;
+}
+
+
+int dir_a_to_b(Node *a, Node *b) {
+    /* this returns the direction from a to b when a and b are two neighbours, otherwise return -1 */
+    int i, n = a->nb_neigh;
+    for (i = 0; i < n; i++) if (a->neigh[i] == b) break;
+    if (i < n) return i;
+    else {
+        return -1;
+    }
+} /* end dir_a_to_b */
+
+int write_subtree_to_stream(Node *node, Node *node_from, FILE *stream, double epsilon, double scaling) {
+    int i, direction_to_exclude, n = node->nb_neigh;
+    if (node_from == NULL) {
+        return EXIT_SUCCESS;
+    }
+    // internal node => write its children first
+    if (n != 1) {
+        direction_to_exclude = dir_a_to_b(node, node_from);
+        if (-1 == direction_to_exclude) {
+            fprintf(stderr, "Fatal error : nodes are not neighbours.\n");
+            return EXIT_FAILURE;
+        }
+
+        putc('(', stream);
+        /* we have to write (n-1) subtrees in total. The last print is not followed by a comma */
+        for (i = 1; i < n - 1; i++) {
+            if (EXIT_SUCCESS !=
+                write_subtree_to_stream(node->neigh[(direction_to_exclude + i) % n], node, stream, epsilon, scaling)) {
+                return EXIT_FAILURE;
+            } /* a son */
+            putc(',', stream);
+        }
+        if (EXIT_SUCCESS != write_subtree_to_stream(node->neigh[(direction_to_exclude + i) % n], node, stream, epsilon,
+                                                    scaling)) {
+            return EXIT_FAILURE;
+        } /* last son */
+        putc(')', stream);
+    }
+    // write node's name and dist to father
+    fprintf(stream, "%s:%f", (node->name ? node->name : ""), node->branch_len);
+    return EXIT_SUCCESS;
+} /* end write_subtree_to_stream */
+
+int write_nh_tree(Tree *s_tree, char *output_filepath, double epsilon, double scaling) {
+
+    FILE* output_file = fopen(output_filepath, "w");
+    if (!output_file) {
+        fprintf(stderr, "Output tree file %s is impossible to access.", output_filepath);
+        fprintf(stderr, "Value of errno: %d\n", errno);
+        fprintf(stderr, "Error opening the file: %s\n", strerror(errno));
+        return ENOENT;
+    }
+    /* writing the tree from the current position in the file */
+    int i, n = s_tree->root->nb_neigh;
+    putc('(', output_file);
+    for (i = 0; i < n - 1; i++) {
+        if (EXIT_SUCCESS != write_subtree_to_stream(s_tree->root->neigh[i], s_tree->root,
+                                                    output_file, epsilon, scaling)) {
+            return EXIT_FAILURE;
+        } /* a son */
+        putc(',', output_file);
+    }
+    if (EXIT_SUCCESS != write_subtree_to_stream(s_tree->root->neigh[i], s_tree->root, output_file, epsilon, scaling)) {
+        return EXIT_FAILURE;
+    } /* last son */
+    putc(')', output_file);
+
+    if (s_tree->root->name) {
+        fprintf(output_file, "%s", s_tree->root->name);
+    }
+    /* terminate with a semicol AND and end of line */
+    putc(';', output_file);
+    putc('\n', output_file);
+
+    fclose(output_file);
+    return EXIT_SUCCESS;
 }

@@ -112,8 +112,8 @@ int output_ancestral_states(Tree *tree, size_t num_annotations, char **character
 }
 
 
-int output_parameters(double* parameters, size_t num_annotations, char **character, double log_lh,
-                      char *model, char* prob_method, char *output_file_path) {
+int output_parameters(double *parameters, size_t num_annotations, char **character, double log_lh, char *model,
+                      char *output_file_path) {
     FILE* outfile = fopen(output_file_path, "w");
     if (!outfile) {
         fprintf(stderr, "Output parameter file %s is impossible to access.", output_file_path);
@@ -126,7 +126,6 @@ int output_parameters(double* parameters, size_t num_annotations, char **charact
 
     fprintf(outfile, "parameter,value\n");
     fprintf(outfile, "model,%s\n", model);
-    fprintf(outfile, "state prediction method,%s\n", prob_method);
     fprintf(outfile, "log likelihood,%.8f\n", log_lh);
     fprintf(outfile, "scaling factor,%.8f\n", parameters[num_annotations]);
     fprintf(outfile, "epsilon,%.e\n", parameters[num_annotations + 1]);

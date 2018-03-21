@@ -150,8 +150,7 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
         log_likelihood = minimize_params(s_tree, num_annotations, parameters, character, model,
                                          0.01 / s_tree->avg_branch_len, 10.0 / s_tree->avg_branch_len,
                                          MIN(s_tree->min_branch_len / 10.0, s_tree->avg_tip_branch_len / 100.0),
-                                         MIN(s_tree->min_branch_len * 10.0, s_tree->avg_tip_branch_len / 10.0),
-                                         is_marginal);
+                                         MIN(s_tree->min_branch_len * 10.0, s_tree->avg_tip_branch_len / 10.0));
         log_info("\n");
 
         log_info("OPTIMISED PARAMETERS:\n\n");
@@ -168,8 +167,7 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
         log_info("\n");
     }
 
-    exit_val = output_parameters(parameters, num_annotations, character, log_likelihood, model, prob_method,
-                                 out_parameter_name);
+    exit_val = output_parameters(parameters, num_annotations, character, log_likelihood, model, out_parameter_name);
     if (EXIT_SUCCESS != exit_val) {
         return exit_val;
     }
@@ -196,6 +194,13 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
             choose_best_marginal_states(s_tree, num_annotations);
         }
     } else {
+        // the branch lengths are already rescaled, so let's put scaling factor to 1, and epsilon to 0.
+        parameters[num_annotations] = 1.0;
+        parameters[num_annotations + 1] = 0.0;
+
+        // calculate joint likelihood
+        calculate_bottom_up_likelihood(s_tree, num_annotations, parameters, FALSE);
+
         log_info("PREDICTING MOST LIKELY ANCESTRAL STATES...\n\n");
         choose_joint_states(s_tree, num_annotations, parameters);
         set_id_best_states(s_tree, num_annotations);

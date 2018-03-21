@@ -55,7 +55,7 @@ void *get_likelihood_parameters(const gsl_vector *v, size_t num_annotations, dou
 }
 
 double
-minus_loglikelihood (const gsl_vector *v, void *params, double* cur_parameters, char* model, Tree* s_tree, int is_marginal)
+minus_loglikelihood (const gsl_vector *v, void *params, double* cur_parameters, char* model, Tree* s_tree)
 {
     /**
      * Calculates the -log likelihood value.
@@ -65,11 +65,11 @@ minus_loglikelihood (const gsl_vector *v, void *params, double* cur_parameters, 
     double scale_low = p[1], scale_up = p[2], epsilon_low = p[3], epsilon_up = p[4];
     get_likelihood_parameters(v, num_annotations, scale_low, scale_up, epsilon_low, epsilon_up, cur_parameters, model);
 
-    return -calculate_bottom_up_likelihood(s_tree, num_annotations, cur_parameters, is_marginal);
+    return -calculate_bottom_up_likelihood(s_tree, num_annotations, cur_parameters, TRUE);
 }
 void
 d_minus_loglikelihood (gsl_vector *v, void *params, gsl_vector *df, double* cur_parameters,
-                       double cur_minus_log_likelihood, char* model, Tree* s_tree, int is_marginal)
+                       double cur_minus_log_likelihood, char* model, Tree* s_tree)
 {
     /** Fills in the gradient vector for each of the parameters.
      * parameters = [frequency_char_1, .., frequency_char_n, scaling_factor, epsilon].
@@ -87,7 +87,7 @@ d_minus_loglikelihood (gsl_vector *v, void *params, gsl_vector *df, double* cur_
     if (cur_minus_log_likelihood < 0) {
         get_likelihood_parameters(v, num_annotations, scale_low, scale_up, epsilon_low, epsilon_up,
                                   cur_parameters, model);
-        cur_minus_log_likelihood = -calculate_bottom_up_likelihood(s_tree, num_annotations, cur_parameters, is_marginal);
+        cur_minus_log_likelihood = -calculate_bottom_up_likelihood(s_tree, num_annotations, cur_parameters, TRUE);
     }
 
     size_t n = (strcmp(F81, model) == 0) ? (num_annotations + 2): 2;
@@ -101,7 +101,7 @@ d_minus_loglikelihood (gsl_vector *v, void *params, gsl_vector *df, double* cur_
         get_likelihood_parameters(v, num_annotations, scale_low, scale_up, epsilon_low, epsilon_up,
                                   cur_parameters, model);
 
-        diff_log_likelihood = -calculate_bottom_up_likelihood(s_tree, num_annotations, cur_parameters, is_marginal)
+        diff_log_likelihood = -calculate_bottom_up_likelihood(s_tree, num_annotations, cur_parameters, TRUE)
                               - cur_minus_log_likelihood;
 
         /* calculate the gradients*/
@@ -111,7 +111,7 @@ d_minus_loglikelihood (gsl_vector *v, void *params, gsl_vector *df, double* cur_
 }
 
 double minimize_params(Tree* s_tree, size_t num_annotations, double *parameters, char **character, char *model,
-                       double scale_low, double scale_up, double epsilon_low, double epsilon_up, int is_marginal) {
+                       double scale_low, double scale_up, double epsilon_low, double epsilon_up) {
     /**
      * Optimises the following parameters:
      * parameters = [frequency_char_1, .., frequency_char_n, scaling_factor, epsilon],
@@ -135,16 +135,16 @@ double minimize_params(Tree* s_tree, size_t num_annotations, double *parameters,
     double par[5] = {(double) num_annotations, scale_low, scale_up, epsilon_low, epsilon_up};
 
     double my_f(const gsl_vector *v, void *params) {
-        return minus_loglikelihood(v, params, parameters, model, s_tree, is_marginal);
+        return minus_loglikelihood(v, params, parameters, model, s_tree);
     }
 
     void my_df(const gsl_vector *v, void *params, gsl_vector *df) {
-        return d_minus_loglikelihood (v, params, df, parameters, -1, model, s_tree, is_marginal);
+        return d_minus_loglikelihood (v, params, df, parameters, -1, model, s_tree);
     }
 
     void my_fdf(const gsl_vector *v, void *params, double *f, gsl_vector *df) {
-        *f = minus_loglikelihood(v, params, parameters, model, s_tree, is_marginal);
-        d_minus_loglikelihood (v, params, df, parameters, *f, model, s_tree, is_marginal);
+        *f = minus_loglikelihood(v, params, parameters, model, s_tree);
+        d_minus_loglikelihood (v, params, df, parameters, *f, model, s_tree);
     }
 
     gsl_vector *x;

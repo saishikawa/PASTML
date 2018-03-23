@@ -99,9 +99,10 @@ int main(int argc, char **argv) {
         return EINVAL;
     }
     if ((strcmp(prob_method, MARGINAL) != 0) && (strcmp(prob_method, MARGINAL_APPROXIMATION) != 0)
-        && (strcmp(prob_method, MAX_POSTERIORI) != 0) && (strcmp(prob_method, JOINT) != 0)) {
-        snprintf(arg_error_string, 1024, "Probability calculation method (-p) must be one of the following: %s, %s, %s, %s.\n\n%s",
-                 MARGINAL_APPROXIMATION, MARGINAL, MAX_POSTERIORI, JOINT, help_string);
+        && (strcmp(prob_method, MAX_POSTERIORI) != 0) && (strcmp(prob_method, JOINT) != 0)
+        && (strcmp(prob_method, DOWNPASS) != 0)) {
+        snprintf(arg_error_string, 1024, "Probability calculation method (-p) must be one of the following: %s, %s, %s, %s, %s.\n\n%s",
+                 MARGINAL_APPROXIMATION, MARGINAL, MAX_POSTERIORI, JOINT, DOWNPASS, help_string);
         printf(arg_error_string);
         free(arg_error_string);
         return EINVAL;

@@ -250,10 +250,11 @@ int parse_substring_into_node(char *in_str, int begin, int end, Node *current_no
 
     /* allocating the data structures for the current node */
     /* FIXME: in case the tree has an inner node with just one child, nb_neigh will become 1 instead of 2.*/
-    current_node->nb_neigh = (nb_commas == 0 ? 1 : nb_commas + 1 + has_father);
+    current_node->nb_neigh = (nb_commas == 0) ? 1 : (nb_commas + 1 + has_father);
     current_node->neigh = malloc(current_node->nb_neigh * sizeof(Node *));
 
     current_node->bottom_up_likelihood = calloc(nbanno, sizeof(double));
+    current_node->parsimony_states = calloc((size_t) ceil(nbanno / 64.0), sizeof(long));
     current_node->result_probs = calloc(nbanno, sizeof(double));
     current_node->pij = calloc(nbanno, sizeof(double *));
     for (i = 0; i < nbanno; i++) {
@@ -467,15 +468,16 @@ int copy_nh_stream_into_str(FILE *nh_stream, char *big_string) {
     return EXIT_SUCCESS; /* leaves the stream right after the terminal ';' */
 } /*end copy_nh_stream_into_str */
 
-void free_node(Node *node, int count, size_t num_anno) {
+void free_node(Node *node, size_t num_anno) {
     int j;
 
     if (node == NULL) return;
-    if (node->name && count != 0) {
+    free(node->neigh);
+    if (strcmp(node->name, "ROOT") != 0 && node->name) {
         free(node->name);
     }
-    free(node->neigh);
     free(node->bottom_up_likelihood);
+    free(node->parsimony_states);
     free(node->result_probs);
     free(node->best_states);
     free(node->top_down_likelihood);
@@ -489,10 +491,10 @@ void free_node(Node *node, int count, size_t num_anno) {
 }
 
 void free_tree(Tree *tree, size_t num_anno) {
-    int i;
+    size_t i;
     if (tree == NULL) return;
     for (i = 0; i < tree->nb_nodes; i++) {
-        free_node(tree->nodes[i], i, num_anno);
+        free_node(tree->nodes[i], num_anno);
     }
     free(tree->nodes);
     free(tree);
@@ -554,7 +556,7 @@ int dir_a_to_b(Node *a, Node *b) {
     }
 } /* end dir_a_to_b */
 
-int write_subtree_to_stream(Node *node, Node *node_from, FILE *stream, double epsilon, double scaling) {
+int write_subtree_to_stream(Node *node, Node *node_from, FILE *stream) {
     int i, direction_to_exclude, n = node->nb_neigh;
     if (node_from == NULL) {
         return EXIT_SUCCESS;
@@ -571,13 +573,12 @@ int write_subtree_to_stream(Node *node, Node *node_from, FILE *stream, double ep
         /* we have to write (n-1) subtrees in total. The last print is not followed by a comma */
         for (i = 1; i < n - 1; i++) {
             if (EXIT_SUCCESS !=
-                write_subtree_to_stream(node->neigh[(direction_to_exclude + i) % n], node, stream, epsilon, scaling)) {
+                write_subtree_to_stream(node->neigh[(direction_to_exclude + i) % n], node, stream)) {
                 return EXIT_FAILURE;
             } /* a son */
             putc(',', stream);
         }
-        if (EXIT_SUCCESS != write_subtree_to_stream(node->neigh[(direction_to_exclude + i) % n], node, stream, epsilon,
-                                                    scaling)) {
+        if (EXIT_SUCCESS != write_subtree_to_stream(node->neigh[(direction_to_exclude + i) % n], node, stream)) {
             return EXIT_FAILURE;
         } /* last son */
         putc(')', stream);
@@ -587,7 +588,7 @@ int write_subtree_to_stream(Node *node, Node *node_from, FILE *stream, double ep
     return EXIT_SUCCESS;
 } /* end write_subtree_to_stream */
 
-int write_nh_tree(Tree *s_tree, char *output_filepath, double epsilon, double scaling) {
+int write_nh_tree(Tree *s_tree, char *output_filepath) {
 
     FILE* output_file = fopen(output_filepath, "w");
     if (!output_file) {
@@ -600,13 +601,12 @@ int write_nh_tree(Tree *s_tree, char *output_filepath, double epsilon, double sc
     int i, n = s_tree->root->nb_neigh;
     putc('(', output_file);
     for (i = 0; i < n - 1; i++) {
-        if (EXIT_SUCCESS != write_subtree_to_stream(s_tree->root->neigh[i], s_tree->root,
-                                                    output_file, epsilon, scaling)) {
+        if (EXIT_SUCCESS != write_subtree_to_stream(s_tree->root->neigh[i], s_tree->root, output_file)) {
             return EXIT_FAILURE;
         } /* a son */
         putc(',', output_file);
     }
-    if (EXIT_SUCCESS != write_subtree_to_stream(s_tree->root->neigh[i], s_tree->root, output_file, epsilon, scaling)) {
+    if (EXIT_SUCCESS != write_subtree_to_stream(s_tree->root->neigh[i], s_tree->root, output_file)) {
         return EXIT_FAILURE;
     } /* last son */
     putc(')', output_file);

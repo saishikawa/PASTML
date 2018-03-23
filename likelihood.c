@@ -213,6 +213,10 @@ initialise_tip_probabilities(Tree *s_tree, char *const *tip_names, const int *st
      */
     Node *nd;
     size_t j, i, k;
+    double* all_ones_array = calloc(num_annotations, sizeof(double));
+    for (j = 0; j < num_annotations; j++) {
+       all_ones_array[j] = 1.0;
+    }
 
     for (k = 0; k < s_tree->nb_nodes; k++) {
         nd = s_tree->nodes[k];
@@ -220,12 +224,10 @@ initialise_tip_probabilities(Tree *s_tree, char *const *tip_names, const int *st
         if (nd->nb_neigh == 1) {
             for (i = 0; i < num_tips; i++) {
                 if (strcmp(nd->name, tip_names[i]) == 0) {
-                    // states[i] == num_annotations means that the annotation is missing
-                    if (states[i] == num_annotations) {
+                    // states[i] == -1 means that the annotation is missing
+                    if (states[i] == -1) {
                         // and therefore any state is possible
-                        for (j = 0; j < num_annotations; j++) {
-                            nd->bottom_up_likelihood[j] = 1.0;
-                        }
+                        memcpy(nd->bottom_up_likelihood, all_ones_array, num_annotations * sizeof(double));
                     } else {
                         nd->bottom_up_likelihood[states[i]] = 1.0;
                     }
@@ -234,6 +236,8 @@ initialise_tip_probabilities(Tree *s_tree, char *const *tip_names, const int *st
             }
         }
     }
+
+    free(all_ones_array);
 }
 
 void rescale_branch_lengths(Tree *s_tree, double scaling_factor, double epsilon) {

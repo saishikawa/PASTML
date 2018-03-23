@@ -17,7 +17,7 @@ except:
 pastml_module = Extension('pastml',
                           sources=['pastmlpymodule.c', 'runpastml.c', 'tree.c',
                                    'likelihood.c', 'marginal_likelihood.c', 'marginal_approximation.c',
-                                   'states.c', 'scaling.c', 'param_minimization.c', 'logger.c'],
+                                   'states.c', 'scaling.c', 'param_minimization.c', 'logger.c', 'parsimony.c'],
                           libraries=['gsl', 'gslcblas']
                           )
 
@@ -41,5 +41,5 @@ setup(
     keywords=['PASTML', 'phylogeny', 'ancestral state inference', 'likelihood'],
     ext_modules=[pastml_module],
     headers=['pastml.h', 'runpastml.h', 'tree.h', 'likelihood.h', 'marginal_likelihood.h', 'marginal_approximation.h',
-             'states.h', 'scaling.h', 'param_minimization.h', 'logger.h']
+             'states.h', 'scaling.h', 'param_minimization.h', 'logger.h', 'parsimony.h']
 )

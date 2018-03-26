@@ -13,8 +13,8 @@ int main(int argc, char **argv) {
     char *out_parameter_name = NULL;
     char *out_tree_name = NULL;
     struct timespec;
-    int opt;
-    char *arg_error_string = malloc(sizeof(char) * 1024);
+    int opt, is_parsimonious;
+    char *arg_error_string = malloc(sizeof(char) * 2048);
 
     opterr = 0;
 
@@ -29,8 +29,12 @@ int main(int argc, char **argv) {
             "   -o OUTPUT_ANNOTATION_CSV            path where the output annotation file containing node states will be created (in csv format)\n"
             "   -n OUTPUT_TREE_NWK                  path where the output tree file will be created (in newick format)\n"
             "   -n OUTPUT_PARAMETERS_CSV            path where the output parameters file will be created (in csv format)\n"
-            "   -m MODEL                            state evolution model (\"JC\" (default) or \"F81\")\n"
-            "   -p PROBABILITY_CALCULATION_METHOD   ancestral state prediction method (\"marginal_approx\" (default), \"marginal\", \"max_posteriori\", or \"joint\")\n"
+            "   -m MODEL                            state evolution model for max likelihood prediction methods: "
+            "\"JC\" (default) or \"F81\"\n"
+            "   -p PREDICTION_METHOD                ancestral state prediction method: \"marginal_approx\" (default), "
+            "\"marginal\", \"max_posteriori\", \"joint\", \"downpass\", \"acctran\", or \"deltran\"\n"
+            "(\"marginal_approx\", \"marginal\", \"max_posteriori\", and \"joint\" are max likelihood methods, "
+            "while \"downpass\", \"acctran\", and \"deltran\" are parsimonious ones)\n"
             "   -q                                  quiet, do not print progress information\n";
 
     opt = getopt(argc, argv, "a:t:o:r:m:n:p:q");
@@ -73,7 +77,7 @@ int main(int argc, char **argv) {
                 break;
 
             default: /* '?' */
-                snprintf(arg_error_string, 1024, "Unknown arguments...\n\n%s", help_string);
+                snprintf(arg_error_string, 2048, "Unknown arguments...\n\n%s", help_string);
                 printf(arg_error_string);
                 free(arg_error_string);
                 return EINVAL;
@@ -81,47 +85,32 @@ int main(int argc, char **argv) {
     } while ((opt = getopt(argc, argv, "a:t:o:r:m:n:p:q")) != -1);
     /* Make sure that the required arguments are set correctly */
     if (annotation_name == NULL) {
-        snprintf(arg_error_string, 1024, "Annotation file (-a) must be specified.\n\n%s", help_string);
+        snprintf(arg_error_string, 2048, "Annotation file (-a) must be specified.\n\n%s", help_string);
         printf(arg_error_string);
         free(arg_error_string);
         return EINVAL;
     }
     if (tree_name == NULL) {
-        snprintf(arg_error_string, 1024, "Tree file (-t) must be specified.\n\n%s", help_string);
+        snprintf(arg_error_string, 2048, "Tree file (-t) must be specified.\n\n%s", help_string);
         printf(arg_error_string);
         free(arg_error_string);
         return EINVAL;
     }
-    if ((strcmp(model, JC) != 0) && (strcmp(model, F81) != 0)) {
-        snprintf(arg_error_string, 1024, "Model (-m) must be either %s or %s.\n\n%s", JC, F81, help_string);
+    if (!is_valid_prediction_method(prob_method)) {
+        snprintf(arg_error_string, 2048, "Ancestral state prediction method (-p) is not valid.\n\n%s", help_string);
         printf(arg_error_string);
         free(arg_error_string);
         return EINVAL;
     }
-    if ((strcmp(prob_method, MARGINAL) != 0) && (strcmp(prob_method, MARGINAL_APPROXIMATION) != 0)
-        && (strcmp(prob_method, MAX_POSTERIORI) != 0) && (strcmp(prob_method, JOINT) != 0)
-        && (strcmp(prob_method, DOWNPASS) != 0)) {
-        snprintf(arg_error_string, 1024, "Probability calculation method (-p) must be one of the following: %s, %s, %s, %s, %s.\n\n%s",
-                 MARGINAL_APPROXIMATION, MARGINAL, MAX_POSTERIORI, JOINT, DOWNPASS, help_string);
+    is_parsimonious = is_parsimonious_method(prob_method);
+    if (!is_parsimonious && !is_valid_model(model)) {
+        snprintf(arg_error_string, 2048, "Model (-m) is not valid.\n\n%s", help_string);
         printf(arg_error_string);
         free(arg_error_string);
         return EINVAL;
     }
     /* No error in arguments */
     free(arg_error_string);
-
-    if (out_annotation_name == NULL) {
-        out_annotation_name = calloc(256, sizeof(char));
-        sprintf(out_annotation_name, "%s.%s.%s.pastml.out.csv", annotation_name, model, prob_method);
-    }
-    if (out_tree_name == NULL) {
-        out_tree_name = calloc(256, sizeof(char));
-        sprintf(out_tree_name, "%s.%s.%s.pastml.out.nwk", tree_name, model, prob_method);
-    }
-    if (out_parameter_name == NULL) {
-        out_parameter_name = calloc(256, sizeof(char));
-        sprintf(out_parameter_name, "%s.%s.%s.pastml.parameters.csv", annotation_name, model, prob_method);
-    }
     return runpastml(annotation_name, tree_name, out_annotation_name, out_tree_name, out_parameter_name,
                      model, prob_method);
 }

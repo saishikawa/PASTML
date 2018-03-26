@@ -26,18 +26,6 @@ static PyObject *infer_ancestral_states(PyObject *self, PyObject *args) {
     if (quiet != FALSE) {
         QUIET = TRUE;
     }
-    if (out_annotation_name == NULL) {
-        out_annotation_name = calloc(256, sizeof(char));
-        sprintf(out_annotation_name, "%s.%s.%s.pastml.out.csv", annotation_name, model, prob_method);
-    }
-    if (out_tree_name == NULL) {
-        out_tree_name = calloc(256, sizeof(char));
-        sprintf(out_tree_name, "%s.%s.%s.pastml.out.nwk", tree_name, model, prob_method);
-    }
-    if (out_param_name == NULL) {
-        out_param_name = calloc(256, sizeof(char));
-        sprintf(out_param_name, "%s.%s.%s.pastml.parameters.csv", annotation_name, model, prob_method);
-    }
     sts = runpastml(annotation_name, tree_name, out_annotation_name, out_tree_name, out_param_name, model, prob_method);
     if (sts != EXIT_SUCCESS) {
         if (errno) {
@@ -62,7 +50,8 @@ static PyMethodDef PastmlMethods[] =
                         "   :param out_param_file: str, path where the output parameter file in csv format will be stored.\n"
                         "   :param model: str, the model of state evolution: pastml.JC or pastml.F81.\n"
                         "   :param prediction_method: str, ancestral state prediction method: "
-                        "pastml.MARGINAL_APPROXIMATION, pastml.MARGINAL, pastml.MAX_POSTERIORI, pastml.JOINT, or pastml.DOWNPASS.\n"
+                                "pastml.MARGINAL_APPROXIMATION, pastml.MARGINAL, pastml.MAX_POSTERIORI, pastml.JOINT, "
+                                "pastml.DOWNPASS, pastml.DELTRAN, or pastml.ACCTRAN.\n"
                         "   :param quiet: int, set to non-zero value to prevent PASTML from printing log information.\n"},
                 {NULL, NULL, 0, NULL}
         };
@@ -86,6 +75,8 @@ PyInit_pastml(void)
     PyModule_AddStringMacro(m, MARGINAL);
     PyModule_AddStringMacro(m, MAX_POSTERIORI);
     PyModule_AddStringMacro(m, DOWNPASS);
+    PyModule_AddStringMacro(m, DELTRAN);
+    PyModule_AddStringMacro(m, ACCTRAN);
     PyModule_AddStringMacro(m, JOINT);
     PyModule_AddStringMacro(m, JC);
     PyModule_AddStringMacro(m, F81);

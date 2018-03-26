@@ -254,7 +254,7 @@ int parse_substring_into_node(char *in_str, int begin, int end, Node *current_no
     current_node->neigh = malloc(current_node->nb_neigh * sizeof(Node *));
 
     current_node->bottom_up_likelihood = calloc(nbanno, sizeof(double));
-    current_node->parsimony_states = calloc((size_t) ceil(nbanno / 64.0), sizeof(long));
+    // do not allocate parsimony_states nor up_parsimony_states as we'll do it when we use them
     current_node->result_probs = calloc(nbanno, sizeof(double));
     current_node->pij = calloc(nbanno, sizeof(double *));
     for (i = 0; i < nbanno; i++) {
@@ -477,7 +477,7 @@ void free_node(Node *node, size_t num_anno) {
         free(node->name);
     }
     free(node->bottom_up_likelihood);
-    free(node->parsimony_states);
+    // do not free parsimony_states as we'll do it as soon as we do not need them
     free(node->result_probs);
     free(node->best_states);
     free(node->top_down_likelihood);

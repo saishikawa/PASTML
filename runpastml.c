@@ -54,6 +54,28 @@ int calculate_frequencies(size_t num_annotations, size_t num_tips, int *states, 
     return EXIT_SUCCESS;
 }
 
+int is_valid_model(char* model) {
+    return (strcmp(model, JC) == 0) || (strcmp(model, F81) == 0);
+}
+
+int is_marginal_method(char *prob_method) {
+    return (strcmp(prob_method, MARGINAL) == 0) || (strcmp(prob_method, MARGINAL_APPROXIMATION) == 0)
+           || (strcmp(prob_method, MAX_POSTERIORI) == 0);
+}
+
+int is_parsimonious_method(char *prob_method) {
+    return (strcmp(prob_method, DOWNPASS) == 0) || (strcmp(prob_method, ACCTRAN) == 0)
+           || (strcmp(prob_method, DELTRAN) == 0);
+}
+
+int is_ml_method(char *prob_method) {
+    return (strcmp(prob_method, JOINT) == 0) || is_marginal_method(prob_method);
+}
+
+int is_valid_prediction_method(char *prob_method) {
+    return is_parsimonious_method(prob_method) || is_ml_method(prob_method);
+}
+
 int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name, char *out_tree_name,
               char *out_parameter_name, char *model,
               char* prob_method) {
@@ -67,25 +89,51 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
     struct timespec time_start, time_end;
     int exit_val;
     Tree *s_tree;
-    int is_marginal = strcmp(prob_method, JOINT) != 0;
+    int is_marginal, is_parsimonious;
 
     clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time_start);
     srand((unsigned) time(NULL));
 
-    if ((strcmp(model, JC) != 0) && (strcmp(model, F81) != 0)) {
-        sprintf(stderr, "Model must be either %s or %s, not %s", JC, F81, model);
+    if (!is_valid_prediction_method(prob_method)) {
+        sprintf(stderr, "Ancestral state prediction method \"%s\" is not valid", prob_method);
         return EINVAL;
     }
 
-    if ((strcmp(prob_method, MARGINAL) != 0) && (strcmp(prob_method, MARGINAL_APPROXIMATION) != 0)
-        && (strcmp(prob_method, MAX_POSTERIORI) != 0) && (strcmp(prob_method, JOINT) != 0)
-        && (strcmp(prob_method, DOWNPASS) != 0)) {
-        sprintf(stderr, "Probability calculation method must be one of the following: %s, %s, %s, %s, %s, got %s instead",
-                JOINT, MARGINAL, MARGINAL_APPROXIMATION, MAX_POSTERIORI, DOWNPASS, prob_method);
+    is_parsimonious = is_parsimonious_method(prob_method);
+    is_marginal = is_marginal_method(prob_method);
+
+    if (!is_parsimonious && !is_valid_model(model)) {
+        sprintf(stderr, "Model value \"%s\" is not valid", model);
         return EINVAL;
     }
-    log_info("MODEL:\t%s\n\n", model);
+
+    if (out_annotation_name == NULL) {
+        out_annotation_name = calloc(256, sizeof(char));
+        if (is_parsimonious) {
+            sprintf(out_annotation_name, "%s.%s.pastml.out.csv", annotation_name, prob_method);
+        } else {
+            sprintf(out_annotation_name, "%s.%s.%s.pastml.out.csv", annotation_name, model, prob_method);
+        }
+    }
+    if (out_tree_name == NULL) {
+        out_tree_name = calloc(256, sizeof(char));
+        if (is_parsimonious) {
+            sprintf(out_tree_name, "%s.parsimonious.pastml.tree.nwk", annotation_name);
+        } else {
+            sprintf(out_tree_name, "%s.maxlikelihood.pastml.tree.nwk", annotation_name);
+        }
+    }
+    if (out_parameter_name == NULL) {
+        if (!is_parsimonious) {
+            out_parameter_name = calloc(256, sizeof(char));
+            sprintf(out_parameter_name, "%s.maxlikelihood.pastml.parameters.csv", annotation_name);
+        }
+    }
+
     log_info("ANCESTRAL STATE PREDICTION METHOD:\t%s\n\n", prob_method);
+    if (!is_parsimonious) {
+        log_info("MODEL:\t%s\n\n", model);
+    }
 
     /* Allocate memory */
     states = calloc(MAXNSP, sizeof(int));
@@ -120,9 +168,9 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
     initialise_tip_probabilities(s_tree, tips, states, num_tips, num_annotations);
     free(tips);
 
-    if (strcmp(prob_method, DOWNPASS) == 0) {
-        log_info("PREDICTING MOST LIKELY ANCESTRAL STATES...\n\n");
-        parsimony(s_tree, num_annotations);
+    if (is_parsimonious) {
+        log_info("PREDICTING PARSIMONIOUS ANCESTRAL STATES...\n\n");
+        parsimony(s_tree, num_annotations, prob_method);
         select_parsimonious_states(s_tree, num_annotations);
     } else {
         /* we would need two additional spots in the parameters array: for the scaling factor, and for the epsilon,
@@ -151,7 +199,6 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
         if (log_likelihood == log(1)) {
             log_info("INITIAL LIKELIHOOD IS PERFECT, CANNOT DO BETTER THAN THAT.\n\n");
         } else {
-
             log_info("OPTIMISING PARAMETERS...\n\n");
             log_likelihood = minimize_params(s_tree, num_annotations, parameters, character, model,
                                              0.01 / s_tree->avg_branch_len, 10.0 / s_tree->avg_branch_len,
@@ -219,7 +266,7 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
         return exit_val;
     }
     log_info("SAVING THE RESULTS...\n\n");
-    log_info("\tScaled tree with internal node ids is written to %s.\n", out_tree_name);
+    log_info("\t%sree with internal node ids is written to %s.\n", (is_parsimonious) ? "T": "Scaled t", out_tree_name);
 
     exit_val = output_ancestral_states(s_tree, num_annotations, character, out_annotation_name);
     if (EXIT_SUCCESS != exit_val) {

@@ -27,18 +27,22 @@
 #define MARGINAL_APPROXIMATION "marginal_approx"
 #define MAX_POSTERIORI "max_posteriori"
 #define DOWNPASS "downpass"
+#define ACCTRAN "acctran"
+#define DELTRAN "deltran"
 #define JC "JC"
 #define F81 "F81"
 
 typedef struct __Node {
     char *name;
     int id;            /* unique id attributed to the node */
-    int nb_neigh;    /* number of neighbours */
+    size_t nb_neigh;    /* number of neighbours */
     struct __Node **neigh;    /* neighbour nodes */
 
     double **pij;           /* probability of substitution from i to j */
     double *bottom_up_likelihood;       /* conditional likelihoods at the node*/
     long *parsimony_states;
+    long *down_parsimony_states;
+    long *up_parsimony_states;
     double *result_probs;
     size_t *best_states;
     double *top_down_likelihood;

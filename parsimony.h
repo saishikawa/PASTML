@@ -7,6 +7,6 @@
 
 #include "pastml.h"
 
-void parsimony(Tree *tree, unsigned long num_annotations);
+void parsimony(Tree *tree, unsigned long num_annotations, char* method);
 void select_parsimonious_states(Tree *tree, size_t num_annotations);
 #endif //PARSIMONY_H

@@ -112,7 +112,7 @@ int calculate_node_probabilities(const Node *nd, size_t num_annotations, size_t 
              * given that the node is in state i: p_child_branch_from_i = sum_j(p_ij * p_child_j)
              */
             p_child_branch_from_i = 0.;
-            if (is_marginal == TRUE) {
+            if (is_marginal) {
                 // for marginal sum over all possible child states
                 for (j = 0; j < num_annotations; j++) {
                     p_child_branch_from_i += child->pij[i][j] * child->bottom_up_likelihood[j];

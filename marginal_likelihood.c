@@ -1,7 +1,6 @@
 #include <assert.h>
 #include "pastml.h"
 #include "scaling.h"
-#include "likelihood.h"
 
 
 void _calculate_top_down_likelihood(const Node *nd, const Node *root, size_t num_frequencies) {

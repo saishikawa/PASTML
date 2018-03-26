@@ -5,7 +5,7 @@
 
 #define GRADIENT_STEP 1.0e-7
 
-double softmax(double* xs, size_t n) {
+void softmax(double* xs, size_t n) {
     /**
      * transforms an array of n arbitrary values x in such a way that all of them become between 0 and 1 and sum to 1,
      * using the softmax function.
@@ -36,7 +36,7 @@ double anti_sigmoid(double x, const double lower_bound, const double upper_bound
     return -log((upper_bound - lower_bound) / (x - lower_bound) - 1.0);
 }
 
-void *get_likelihood_parameters(const gsl_vector *v, size_t num_annotations, double scale_low, double scale_up,
+void get_likelihood_parameters(const gsl_vector *v, size_t num_annotations, double scale_low, double scale_up,
                                 double epsilon_low, double epsilon_up, double* cur_parameters, char* model) {
     size_t i;
     if (strcmp(F81, model) == 0) {

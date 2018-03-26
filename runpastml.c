@@ -10,7 +10,7 @@
 #include <time.h>
 #include <errno.h>
 
-extern QUIET;
+extern int* QUIET;
 
 int calculate_frequencies(size_t num_annotations, size_t num_tips, int *states, char **character, char *model,
                           double *parameters) {
@@ -95,7 +95,7 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
     srand((unsigned) time(NULL));
 
     if (!is_valid_prediction_method(prob_method)) {
-        sprintf(stderr, "Ancestral state prediction method \"%s\" is not valid", prob_method);
+        fprintf(stderr, "Ancestral state prediction method \"%s\" is not valid", prob_method);
         return EINVAL;
     }
 
@@ -103,7 +103,7 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
     is_marginal = is_marginal_method(prob_method);
 
     if (!is_parsimonious && !is_valid_model(model)) {
-        sprintf(stderr, "Model value \"%s\" is not valid", model);
+        fprintf(stderr, "Model value \"%s\" is not valid", model);
         return EINVAL;
     }
 
@@ -187,7 +187,7 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
             return exit_val;
         }
         parameters[num_annotations] = 1.0 / s_tree->avg_branch_len;
-        parameters[num_annotations + 1] = s_tree->min_branch_len;
+        parameters[num_annotations + 1] = MIN(s_tree->min_branch_len / 10.0, s_tree->avg_tip_branch_len / 100.0);
 
         log_likelihood = calculate_bottom_up_likelihood(s_tree, num_annotations, parameters, is_marginal);
         if (log_likelihood == log(0)) {

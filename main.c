@@ -3,7 +3,7 @@
 #include <getopt.h>
 #include <errno.h>
 
-extern QUIET;
+extern int* QUIET;
 
 int main(int argc, char **argv) {
     char *model = JC, *prob_method = MARGINAL_APPROXIMATION;
@@ -41,7 +41,7 @@ int main(int argc, char **argv) {
     do {
         switch (opt) {
             case -1:
-                printf(help_string);
+                printf("%s", help_string);
                 return EINVAL;
 
             case 'a':
@@ -69,7 +69,7 @@ int main(int argc, char **argv) {
                 break;
 
             case 'q':
-                QUIET = TRUE;
+                *QUIET = TRUE;
                 break;
 
             case 'p':
@@ -78,7 +78,7 @@ int main(int argc, char **argv) {
 
             default: /* '?' */
                 snprintf(arg_error_string, 2048, "Unknown arguments...\n\n%s", help_string);
-                printf(arg_error_string);
+                printf("%s", arg_error_string);
                 free(arg_error_string);
                 return EINVAL;
         }
@@ -86,26 +86,26 @@ int main(int argc, char **argv) {
     /* Make sure that the required arguments are set correctly */
     if (annotation_name == NULL) {
         snprintf(arg_error_string, 2048, "Annotation file (-a) must be specified.\n\n%s", help_string);
-        printf(arg_error_string);
+        printf("%s", arg_error_string);
         free(arg_error_string);
         return EINVAL;
     }
     if (tree_name == NULL) {
         snprintf(arg_error_string, 2048, "Tree file (-t) must be specified.\n\n%s", help_string);
-        printf(arg_error_string);
+        printf("%s", arg_error_string);
         free(arg_error_string);
         return EINVAL;
     }
     if (!is_valid_prediction_method(prob_method)) {
         snprintf(arg_error_string, 2048, "Ancestral state prediction method (-p) is not valid.\n\n%s", help_string);
-        printf(arg_error_string);
+        printf("%s", arg_error_string);
         free(arg_error_string);
         return EINVAL;
     }
     is_parsimonious = is_parsimonious_method(prob_method);
     if (!is_parsimonious && !is_valid_model(model)) {
         snprintf(arg_error_string, 2048, "Model (-m) is not valid.\n\n%s", help_string);
-        printf(arg_error_string);
+        printf("%s", arg_error_string);
         free(arg_error_string);
         return EINVAL;
     }

@@ -2,6 +2,10 @@ from distutils.core import setup, Extension
 import subprocess
 import sys
 
+import os
+
+os.environ["CC"] = "gcc -std=gnu99"
+
 # Look for GSL
 try:
     proc = subprocess.Popen(['gsl-config', '--version'], stdout=subprocess.PIPE)
@@ -32,7 +36,7 @@ setup(
         'Topic :: Software Development',
         'Topic :: Software Development :: Libraries :: Python Modules',
     ],
-    version='0.6.3',
+    version='0.6.4',
     description='Python wrapper for PASTML.',
     maintainer='Anna Zhukova',
     maintainer_email='anna.zhukova@pasteur.fr',

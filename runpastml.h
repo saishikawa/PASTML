@@ -1,6 +1,6 @@
-//
-// Created by azhukova on 1/24/18.
-//
+/**
+* Created by azhukova on 1/24/18.
+**/
 
 #ifndef PASTML_PASTML_H
 #define PASTML_PASTML_H

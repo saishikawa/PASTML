@@ -1,6 +1,3 @@
-//
-// Created by azhukova on 1/24/18.
-//
 #include <Python.h>
 #include "runpastml.h"
 #include "pastml.h"

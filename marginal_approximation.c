@@ -13,14 +13,6 @@ order_marginal(Tree* tree, size_t num_annotations)
     size_t i;
     Node* nd;
 
-
-
-    int cmp_value(const void *a, const void *b) {
-        double da = *(double *) a;
-        double db = *(double *) b;
-        return -(da < db ? -1 : da > db);
-    }
-
     for (i = 0; i < tree->nb_nodes; i++) {
         nd = tree->nodes[i];
 
@@ -32,7 +24,6 @@ order_marginal(Tree* tree, size_t num_annotations)
         }
 
         qsort(nd->best_states, num_annotations, sizeof(size_t), cmp_index);
-        qsort(nd->result_probs, num_annotations, sizeof(double), cmp_value);
     }
 }
 
@@ -58,9 +49,9 @@ void calc_correct(Tree *tree, size_t n) {
             equal_p_i = 1.0 / ((double) i + 1.0);
             for (j = 0; j < n; j++) {
                 if (j <= i) {
-                    correction_i += pow(nd->result_probs[j] - equal_p_i, 2);
+                    correction_i += pow(nd->result_probs[nd->best_states[j]] - equal_p_i, 2);
                 } else {
-                    correction_i += pow(nd->result_probs[j], 2);
+                    correction_i += pow(nd->result_probs[nd->best_states[j]], 2);
                 }
             }
             if (smallest_correction > correction_i) {
@@ -71,7 +62,7 @@ void calc_correct(Tree *tree, size_t n) {
 
         equal_p_i = 1.0 / ((double) best_num_states);
         for (i = 0; i < n; i++) {
-            nd->result_probs[i] = (i < best_num_states) ? equal_p_i : 0.0;
+            nd->result_probs[nd->best_states[i]] = (i < best_num_states) ? equal_p_i : 0.0;
         }
     }
 }

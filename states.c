@@ -81,7 +81,7 @@ int output_ancestral_states(Tree *tree, size_t num_annotations, char **character
         fprintf(stderr, "Error opening the file: %s\n", strerror(errno));
         return ENOENT;
     }
-    size_t i, j, k;
+    size_t i, k;
     Node* nd;
 
     // print the header
@@ -98,11 +98,7 @@ int output_ancestral_states(Tree *tree, size_t num_annotations, char **character
         fprintf(outfile, "%s", nd->name);
 
         for (i = 0; i < num_annotations; i++) {
-            for (j = 0; j < num_annotations; j++) {
-                if (strcmp(character[i], character[nd->best_states[j]]) == 0) {
-                    fprintf(outfile, ",%.e", nd->result_probs[j]);
-                }
-            }
+            fprintf(outfile, ",%.e", nd->result_probs[i]);
         }
         fprintf(outfile, "\n");
     }

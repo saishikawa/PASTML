@@ -187,7 +187,7 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
             return exit_val;
         }
         parameters[num_annotations] = 1.0 / s_tree->avg_branch_len;
-        parameters[num_annotations + 1] = MIN(s_tree->min_branch_len / 10.0, s_tree->avg_tip_branch_len / 100.0);
+        parameters[num_annotations + 1] = MIN(s_tree->min_branch_len, s_tree->avg_tip_branch_len);
 
         log_likelihood = calculate_bottom_up_likelihood(s_tree, num_annotations, parameters, is_marginal);
         if (log_likelihood == log(0)) {

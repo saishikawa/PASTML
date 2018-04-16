@@ -11,4 +11,4 @@ set(SOURCE_FILES main.c likelihood.c tree.c marginal_approximation.c marginal_li
 add_executable(pastml ${SOURCE_FILES})
 
 find_package(GSL REQUIRED)    # See below (2)
-target_link_libraries(pastml GSL::gsl -lm)
+target_link_libraries(pastml GSL::gsl -lm -lgsl -lgslcblas)

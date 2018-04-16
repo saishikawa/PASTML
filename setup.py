@@ -4,7 +4,7 @@ import sys
 
 import os
 
-os.environ["CC"] = "gcc -std=gnu99"
+os.environ["CC"] = "gcc -std=gnu99 -lgsl -lgslcblas -lm"
 
 # Look for GSL
 try:
@@ -36,7 +36,7 @@ setup(
         'Topic :: Software Development',
         'Topic :: Software Development :: Libraries :: Python Modules',
     ],
-    version='0.6.5',
+    version='0.6.6',
     description='Python wrapper for PASTML.',
     maintainer='Anna Zhukova',
     maintainer_email='anna.zhukova@pasteur.fr',

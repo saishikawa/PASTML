@@ -12,7 +12,6 @@ int main(int argc, char **argv) {
     char *out_annotation_name = NULL;
     char *out_parameter_name = NULL;
     char *out_tree_name = NULL;
-    struct timespec;
     int opt, is_parsimonious;
     char *arg_error_string = malloc(sizeof(char) * 2048);
 

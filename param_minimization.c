@@ -3,7 +3,7 @@
 #include "likelihood.h"
 #include "logger.h"
 
-#define GRADIENT_STEP 1.0e-7
+#define GRADIENT_STEP 1.0e-5
 
 
 void softmax(double* xs, size_t n) {
@@ -71,7 +71,7 @@ log_cur_parameter_values(size_t num_annotations, double *parameters, const char 
             log_info("%.10f\t", parameters[i]);
         }
     }
-    log_info("%.10f\t%.10f\n", parameters[num_annotations], parameters[num_annotations + 1]);
+    log_info("%.10f\t%.e\n", parameters[num_annotations], parameters[num_annotations + 1]);
 }
 
 
@@ -168,7 +168,7 @@ double minimize_params(Tree* s_tree, size_t num_annotations, double *parameters,
 
     log_info("Scaling factor can vary between %.10f and %.10f, starting at %.10f.\n", scale_low, scale_up,
              parameters[num_annotations]);
-    log_info("Epsilon can vary between %.10f and %.10f, starting at %.10f.\n", epsilon_low, epsilon_up,
+    log_info("Epsilon can vary between %.e and %.e, starting at %.e.\n", epsilon_low, epsilon_up,
              parameters[num_annotations + 1]);
 
     size_t n = (size_t) ((strcmp(JC, model) == 0) ? 2 : (num_annotations + 1));

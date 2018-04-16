@@ -304,7 +304,7 @@ Tree *parse_nh_string(char *in_str, size_t nbanno) {
     int begin, end; /* to delimitate the string to further process */
     int nodecount = 0;
     size_t n_otu = 0;
-    int maxpoly;
+    size_t maxpoly;
     double tip_branch_len_sum=0.0;
     Node *cur_node;
 
@@ -405,7 +405,7 @@ Tree *parse_nh_string(char *in_str, size_t nbanno) {
     log_info("\tAvg branch length:\t%e\n", t->avg_branch_len);
     log_info("\tAvg tip branch length:\t%e\n", t->avg_tip_branch_len);
     log_info("\tMin branch length:\t%e\n", t->min_branch_len);
-    log_info("\tMax number of children per node:\t%d\n", maxpoly-1);
+    log_info("\tMax number of children per node:\t%zd\n", maxpoly-1);
     log_info("\n");
 
     return t;

@@ -1,5 +1,6 @@
 #include "pastml.h"
 #include "scaling.h"
+#include "models.h"
 
 int get_max(const int *array, size_t n) {
     /**
@@ -77,7 +78,7 @@ double get_rescaled_branch_len(const Node *nd, double avg_br_len, double scaling
     return bl * scaling_factor;
 }
 
-void set_p_ij(const Node *nd, double avg_br_len, size_t num_frequencies, const double *parameters) {
+void set_p_ij(const Node *nd, double avg_br_len, size_t num_frequencies, const double *parameters, char* model) {
     /**
      * Sets node probabilities of substitution: p[i][j]:
      *
@@ -93,10 +94,34 @@ void set_p_ij(const Node *nd, double avg_br_len, size_t num_frequencies, const d
     double epsilon = parameters[num_frequencies + 1];
     double t = get_rescaled_branch_len(nd, avg_br_len, scaling_factor, epsilon);
     double mu = get_mu(parameters, num_frequencies);
+    double *P, *matrix[1];
 
-    for (i = 0; i < num_frequencies; i++) {
-        for (j = 0; j < num_frequencies; j++) {
-            nd->pij[i][j] = get_pij(parameters, mu, t, i, j);
+    if ((strcmp(model, JC) == 0) || (strcmp(model, F81) == 0)) {
+        for (i = 0; i < num_frequencies; i++) {
+            for (j = 0; j < num_frequencies; j++) {
+                nd->pij[i][j] = get_pij(parameters, mu, t, i, j);
+            }
+        }
+    }
+
+    if (strcmp(model, HKY) == 0) {
+        get_pij_hky(nd, num_frequencies, parameters, t);
+    }
+
+    if (strcmp(model, JTT) == 0) {
+        matrix[0] = calloc(num_frequencies * num_frequencies * sizeof(double), 1);
+        if (matrix[0] == NULL) {
+            fprintf(stderr, "Out of memory allocating 'matrix': CreateRates()\n");
+            // TODO: raise an error here
+            return;
+        }
+        SetJTTMatrix(matrix[0], t);
+        P = matrix[0];
+        for (i = 0; i < num_frequencies; i++) {
+            for (j = 0; j < num_frequencies; j++) {
+                nd->pij[i][j] = (*P);
+                P++;
+            }
         }
     }
 }
@@ -147,7 +172,7 @@ int calculate_node_probabilities(const Node *nd, size_t num_annotations, size_t 
     return factors;
 }
 
-int process_node(Node *nd, Tree *s_tree, size_t num_annotations, double *parameters, int is_marginal) {
+int process_node(Node *nd, Tree *s_tree, size_t num_annotations, double *parameters, int is_marginal, char* model) {
     /**
      * Calculates node probabilities.
      * parameters = [frequency_char_1, .., frequency_char_n, scaling_factor, epsilon].
@@ -162,9 +187,9 @@ int process_node(Node *nd, Tree *s_tree, size_t num_annotations, double *paramet
         child = nd->neigh[i];
         
         /* set probabilities of substitution */
-        set_p_ij(child, s_tree->avg_tip_branch_len, num_annotations, parameters);
+        set_p_ij(child, s_tree->avg_tip_branch_len, num_annotations, parameters, model);
 
-        add_factors = process_node(child, s_tree, num_annotations, parameters, is_marginal);
+        add_factors = process_node(child, s_tree, num_annotations, parameters, is_marginal, model);
         // if all the probabilities are zero (shown by add_factors == -1), stop here
         if (add_factors == -1) {
             return -1;
@@ -182,7 +207,8 @@ int process_node(Node *nd, Tree *s_tree, size_t num_annotations, double *paramet
     return factors;
 }
 
-double calculate_bottom_up_likelihood(Tree *s_tree, size_t num_annotations, double *parameters, int is_marginal) {
+double calculate_bottom_up_likelihood(Tree *s_tree, size_t num_annotations, double *parameters, int is_marginal,
+                                      char* model) {
     /**
      * Calculates tree log likelihood.
      * parameters = [frequency_char_1, .., frequency_char_n, scaling_factor, epsilon].
@@ -190,7 +216,7 @@ double calculate_bottom_up_likelihood(Tree *s_tree, size_t num_annotations, doub
     double scaled_lk = 0;
     size_t i;
 
-    int factors = process_node(s_tree->root, s_tree, num_annotations, parameters, is_marginal);
+    int factors = process_node(s_tree->root, s_tree, num_annotations, parameters, is_marginal, model);
 
     /* if factors == -1, it means that the bottom_up_likelihood is 0 */
     if (factors != -1) {

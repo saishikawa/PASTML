@@ -3,164 +3,14 @@
 #include "likelihood.h"
 #include "marginal_approximation.h"
 #include "param_minimization.h"
-#include "output_tree.h"
-#include "output_states.h"
+#include "states.h"
 #include "logger.h"
-#include "make_tree.h"
+#include "tree.h"
+#include "parsimony.h"
 #include <time.h>
 #include <errno.h>
 
-extern QUIET;
-extern SIMULATION;
-char *global_model;
-
-size_t tell_size_of_one_tree(char *filename) {
-    /* the only purpose of this is to know about the size of a treefile (NH format)
-     * in order to save memspace in allocating the string later on */
-    size_t mysize = 0;
-    int u;
-    FILE *myfile = fopen(filename, "r");
-    if (myfile) {
-        while ((u = fgetc(myfile)) != ';') { /* termination character of the tree */
-            if (feof(myfile)) {
-                break;
-            } /* shouldn't happen anyway */
-            if (!isspace(u)) {
-                mysize++;
-            }
-        }
-        fclose(myfile);
-    } /* end if(myfile) */
-    return mysize + 1;
-}
-
-int copy_nh_stream_into_str(FILE *nh_stream, char *big_string) {
-    int index_in_string = 0;
-    int u;
-    /* rewind(nh_stream);
-     * DO NOT go to the beginning of the stream
-     * if we want to make this flexible enough to read several trees per file */
-    while ((u = fgetc(nh_stream)) != ';') { /* termination character of the tree */
-        if (feof(nh_stream)) {
-            big_string[index_in_string] = '\0';
-            return EXIT_FAILURE;
-        } /* error code telling that no tree has been read properly */
-        if (index_in_string == MAX_TREELENGTH - 1) {
-            fprintf(stderr, "Fatal error: tree file seems too big, are you sure it is a newick tree file?\n");
-            return EXIT_FAILURE;
-        }
-        if (!isspace(u)) {
-            big_string[index_in_string++] = (char) u;
-        }
-    }
-    big_string[index_in_string++] = ';';
-    big_string[index_in_string] = '\0';
-    return EXIT_SUCCESS; /* leaves the stream right after the terminal ';' */
-} /*end copy_nh_stream_into_str */
-
-void free_node(Node *node, int count, size_t num_anno) {
-    int j;
-
-    if (node == NULL) return;
-    if (node->name && count != 0) {
-        free(node->name);
-        free(node->sim_name);
-    }
-    free(node->neigh);
-    free(node->bottom_up_likelihood);
-    free(node->marginal);
-    free(node->sim_marginal_prob);
-    free(node->joint_likelihood);
-    free(node->joint_state);
-    free(node->best_states);
-    free(node->top_down_likelihood);
-    for (j = 0; j < num_anno; j++) {
-        free(node->pij[j]);
-    }
-    free(node->pij);
-    free(node);
-}
-
-void free_tree(Tree *tree, size_t num_anno) {
-    int i;
-    if (tree == NULL) return;
-    for (i = 0; i < tree->nb_nodes; i++) {
-        free_node(tree->nodes[i], i, num_anno);
-    }
-    free(tree->nodes);
-    free(tree);
-}
-
-
-char **read_annotations(char *annotation_file_path, char **tips, int *states,
-                        size_t *num_annotations, size_t *num_tips) {
-    char annotation_line[MAXLNAME];
-    int found_new_annotation;
-    size_t i;
-    size_t max_characters = 50;
-    char **character = calloc(max_characters, sizeof(char *));
-    for (i = 0; i < max_characters; i++) {
-        character[i] = calloc(MAXLNAME, sizeof(char));
-    }
-    *num_annotations = 0;
-    *num_tips = 0;
-
-    char **annotations = calloc(MAXNSP, sizeof(char *));
-    for (i = 0; i < MAXNSP; i++) {
-        annotations[i] = calloc(MAXLNAME, sizeof(char));
-    }
-
-    /*Read annotation from file*/
-    FILE *annotation_file = fopen(annotation_file_path, "r");
-    if (!annotation_file) {
-        fprintf(stderr, "Annotation file %s is not found or is impossible to access.", annotation_file_path);
-        fprintf(stderr, "Value of errno: %d\n", errno);
-        fprintf(stderr, "Error opening the file: %s\n", strerror(errno));
-        return NULL;
-    }
-
-    while (fgets(annotation_line, MAXLNAME, annotation_file)) {
-        sscanf(annotation_line, "%[^\n,],%[^\n\r]", tips[*num_tips], annotations[*num_tips]);
-        char *annotation_value = annotations[*num_tips];
-        if (strcmp(annotation_value, "") == 0) sprintf(annotation_value, "?");
-        if (strcmp(annotation_value, "?") == 0) {
-            states[*num_tips] = -1;
-        } else {
-            found_new_annotation = TRUE;
-            for (i = 0; i < *num_tips; i++) {
-                if (strcmp(annotations[i], "?") != 0 && strcmp(annotation_value, annotations[i]) == 0) {
-                    states[*num_tips] = states[i];
-                    strcpy(character[states[*num_tips]], annotation_value);
-                    found_new_annotation = FALSE;
-                    break;
-                }
-            }
-            if (found_new_annotation == TRUE) {
-                states[*num_tips] = (int) *num_annotations;
-                if (*num_annotations >= max_characters) {
-                    /* Annotations do not fit in the character array (of size max_characters) anymore,
-                     * so we gonna double reallocate the memory for the array (of double size) and copy data there */
-                    max_characters *= 2;
-                    character = realloc(character, max_characters * sizeof(char *));
-                    if (character == NULL) {
-                        fprintf(stderr, "Problems with allocating memory: %s\n", strerror(errno));
-                        fprintf(stderr, "Value of errno: %d\n", errno);
-                        return NULL;
-                    }
-                    for (i = *num_annotations; i < max_characters; i++) {
-                        character[i] = calloc(MAXLNAME, sizeof(char));
-                    }
-                }
-                strcpy(character[*num_annotations], annotation_value);
-                *num_annotations = *num_annotations + 1;
-            }
-        }
-        *num_tips = *num_tips + 1;
-    }
-    fclose(annotation_file);
-    free(annotations);
-    return character;
-}
+extern int* QUIET;
 
 int calculate_frequencies(size_t num_annotations, size_t num_tips, int *states, char **character, char *model,
                           double *parameters) {
@@ -187,14 +37,11 @@ int calculate_frequencies(size_t num_annotations, size_t num_tips, int *states, 
     for (i = 0; i <= num_annotations; i++) {
         sum_freq += count_array[i];
     }
-    log_info("MODEL:\t%s\n\n", model);
     log_info("INITIAL FREQUENCIES:\n\n");
     for (i = 0; i < num_annotations; i++) {
-        if (strcmp(model, "JC") == 0) {
+        if (strcmp(model, JC) == 0) {
             parameters[i] = ((double) 1) / num_annotations;
-        } else if (strcmp(model, "F81") == 0) {
-            parameters[i] = ((double) count_array[i]) / sum_freq;
-        } else {
+        } else if (strcmp(model, F81) == 0) {
             parameters[i] = ((double) count_array[i]) / sum_freq;
         }
         log_info("\t%s:\t%.10f\n", character[i], parameters[i]);
@@ -207,71 +54,85 @@ int calculate_frequencies(size_t num_annotations, size_t num_tips, int *states, 
     return EXIT_SUCCESS;
 }
 
-Tree *read_tree(char *nwk, size_t num_anno) {
-    /**
-     * Read a tree from newick file
-     */
-
-    Tree *s_tree;
-
-    FILE *tree_file = fopen(nwk, "r");
-    if (tree_file == NULL) {
-        fprintf(stderr, "Tree file %s is not found or is impossible to access.\n", nwk);
-        fprintf(stderr, "Value of errno: %d\n", errno);
-        fprintf(stderr, "Error opening the file: %s\n", strerror(errno));
-        return NULL;
-    }
-
-    size_t tree_file_size = 3 * tell_size_of_one_tree(nwk);
-    if (tree_file_size > MAX_TREELENGTH) {
-        fprintf(stderr, "Tree filesize for %s is more than %d bytes: are you sure it's a valid newick tree?\n",
-                nwk, MAX_TREELENGTH / 3);
-        return NULL;
-    }
-
-    void *retval;
-    if ((retval = calloc(tree_file_size + 1, sizeof(char))) == NULL) {
-        fprintf(stderr, "Not enough memory\n");
-        return NULL;
-    }
-    char *c_tree = (char *) retval;
-
-    if (EXIT_SUCCESS != copy_nh_stream_into_str(tree_file, c_tree)) {
-        fprintf(stderr, "A problem occurred while parsing the reference tree.\n");
-        return NULL;
-    }
-    fclose(tree_file);
-
-    /*Make Tree structure*/
-    s_tree = complete_parse_nh(c_tree, num_anno);
-    if (NULL == s_tree) {
-        fprintf(stderr, "A problem occurred while parsing the reference tree.\n");
-        return NULL;
-    }
-    return s_tree;
+int is_valid_model(char* model) {
+    return (strcmp(model, JC) == 0) || (strcmp(model, F81) == 0);
 }
 
-int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name, char *out_tree_name, char *model) {
+int is_marginal_method(char *prob_method) {
+    return (strcmp(prob_method, MARGINAL) == 0) || (strcmp(prob_method, MARGINAL_APPROXIMATION) == 0)
+           || (strcmp(prob_method, MAX_POSTERIORI) == 0);
+}
+
+int is_parsimonious_method(char *prob_method) {
+    return (strcmp(prob_method, DOWNPASS) == 0) || (strcmp(prob_method, ACCTRAN) == 0)
+           || (strcmp(prob_method, DELTRAN) == 0);
+}
+
+int is_ml_method(char *prob_method) {
+    return (strcmp(prob_method, JOINT) == 0) || is_marginal_method(prob_method);
+}
+
+int is_valid_prediction_method(char *prob_method) {
+    return is_parsimonious_method(prob_method) || is_ml_method(prob_method);
+}
+
+int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name, char *out_tree_name,
+              char *out_parameter_name, char *model,
+              char* prob_method) {
     int i;
     int *states;
     double log_likelihood, sec;
     int minutes;
     double *parameters;
-    char **character, **tips, fname[50];
+    char **character, **tips;
     size_t num_annotations, num_tips = 0;
     struct timespec time_start, time_end;
     int exit_val;
     Tree *s_tree;
-    FILE *fp;
+    int is_marginal, is_parsimonious;
 
     clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time_start);
     srand((unsigned) time(NULL));
-    global_model = model;
-    
 
-    if ((strcmp(model, "JC") != 0) && (strcmp(model, "F81") != 0) && (strcmp(model, "HKY") != 0) && (strcmp(model, "JTT") != 0)) {
-        sprintf(stderr, "Model must be either JC or F81, not %s", model);
+    if (!is_valid_prediction_method(prob_method)) {
+        fprintf(stderr, "Ancestral state prediction method \"%s\" is not valid", prob_method);
         return EINVAL;
+    }
+
+    is_parsimonious = is_parsimonious_method(prob_method);
+    is_marginal = is_marginal_method(prob_method);
+
+    if (!is_parsimonious && !is_valid_model(model)) {
+        fprintf(stderr, "Model value \"%s\" is not valid", model);
+        return EINVAL;
+    }
+
+    if (out_annotation_name == NULL) {
+        out_annotation_name = calloc(256, sizeof(char));
+        if (is_parsimonious) {
+            sprintf(out_annotation_name, "%s.%s.pastml.out.csv", annotation_name, prob_method);
+        } else {
+            sprintf(out_annotation_name, "%s.%s.%s.pastml.out.csv", annotation_name, model, prob_method);
+        }
+    }
+    if (out_tree_name == NULL) {
+        out_tree_name = calloc(256, sizeof(char));
+        if (is_parsimonious) {
+            sprintf(out_tree_name, "%s.parsimonious.pastml.tree.nwk", annotation_name);
+        } else {
+            sprintf(out_tree_name, "%s.maxlikelihood.pastml.tree.nwk", annotation_name);
+        }
+    }
+    if (out_parameter_name == NULL) {
+        if (!is_parsimonious) {
+            out_parameter_name = calloc(256, sizeof(char));
+            sprintf(out_parameter_name, "%s.maxlikelihood.pastml.parameters.csv", annotation_name);
+        }
+    }
+
+    log_info("ANCESTRAL STATE PREDICTION METHOD:\t%s\n\n", prob_method);
+    if (!is_parsimonious) {
+        log_info("MODEL:\t%s\n\n", model);
     }
 
     /* Allocate memory */
@@ -289,32 +150,9 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
         return EXIT_FAILURE;
     }
     num_annotations = *num_anno_arr;
-    if(strcmp(model, "HKY") == 0)  num_annotations = 4;
-    if(strcmp(model, "JTT") == 0)  num_annotations = 20;
     num_tips = *num_tips_arr;
     free(num_anno_arr);
     free(num_tips_arr);
-
-    /* we would need two additional spots in the parameters array: for the scaling factor, and for the epsilon,
-     * therefore num_annotations + 2*/
-    parameters = calloc(num_annotations + 2, sizeof(double));
-    if (parameters == NULL) {
-        fprintf(stderr, "Memory problems: %s\n", strerror(errno));
-        fprintf(stderr, "Value of errno: %d\n", errno);
-        return ENOMEM;
-    }
-
-    if ((strcmp(model, "JC") == 0) || (strcmp(model, "F81") == 0)) {
-      exit_val = calculate_frequencies(num_annotations, num_tips, states, character, model, parameters);
-      if (EXIT_SUCCESS != exit_val) {
-        return exit_val;
-      }
-    }
-
-    /*Re-order states, characters and frequencies for the HKY and JTT models*/
-    if ((strcmp(model, "HKY") == 0) || (strcmp(model, "JTT") == 0)) {
-      exchange_params(num_annotations, num_tips, states, character, model, parameters);
-    }
 
     s_tree = read_tree(tree_name, num_annotations);
     if (s_tree == NULL) {
@@ -326,100 +164,111 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
                 " and the number of tips (%zd) do not match", num_tips, s_tree->nb_taxa);
     }
     num_tips = s_tree->nb_taxa;
-    parameters[num_annotations] = 1.0 / s_tree->avg_branch_len;
-    parameters[num_annotations + 1] = s_tree->min_branch_len;
 
     initialise_tip_probabilities(s_tree, tips, states, num_tips, num_annotations);
     free(tips);
 
-    if ((strcmp(model, "HKY") == 0) || (strcmp(model, "JTT") == 0)) { parameters[num_annotations] = 1.0; parameters[num_annotations + 1] = 0.0; }
-    log_likelihood = calculate_bottom_up_likelihood(s_tree, num_annotations, parameters);
-    if (log_likelihood == log(0)) {
-        fprintf(stderr, "A problem occurred while calculating the bottom up likelihood: "
-                "Is your tree ok and has at least 2 children per every inner node?\n");
-        return EXIT_FAILURE;
-    }
-    log_info("INITIAL LOG LIKELIHOOD:\t%.10f\n\n", log_likelihood);
-
-    if ((strcmp(model, "JC") == 0) || (strcmp(model, "F81") == 0)) {
-      log_info("OPTIMISING PARAMETERS...\n\n");
-      if(parameters[num_annotations + 1] > s_tree->avg_tip_branch_len / 10.0) parameters[num_annotations + 1] = s_tree->avg_tip_branch_len / 10.0;
-      log_likelihood = minimize_params(s_tree, num_annotations, parameters, character, model,
-                                     0.01 / s_tree->avg_branch_len, 10.0 / s_tree->avg_branch_len,
-                                     MIN(s_tree->min_branch_len / 10.0, s_tree->avg_tip_branch_len / 100.0),
-                                     s_tree->avg_tip_branch_len / 10.0);
-      log_info("\n");
-    }
-
-    log_info("OPTIMISED PARAMETERS:\n\n");
-    if (0 == strcmp("F81", model) || (strcmp(model, "HKY") == 0) || (strcmp(model, "JTT") == 0)) {
-        for (i = 0; i < num_annotations; i++) {
-            log_info("\tFrequency of %s:\t%.10f\n", character[i], parameters[i]);
+    if (is_parsimonious) {
+        log_info("PREDICTING PARSIMONIOUS ANCESTRAL STATES...\n\n");
+        parsimony(s_tree, num_annotations, prob_method);
+        select_parsimonious_states(s_tree, num_annotations);
+    } else {
+        /* we would need two additional spots in the parameters array: for the scaling factor, and for the epsilon,
+         * therefore num_annotations + 2*/
+        parameters = calloc(num_annotations + 2, sizeof(double));
+        if (parameters == NULL) {
+            fprintf(stderr, "Memory problems: %s\n", strerror(errno));
+            fprintf(stderr, "Value of errno: %d\n", errno);
+            return ENOMEM;
         }
+
+        exit_val = calculate_frequencies(num_annotations, num_tips, states, character, model, parameters);
+        if (EXIT_SUCCESS != exit_val) {
+            return exit_val;
+        }
+        parameters[num_annotations] = 1.0 / s_tree->avg_branch_len;
+        parameters[num_annotations + 1] = MIN(s_tree->min_branch_len, s_tree->avg_tip_branch_len);
+
+        log_likelihood = calculate_bottom_up_likelihood(s_tree, num_annotations, parameters, is_marginal);
+        if (log_likelihood == log(0)) {
+            fprintf(stderr, "A problem occurred while calculating the bottom up likelihood: "
+                    "Is your tree ok and has at least 2 children per every inner node?\n");
+            return EXIT_FAILURE;
+        }
+        log_info("INITIAL LOG LIKELIHOOD:\t%.10f\n\n", log_likelihood);
+        if (log_likelihood == log(1)) {
+            log_info("INITIAL LIKELIHOOD IS PERFECT, CANNOT DO BETTER THAN THAT.\n\n");
+        } else {
+            log_info("OPTIMISING PARAMETERS...\n\n");
+            log_likelihood = minimize_params(s_tree, num_annotations, parameters, character, model,
+                                             0.01 / s_tree->avg_branch_len, 10.0 / s_tree->avg_branch_len,
+                                             MIN(s_tree->min_branch_len / 10.0, s_tree->avg_tip_branch_len / 100.0),
+                                             MIN(s_tree->min_branch_len * 10.0, s_tree->avg_tip_branch_len / 10.0));
+            log_info("\n");
+
+            log_info("OPTIMISED PARAMETERS:\n\n");
+            if (0 == strcmp(F81, model)) {
+                for (i = 0; i < num_annotations; i++) {
+                    log_info("\tFrequency of %s:\t%.10f\n", character[i], parameters[i]);
+                }
+                log_info("\n");
+            }
+            log_info("\tScaling factor:\t%.10f \n", parameters[num_annotations]);
+            log_info("\tEpsilon:\t%e\n", parameters[num_annotations + 1]);
+            log_info("\n");
+            log_info("OPTIMISED LOG LIKELIHOOD:\t%.10f\n", log_likelihood);
+            log_info("\n");
+        }
+
+        exit_val = output_parameters(parameters, num_annotations, character, log_likelihood, model, out_parameter_name);
+        if (EXIT_SUCCESS != exit_val) {
+            return exit_val;
+        }
+        log_info("\tOptimised parameters are written to %s in csv format.\n", out_parameter_name);
         log_info("\n");
-    }
-    log_info("\tScaling factor:\t%.10f \n", parameters[num_annotations]);
-    log_info("\tEpsilon:\t%e\n", parameters[num_annotations + 1]);
-    log_info("\n");
-    log_info("OPTIMISED LOG LIKELIHOOD:\t%.10f\n", log_likelihood);
-    log_info("\n");
 
-    rescale_branch_lengths(s_tree, parameters[num_annotations], parameters[num_annotations + 1]);
+        rescale_branch_lengths(s_tree, parameters[num_annotations], parameters[num_annotations + 1]);
 
-    //Marginal bottom_up_likelihood calculation
-    log_info("\nCALCULATING MARGINAL PROBABILITIES...\n\n");
-    calculate_marginal_probabilities(s_tree, num_annotations, parameters);
-    log_info("PREDICTING MOST LIKELY ANCESTRAL STATES...\n\n");
-    choose_likely_states(s_tree, num_annotations);
+        if (is_marginal) {
+            log_info("CALCULATING TOP-DOWN LIKELIHOOD...\n\n");
+            calculate_top_down_likelihood(s_tree, num_annotations);
 
-    //For reproduction of the simulation results proposed by Ishikawa et al. 201X
-    if(SIMULATION == TRUE) {
-      calculate_joint_probabilities(s_tree, num_annotations, parameters);
-      log_info("CALCULATING JOINT PROBABILITIES...\n\n");
-      sprintf(fname,"joint.txt");
-      exit_val = output_simulation(s_tree, num_annotations, character, fname, 0);
-      if (EXIT_SUCCESS != exit_val) {
-        return exit_val;
-      }
-      log_info("\tJoint prediction is written to %s in csv format.\n", fname);
-      log_info("\n");
-      sprintf(fname,"marginal.txt");
-      exit_val = output_simulation(s_tree, num_annotations, character, fname, 1);
-      if (EXIT_SUCCESS != exit_val) {
-        return exit_val;
-      }
-      log_info("\tMarginal prediction is written to %s in csv format.\n", fname);
-      log_info("\n"); 
-      sprintf(fname,"maximum_posteriori.txt");
-      exit_val = output_simulation(s_tree, num_annotations, character, fname, 2);
-      if (EXIT_SUCCESS != exit_val) {
-        return exit_val;
-      }
-      log_info("\tMAP prediction is written to %s in csv format.\n", fname);
-      log_info("\n"); 
-      sprintf(fname,"marginal_approximation.txt");
-      exit_val = output_simulation(s_tree, num_annotations, character, fname, 3);
-      if (EXIT_SUCCESS != exit_val) {
-        return exit_val;
-      }
-      log_info("\tMA prediction is written to %s in csv format.\n", fname);
-      log_info("\n");   
-      sprintf(fname,"scaling_factor.txt");
-      fp = fopen(fname, "w");
-      fprintf(fp, "%lf\n", parameters[num_annotations]);
-      fclose(fp);
-      log_info("\tOptimized scaling factor is written to %s.\n", fname);
-      log_info("\n");   
+            log_info("CALCULATING MARGINAL PROBABILITIES...\n\n");
+            calculate_marginal_probabilities(s_tree, num_annotations, parameters);
+
+            normalize_result_probabilities(s_tree, num_annotations);
+            set_id_best_states(s_tree, num_annotations);
+
+            if (strcmp(prob_method, MARGINAL_APPROXIMATION) == 0) {
+                log_info("PREDICTING MOST LIKELY ANCESTRAL STATES...\n\n");
+                choose_likely_states(s_tree, num_annotations);
+            } else if (strcmp(prob_method, MAX_POSTERIORI) == 0) {
+                log_info("PREDICTING MOST LIKELY ANCESTRAL STATES...\n\n");
+                choose_best_marginal_states(s_tree, num_annotations);
+            }
+        } else {
+            // the branch lengths are already rescaled, so let's put scaling factor to 1, and epsilon to 0.
+            parameters[num_annotations] = 1.0;
+            parameters[num_annotations + 1] = 0.0;
+
+            // calculate joint likelihood
+            calculate_bottom_up_likelihood(s_tree, num_annotations, parameters, FALSE);
+
+            log_info("PREDICTING MOST LIKELY ANCESTRAL STATES...\n\n");
+            choose_joint_states(s_tree, num_annotations, parameters);
+            set_id_best_states(s_tree, num_annotations);
+        }
+        free(parameters);
     }
 
-    exit_val = write_nh_tree(s_tree, out_tree_name, parameters[num_annotations], parameters[num_annotations + 1]);
+    exit_val = write_nh_tree(s_tree, out_tree_name);
     if (EXIT_SUCCESS != exit_val) {
         return exit_val;
     }
     log_info("SAVING THE RESULTS...\n\n");
-    log_info("\tScaled tree with internal node ids is written to %s.\n", out_tree_name);
+    log_info("\t%sree with internal node ids is written to %s.\n", (is_parsimonious) ? "T": "Scaled t", out_tree_name);
 
-    exit_val = output_state_ancestral_states(s_tree, num_annotations, character, out_annotation_name);
+    exit_val = output_ancestral_states(s_tree, num_annotations, character, out_annotation_name);
     if (EXIT_SUCCESS != exit_val) {
         return exit_val;
     }

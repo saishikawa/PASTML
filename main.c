@@ -3,39 +3,44 @@
 #include <getopt.h>
 #include <errno.h>
 
-int* SIMULATION = FALSE;
-extern QUIET;
+extern int* QUIET;
 
 int main(int argc, char **argv) {
-    char *model = "JC";
+    char *model = JC, *prob_method = MARGINAL_APPROXIMATION;
     char *annotation_name = NULL;
     char *tree_name = NULL;
     char *out_annotation_name = NULL;
+    char *out_parameter_name = NULL;
     char *out_tree_name = NULL;
-    struct timespec;
-    int opt;
-    char *arg_error_string = malloc(sizeof(char) * 1024);
+    int opt, is_parsimonious;
+    char *arg_error_string = malloc(sizeof(char) * 2048);
 
     opterr = 0;
 
     const char *help_string = "usage: PASTML -a ANNOTATION_FILE -t TREE_NWK [-m MODEL] "
-            "[-o OUTPUT_ANNOTATION_FILE] [-n OUTPUT_TREE_NWK] [-q]\n"
+            "[-o OUTPUT_ANNOTATION_CSV] [-n OUTPUT_TREE_NWK] [-r OUTPUT_PARAMETERS_CSV] [-p PREDICTION_METHOD] [-q]\n"
             "\n"
             "required arguments:\n"
-            "   -a ANNOTATION_FILE                  path to the annotation csv file containing tip states\n"
+            "   -a ANNOTATION_FILE                  path to the annotation file containing tip states (in csv format)\n"
             "   -t TREE_NWK                         path to the tree file (in newick format)\n"
             "\n"
             "optional arguments:\n"
-            "   -o OUTPUT_ANNOTATION_FILE           path where the output annotation csv file containing node states will be created\n"
+            "   -o OUTPUT_ANNOTATION_CSV            path where the output annotation file containing node states will be created (in csv format)\n"
             "   -n OUTPUT_TREE_NWK                  path where the output tree file will be created (in newick format)\n"
-            "   -m MODEL                            state evolution model (JC or F81)\n"
+            "   -n OUTPUT_PARAMETERS_CSV            path where the output parameters file will be created (in csv format)\n"
+            "   -m MODEL                            state evolution model for max likelihood prediction methods: "
+            "\"JC\" (default) or \"F81\"\n"
+            "   -p PREDICTION_METHOD                ancestral state prediction method: \"marginal_approx\" (default), "
+            "\"marginal\", \"max_posteriori\", \"joint\", \"downpass\", \"acctran\", or \"deltran\"\n"
+            "(\"marginal_approx\", \"marginal\", \"max_posteriori\", and \"joint\" are max likelihood methods, "
+            "while \"downpass\", \"acctran\", and \"deltran\" are parsimonious ones)\n"
             "   -q                                  quiet, do not print progress information\n";
 
-    opt = getopt(argc, argv, "a:t:o:m:n:q:s");
+    opt = getopt(argc, argv, "a:t:o:r:m:n:p:q");
     do {
         switch (opt) {
             case -1:
-                printf(help_string);
+                printf("%s", help_string);
                 return EINVAL;
 
             case 'a':
@@ -44,6 +49,10 @@ int main(int argc, char **argv) {
 
             case 'o':
                 out_annotation_name = optarg;
+                break;
+
+            case 'r':
+                out_parameter_name = optarg;
                 break;
 
             case 'n':
@@ -59,49 +68,48 @@ int main(int argc, char **argv) {
                 break;
 
             case 'q':
-                QUIET = TRUE;
+                *QUIET = TRUE;
                 break;
 
-	    case 's':
-	        SIMULATION = TRUE;
+            case 'p':
+                prob_method = optarg;
                 break;
 
             default: /* '?' */
-                snprintf(arg_error_string, 1024, "%s%s", "Unknown arguments...\n\n", help_string);
-                printf(arg_error_string);
+                snprintf(arg_error_string, 2048, "Unknown arguments...\n\n%s", help_string);
+                printf("%s", arg_error_string);
                 free(arg_error_string);
                 return EINVAL;
         }
-    } while ((opt = getopt(argc, argv, "a:t:o:m:n:q:s")) != -1);
+    } while ((opt = getopt(argc, argv, "a:t:o:r:m:n:p:q")) != -1);
     /* Make sure that the required arguments are set correctly */
     if (annotation_name == NULL) {
-        snprintf(arg_error_string, 1024, "%s%s", "Annotation file (-a) must be specified.\n\n", help_string);
-        printf(arg_error_string);
+        snprintf(arg_error_string, 2048, "Annotation file (-a) must be specified.\n\n%s", help_string);
+        printf("%s", arg_error_string);
         free(arg_error_string);
         return EINVAL;
     }
     if (tree_name == NULL) {
-        snprintf(arg_error_string, 1024, "%s%s", "Tree file (-t) must be specified.\n\n", help_string);
-        printf(arg_error_string);
+        snprintf(arg_error_string, 2048, "Tree file (-t) must be specified.\n\n%s", help_string);
+        printf("%s", arg_error_string);
         free(arg_error_string);
         return EINVAL;
     }
-    if ((strcmp(model, "JC") != 0) && (strcmp(model, "F81") != 0) && (strcmp(model, "HKY") != 0) && (strcmp(model, "JTT") != 0)) {
-        snprintf(arg_error_string, 1024, "%s%s", "Model (-m) must be either JC or F81.\n\n", help_string);
-        printf(arg_error_string);
+    if (!is_valid_prediction_method(prob_method)) {
+        snprintf(arg_error_string, 2048, "Ancestral state prediction method (-p) is not valid.\n\n%s", help_string);
+        printf("%s", arg_error_string);
+        free(arg_error_string);
+        return EINVAL;
+    }
+    is_parsimonious = is_parsimonious_method(prob_method);
+    if (!is_parsimonious && !is_valid_model(model)) {
+        snprintf(arg_error_string, 2048, "Model (-m) is not valid.\n\n%s", help_string);
+        printf("%s", arg_error_string);
         free(arg_error_string);
         return EINVAL;
     }
     /* No error in arguments */
     free(arg_error_string);
-
-    if (out_annotation_name == NULL) {
-        out_annotation_name = calloc(256, sizeof(char));
-        sprintf(out_annotation_name, "%s.pastml.out.csv", annotation_name);
-    }
-    if (out_tree_name == NULL) {
-        out_tree_name = calloc(256, sizeof(char));
-        sprintf(out_tree_name, "%s.pastml.out.nwk", tree_name);
-    }
-    return runpastml(annotation_name, tree_name, out_annotation_name, out_tree_name, model);
+    return runpastml(annotation_name, tree_name, out_annotation_name, out_tree_name, out_parameter_name,
+                     model, prob_method);
 }

@@ -22,26 +22,33 @@
 #define LOG2 0.69314718055994528623
 #define MIN(a, b) ((a)<(b)?(a):(b))
 #define MAX(a, b) ((a)>(b)?(a):(b))
+#define JOINT "joint"
+#define MARGINAL "marginal"
+#define MARGINAL_APPROXIMATION "marginal_approx"
+#define MAX_POSTERIORI "max_posteriori"
+#define DOWNPASS "downpass"
+#define ACCTRAN "acctran"
+#define DELTRAN "deltran"
+#define JC "JC"
+#define F81 "F81"
 
 typedef struct __Node {
     char *name;
-    char *sim_name;
     int id;            /* unique id attributed to the node */
-    int nb_neigh;    /* number of neighbours */
+    size_t nb_neigh;    /* number of neighbours */
     struct __Node **neigh;    /* neighbour nodes */
 
     double **pij;           /* probability of substitution from i to j */
     double *bottom_up_likelihood;       /* conditional likelihoods at the node*/
-    double *marginal;
-    double *sim_marginal_prob;
+    long *parsimony_states;
+    long *down_parsimony_states;
+    long *up_parsimony_states;
+    double *result_probs;
     size_t *best_states;
     double *top_down_likelihood;
-    double *joint_likelihood;
-    size_t *joint_state;
-    size_t best_joint_state;
-    size_t ma_state;
+    int *scaling_factor_down;
+    int *scaling_factor_up;
     double branch_len;
-    double original_len;
 } Node;
 
 

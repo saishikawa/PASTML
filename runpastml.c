@@ -7,6 +7,9 @@
 #include "output_states.h"
 #include "logger.h"
 #include "make_tree.h"
+#include "output_simulation.h"
+#include "joint_likelihood.h"
+#include "models.h"
 #include <time.h>
 #include <errno.h>
 

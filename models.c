@@ -1,5 +1,6 @@
 #include "pastml.h"
 #include "logger.h"
+#include "eigen.h"
 
 #define NUM_AA 20
 #define SQNUM_AA 400

@@ -1,6 +1,7 @@
 #include "pastml.h"
 #include "scaling.h"
 #include "logger.h"
+#include "models.h"
 
 extern char *global_model;
 

@@ -1,7 +1,7 @@
 # PASTML 
 
 __PASTML__ infers ancestral states on a phylogenetical tree with annotated tips, using maximum likelihood.
-The tree with reconstructed ancestral states can then be visualised as a zoomable html map wth __cytopast__.
+The tree with reconstructed ancestral states can then be visualised as a zoomable html map with __cytopast__.
 
 
 # Run PASTML

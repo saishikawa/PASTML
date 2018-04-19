@@ -1,4 +1,4 @@
 [submodule "cytopast"]
 	path = cytopast
-	url = git@gitlab.pasteur.fr:phylo/cytopast.git
+	url = git@github.com:evolbioinfo/cytopast.git
 	branch = master

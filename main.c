@@ -3,7 +3,7 @@
 #include <getopt.h>
 #include <errno.h>
 
-extern int* QUIET;
+extern int QUIET;
 
 int main(int argc, char **argv) {
     char *model = JC, *prob_method = MARGINAL_APPROXIMATION;
@@ -27,7 +27,7 @@ int main(int argc, char **argv) {
             "optional arguments:\n"
             "   -o OUTPUT_ANNOTATION_CSV            path where the output annotation file containing node states will be created (in csv format)\n"
             "   -n OUTPUT_TREE_NWK                  path where the output tree file will be created (in newick format)\n"
-            "   -n OUTPUT_PARAMETERS_CSV            path where the output parameters file will be created (in csv format)\n"
+            "   -r OUTPUT_PARAMETERS_CSV            path where the output parameters file will be created (in csv format)\n"
             "   -m MODEL                            state evolution model for max likelihood prediction methods: "
             "\"JC\" (default) or \"F81\"\n"
             "   -p PREDICTION_METHOD                ancestral state prediction method: \"marginal_approx\" (default), "
@@ -68,7 +68,7 @@ int main(int argc, char **argv) {
                 break;
 
             case 'q':
-                *QUIET = TRUE;
+                QUIET = TRUE;
                 break;
 
             case 'p':

@@ -2,7 +2,7 @@
 #include "runpastml.h"
 #include "pastml.h"
 
-extern int* QUIET;
+extern int QUIET;
 
 /*  wrapped pastml function */
 static PyObject *infer_ancestral_states(PyObject *self, PyObject *args) {
@@ -13,7 +13,7 @@ static PyObject *infer_ancestral_states(PyObject *self, PyObject *args) {
     char *out_param_name = NULL;
     char *model = JC;
     char *prob_method = MARGINAL_APPROXIMATION;
-    int *quiet = FALSE;
+    int quiet = FALSE;
     int sts;
 
     if (!PyArg_ParseTuple(args, "ss|sssssi", &annotation_name, &tree_name, &out_annotation_name,
@@ -21,7 +21,7 @@ static PyObject *infer_ancestral_states(PyObject *self, PyObject *args) {
         return NULL;
     }
     if (quiet != FALSE) {
-        *QUIET = TRUE;
+        QUIET = TRUE;
     }
     sts = runpastml(annotation_name, tree_name, out_annotation_name, out_tree_name, out_param_name, model, prob_method);
     if (sts != EXIT_SUCCESS) {

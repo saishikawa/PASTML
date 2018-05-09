@@ -59,7 +59,7 @@ void calc_correct(Tree *tree, size_t n) {
                 best_num_states = i + 1;
             }
         }
-
+        nd->ma_state = best_num_states;
         equal_p_i = 1.0 / ((double) best_num_states);
         for (i = 0; i < n; i++) {
             nd->result_probs[nd->best_states[i]] = (i < best_num_states) ? equal_p_i : 0.0;

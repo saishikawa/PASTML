@@ -142,6 +142,7 @@ int process_name_and_brlen(Node *son_node, char *in_str, int begin, int end) {
     name_length = name_end - name_begin + 1;
     effective_length = (name_length > MAX_NAMELENGTH ? MAX_NAMELENGTH : name_length);
     son_node->name = (char *) malloc((MAX_NAMELENGTH) * sizeof(char));
+    son_node->sim_name = (char *) malloc((MAX_NAMELENGTH) * sizeof(char));
     if (name_length >= 1) {
         strncpy(son_node->name, in_str + name_begin, (size_t) effective_length);
         son_node->name[effective_length] = '\0'; /* terminating the string */
@@ -352,6 +353,7 @@ Tree *parse_nh_string(char *in_str, size_t nbanno) {
     t->root->id = 0;
     t->root->name = "ROOT";
     t->root->branch_len = 0.0;
+    t->root->sim_name = "Node0";
 
     t->next_avail_node_id = 1; /* root node has id 0 */
 
@@ -475,6 +477,9 @@ void free_node(Node *node, size_t num_anno) {
     free(node->neigh);
     if (strcmp(node->name, "ROOT") != 0 && node->name) {
         free(node->name);
+    }
+    if (strcmp(node->sim_name, "Node0") != 0 && node->sim_name) {
+        free(node->sim_name);
     }
     free(node->bottom_up_likelihood);
     // do not free parsimony_states as we'll do it as soon as we do not need them

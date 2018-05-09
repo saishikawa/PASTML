@@ -1,6 +1,20 @@
 #include "pastml.h"
 #include "scaling.h"
 
+extern char *global_model;
+
+void *CAllocMem(long n, char *name, char *func, int showInfo)
+{
+	void *P;
+	
+	if ( (P=calloc(n, 1))==NULL ) {
+		fprintf(stderr, "Out of memory allocating '%s': %s()\n", name, func);
+		exit(0);
+	}
+	
+	return P;
+}
+
 int get_max(const int *array, size_t n) {
     /**
      * Finds the maximum in an array of positive integers.
@@ -93,11 +107,30 @@ void set_p_ij(const Node *nd, double avg_br_len, size_t num_frequencies, const d
     double epsilon = parameters[num_frequencies + 1];
     double t = get_rescaled_branch_len(nd, avg_br_len, scaling_factor, epsilon);
     double mu = get_mu(parameters, num_frequencies);
+    double *P, *matrix[1];
 
-    for (i = 0; i < num_frequencies; i++) {
+    if ((strcmp(global_model, "JC") == 0) || (strcmp(global_model, "F81") == 0)) {
+      for (i = 0; i < num_frequencies; i++) {
         for (j = 0; j < num_frequencies; j++) {
             nd->pij[i][j] = get_pij(parameters, mu, t, i, j);
         }
+      }
+    }
+   
+    if (strcmp(global_model, "HKY") == 0) {
+      get_pij_hky(nd, num_frequencies, parameters, t);
+    }
+
+    if (strcmp(global_model, "JTT") == 0) {
+      matrix[0] = CAllocMem(num_frequencies*num_frequencies*sizeof(double), "matrix", "CreateRates", 0);
+      SetJTTMatrix(matrix[0], t);
+      P=matrix[0];
+      for(i=0;i<num_frequencies;i++){
+        for(j=0;j<num_frequencies;j++){
+          nd->pij[i][j] = (*P);
+          P++;
+        }
+      }
     }
 }
 

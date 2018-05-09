@@ -4,13 +4,17 @@
 #include "marginal_approximation.h"
 #include "param_minimization.h"
 #include "states.h"
+#include "scaling.h"
 #include "logger.h"
 #include "tree.h"
 #include "parsimony.h"
+#include "models.h"
+#include "output_simulation.h"
 #include <time.h>
 #include <errno.h>
 
 extern int* QUIET;
+char *global_model;
 
 int calculate_frequencies(size_t num_annotations, size_t num_tips, int *states, char **character, char *model,
                           double *parameters) {
@@ -41,7 +45,7 @@ int calculate_frequencies(size_t num_annotations, size_t num_tips, int *states, 
     for (i = 0; i < num_annotations; i++) {
         if (strcmp(model, JC) == 0) {
             parameters[i] = ((double) 1) / num_annotations;
-        } else if (strcmp(model, F81) == 0) {
+        } else if ( (strcmp(model, F81) == 0) || (strcmp(model, HKY) == 0) || (strcmp(model, JTT) == 0) ) {
             parameters[i] = ((double) count_array[i]) / sum_freq;
         }
         log_info("\t%s:\t%.10f\n", character[i], parameters[i]);
@@ -55,7 +59,7 @@ int calculate_frequencies(size_t num_annotations, size_t num_tips, int *states, 
 }
 
 int is_valid_model(char* model) {
-    return (strcmp(model, JC) == 0) || (strcmp(model, F81) == 0);
+  return (strcmp(model, JC) == 0) || (strcmp(model, F81) == 0) || (strcmp(model, HKY) == 0) || (strcmp(model, JTT) == 0);
 }
 
 int is_marginal_method(char *prob_method) {
@@ -84,15 +88,17 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
     double log_likelihood, sec;
     int minutes;
     double *parameters;
-    char **character, **tips;
+    char **character, **tips, fname[50];
     size_t num_annotations, num_tips = 0;
     struct timespec time_start, time_end;
     int exit_val;
     Tree *s_tree;
     int is_marginal, is_parsimonious;
+    FILE *fp;
 
     clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time_start);
     srand((unsigned) time(NULL));
+    global_model = model;
 
     if (!is_valid_prediction_method(prob_method)) {
         fprintf(stderr, "Ancestral state prediction method \"%s\" is not valid", prob_method);
@@ -150,6 +156,8 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
         return EXIT_FAILURE;
     }
     num_annotations = *num_anno_arr;
+    if(strcmp(model, "HKY") == 0)  num_annotations = 4;
+    if(strcmp(model, "JTT") == 0)  num_annotations = 20;
     num_tips = *num_tips_arr;
     free(num_anno_arr);
     free(num_tips_arr);
@@ -186,8 +194,15 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
         if (EXIT_SUCCESS != exit_val) {
             return exit_val;
         }
+        /*Re-order states, characters and frequencies for the HKY and JTT models*/
+        if ((strcmp(model, "HKY") == 0) || (strcmp(model, "JTT") == 0)) {
+          exchange_params(num_annotations, num_tips, states, character, model, parameters);
+        }
+
         parameters[num_annotations] = 1.0 / s_tree->avg_branch_len;
-        parameters[num_annotations + 1] = MIN(s_tree->min_branch_len, s_tree->avg_tip_branch_len / 50.0);
+        parameters[num_annotations + 1] = s_tree->avg_tip_branch_len / 50.0;
+
+        if((strcmp(model, "HKY") == 0) || (strcmp(model, "JTT") == 0)) { parameters[num_annotations] = 1.0; parameters[num_annotations + 1] = 0.0; }
 
         log_likelihood = calculate_bottom_up_likelihood(s_tree, num_annotations, parameters, is_marginal);
         if (log_likelihood == log(0)) {
@@ -199,11 +214,12 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
         if (log_likelihood == log(1)) {
             log_info("INITIAL LIKELIHOOD IS PERFECT, CANNOT DO BETTER THAN THAT.\n\n");
         } else {
+          if ((strcmp(model, "JC") == 0) || (strcmp(model, "F81") == 0)) {
             log_info("OPTIMISING PARAMETERS...\n\n");
             log_likelihood = minimize_params(s_tree, num_annotations, parameters, character, model,
-                                             0.01 / s_tree->avg_branch_len, 10.0 / s_tree->avg_branch_len,
-                                             MIN(s_tree->min_branch_len / 10.0, s_tree->avg_tip_branch_len / 100.0),
-                                             MIN(s_tree->min_branch_len * 10.0, s_tree->avg_tip_branch_len / 10.0));
+                                             0.001 / s_tree->avg_branch_len, 10.0 / s_tree->avg_branch_len,
+                                             s_tree->avg_tip_branch_len / 100.0,
+                                             s_tree->avg_tip_branch_len / 10.0);
             log_info("\n");
 
             log_info("OPTIMISED PARAMETERS:\n\n");
@@ -218,6 +234,7 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
             log_info("\n");
             log_info("OPTIMISED LOG LIKELIHOOD:\t%.10f\n", log_likelihood);
             log_info("\n");
+	  }
         }
 
         exit_val = output_parameters(parameters, num_annotations, character, log_likelihood, model, out_parameter_name);
@@ -261,7 +278,63 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
         free(parameters);
     }
 
-    exit_val = write_nh_tree(s_tree, out_tree_name);
+    //For reproduction of the simulation results proposed by Ishikawa et al. 2018
+    if (strcmp(prob_method, JOINT) == 0) {
+      sprintf(fname,"joint.txt");
+      exit_val = output_simulation(s_tree, num_annotations, character, fname, 0);
+      if (EXIT_SUCCESS != exit_val) {
+        return exit_val;
+      }
+      log_info("\tJoint prediction is written to %s in csv format.\n", fname);
+      log_info("\n");
+    } else if (strcmp(prob_method, MARGINAL) == 0) {
+      sprintf(fname,"marginal.txt");
+      exit_val = output_simulation(s_tree, num_annotations, character, fname, 1);
+      if (EXIT_SUCCESS != exit_val) {
+        return exit_val;
+      }
+      log_info("\tMarginal prediction is written to %s in csv format.\n", fname);
+      log_info("\n"); 
+    } else if (strcmp(prob_method, MAX_POSTERIORI) == 0) {
+      sprintf(fname,"maximum_posteriori.txt");
+      exit_val = output_simulation(s_tree, num_annotations, character, fname, 2);
+      if (EXIT_SUCCESS != exit_val) {
+        return exit_val;
+      }
+      log_info("\tMAP prediction is written to %s in csv format.\n", fname);
+      log_info("\n"); 
+    } else if (strcmp(prob_method, MARGINAL_APPROXIMATION) == 0) {
+      sprintf(fname,"marginal_approximation.txt");
+      exit_val = output_simulation(s_tree, num_annotations, character, fname, 3);
+      if (EXIT_SUCCESS != exit_val) {
+        return exit_val;
+      }
+      log_info("\tMA prediction is written to %s in csv format.\n", fname);
+      log_info("\n");  
+    } else if ((strcmp(prob_method, DOWNPASS) == 0) || (strcmp(prob_method, ACCTRAN) == 0) || (strcmp(prob_method, DELTRAN) == 0)) {
+      sprintf(fname,"parsimony.txt");
+      exit_val = output_simulation(s_tree, num_annotations, character, fname, 4);
+      if (EXIT_SUCCESS != exit_val) {
+        return exit_val;
+      }
+      log_info("\tParsimony prediction is written to %s in csv format.\n", fname);
+      log_info("\n");  
+    }
+
+      /*sprintf(fname,"scaling_factor.txt");
+      fp = fopen(fname, "w");
+      fprintf(fp, "%lf\n", parameters[num_annotations]);
+      fclose(fp);
+      log_info("\tOptimized scaling factor is written to %s.\n", fname);
+
+      sprintf(fname,"epsilon.txt");
+      fp = fopen(fname, "w");
+      fprintf(fp, "%lf\n", parameters[num_annotations + 1]);
+      fclose(fp);
+      log_info("\tOptimized epsilon value is written to %s.\n", fname);
+      log_info("\n");*/
+
+    /*exit_val = write_nh_tree(s_tree, out_tree_name);
     if (EXIT_SUCCESS != exit_val) {
         return exit_val;
     }
@@ -273,7 +346,7 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
         return exit_val;
     }
     log_info("\tState predictions are written to %s in csv format.\n", out_annotation_name);
-    log_info("\n");
+    log_info("\n");*/
 
     //free all
     free(character);

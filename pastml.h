@@ -31,9 +31,12 @@
 #define DELTRAN "deltran"
 #define JC "JC"
 #define F81 "F81"
+#define HKY "HKY"
+#define JTT "JTT"
 
 typedef struct __Node {
     char *name;
+  char *sim_name;
     int id;            /* unique id attributed to the node */
     size_t nb_neigh;    /* number of neighbours */
     struct __Node **neigh;    /* neighbour nodes */
@@ -49,6 +52,7 @@ typedef struct __Node {
     int *scaling_factor_down;
     int *scaling_factor_up;
     double branch_len;
+    size_t ma_state;
 } Node;
 
 

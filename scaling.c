@@ -9,7 +9,7 @@
 #include "likelihood.h"
 
 int get_scaling_pow(double value) {
-    return 100;
+    return 128;
 }
 
 void rescale_array(double *array, size_t n, int curr_scaler_pow) {

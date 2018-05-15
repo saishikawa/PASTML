@@ -17,7 +17,7 @@
 #define MAX_NAMELENGTH        255    /* max length of a taxon name */
 #define TRUE 1
 #define FALSE 0
-#define POW (-100)
+#define POW (-128)
 #define LIM_P pow(2, POW)
 #define LOG2 0.69314718055994528623
 #define MIN(a, b) ((a)<(b)?(a):(b))

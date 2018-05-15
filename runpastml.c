@@ -83,15 +83,15 @@ int is_valid_prediction_method(char *prob_method) {
 int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name, char *out_tree_name,
               char *out_parameter_name, char *model,
               char* prob_method) {
-    int i;
+  int i, num_nodes;
     int *states;
     double log_likelihood, sec;
     int minutes;
     double *parameters;
-    char **character, **tips, fname[50];
+    char **character, **tips, fname[50], **ID, **CHAR;
     size_t num_annotations, num_tips = 0;
     struct timespec time_start, time_end;
-    int exit_val;
+    int exit_val, ret;
     Tree *s_tree;
     int is_marginal, is_parsimonious;
     FILE *fp;
@@ -278,46 +278,65 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
         free(parameters);
     }
 
-    //For reproduction of the simulation results proposed by Ishikawa et al. 2018
+    //For the reproduction of simulation results provided by Ishikawa et al. 2018
+
+    printf("\n*** Simulation mode ***\n\n");
+
+    ID = calloc(1000, sizeof(char *));
+    for (i = 0; i < 1000; i++) ID[i] = calloc(MAXLNAME, sizeof(char));
+    CHAR = calloc(1000, sizeof(char *));
+    for (i = 0; i < 1000; i++) CHAR[i] = calloc(MAXLNAME, sizeof(char));
+
+    if((fp=fopen("simulated_scenario.txt","r"))!=NULL){
+      i = 0;
+      while( ( ret = fscanf( fp, "%[^,],%s\n", ID[i], CHAR[i] ) ) != EOF ){
+        //printf("%s,%s\n",ID[i], CHAR[i]);
+        i++;
+      }
+      num_nodes = i;
+    }
+    fclose(fp);
+
+    exit_val = name_simulation(s_tree->root, s_tree->root, 0);
     if (strcmp(prob_method, JOINT) == 0) {
       sprintf(fname,"joint.txt");
-      exit_val = output_simulation(s_tree, num_annotations, character, fname, 0);
+      exit_val = output_simulation(s_tree, num_annotations, character, fname, 0, ID, CHAR, num_nodes);
       if (EXIT_SUCCESS != exit_val) {
         return exit_val;
       }
-      log_info("\tJoint prediction is written to %s in csv format.\n", fname);
+      log_info("\tScores of Joint prediction is written to %s.\n", fname);
       log_info("\n");
     } else if (strcmp(prob_method, MARGINAL) == 0) {
       sprintf(fname,"marginal.txt");
-      exit_val = output_simulation(s_tree, num_annotations, character, fname, 1);
+      exit_val = output_simulation(s_tree, num_annotations, character, fname, 1, ID, CHAR, num_nodes);
       if (EXIT_SUCCESS != exit_val) {
         return exit_val;
       }
-      log_info("\tMarginal prediction is written to %s in csv format.\n", fname);
+      log_info("\tScores of Marginal prediction is written to %s.\n", fname);
       log_info("\n"); 
     } else if (strcmp(prob_method, MAX_POSTERIORI) == 0) {
       sprintf(fname,"maximum_posteriori.txt");
-      exit_val = output_simulation(s_tree, num_annotations, character, fname, 2);
+      exit_val = output_simulation(s_tree, num_annotations, character, fname, 2, ID, CHAR, num_nodes);
       if (EXIT_SUCCESS != exit_val) {
         return exit_val;
       }
-      log_info("\tMAP prediction is written to %s in csv format.\n", fname);
+      log_info("\tScores of MAP prediction is written to %s.\n", fname);
       log_info("\n"); 
     } else if (strcmp(prob_method, MARGINAL_APPROXIMATION) == 0) {
       sprintf(fname,"marginal_approximation.txt");
-      exit_val = output_simulation(s_tree, num_annotations, character, fname, 3);
+      exit_val = output_simulation(s_tree, num_annotations, character, fname, 3, ID, CHAR, num_nodes);
       if (EXIT_SUCCESS != exit_val) {
         return exit_val;
       }
-      log_info("\tMA prediction is written to %s in csv format.\n", fname);
+      log_info("\tScores of MA prediction is written to %s.\n", fname);
       log_info("\n");  
     } else if ((strcmp(prob_method, DOWNPASS) == 0) || (strcmp(prob_method, ACCTRAN) == 0) || (strcmp(prob_method, DELTRAN) == 0)) {
       sprintf(fname,"parsimony.txt");
-      exit_val = output_simulation(s_tree, num_annotations, character, fname, 4);
+      exit_val = output_simulation(s_tree, num_annotations, character, fname, 4, ID, CHAR, num_nodes);
       if (EXIT_SUCCESS != exit_val) {
         return exit_val;
       }
-      log_info("\tParsimony prediction is written to %s in csv format.\n", fname);
+      log_info("\tScores of Parsimony prediction is written to %s.\n", fname);
       log_info("\n");  
     }
 

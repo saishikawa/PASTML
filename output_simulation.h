@@ -7,6 +7,6 @@
 
 #include "pastml.h"
 
-int output_simulation(Tree *tree, size_t num_annotations, char **character, char *output_file_path, size_t method_num);
+int output_simulation(Tree *tree, size_t num_annotations, char **character, char *output_file_path, size_t method_num, char **ID, char **CHAR, int num_nodes);
 
 #endif //PASTML_OUTPUT_SIM_H

@@ -2,9 +2,8 @@
 #include <errno.h>
 #include "pastml.h"
 
-void output_sim_node_states(Node *nd, Node *root, size_t num_annotations, char **character, FILE *outfile, size_t method_num, size_t first_child_index){
-  size_t i, k, tmp_map;
-  double tmp_prob;
+void name_simulation(Node *nd, Node *root, size_t first_child_index){
+  size_t i;
   static int count = 0;
 
   if(nd->nb_neigh==1){
@@ -14,7 +13,7 @@ void output_sim_node_states(Node *nd, Node *root, size_t num_annotations, char *
   first_child_index = (nd == root) ? 0 : 1;
   
   for(i=first_child_index; i<nd->nb_neigh; i++){
-    output_sim_node_states(nd->neigh[i], root, num_annotations, character, outfile, method_num, first_child_index);
+    name_simulation(nd->neigh[i], root, first_child_index);
   }
 
   if(nd != root){
@@ -24,37 +23,72 @@ void output_sim_node_states(Node *nd, Node *root, size_t num_annotations, char *
     count=0;
   }
 
-  fprintf(outfile, "%s", nd->sim_name);
-  if(nd->neigh[0] == root) fprintf(outfile, "_child", nd->sim_name);
+}
 
-  if(method_num == 0){
-    //OUTPUT_JOINT
-    for (i = 0; i < num_annotations; i++) {
-      if(nd->result_probs[i] == 1.0) fprintf(outfile, ",%s\n", character[i]);
+void output_sim_node_states(Node *nd, Node *root, size_t num_annotations, char **character, FILE *outfile, size_t method_num, size_t first_child_index, char **ID, char **CHAR, int num_nodes){
+  size_t i, j, k, tmp_map;
+  double tmp_prob;
+  int current, parent;
+  static double node_brier = 0.0;
+  static double edge_brier = 0.0;
+  static double num_pred = 0.0;
+
+  if(nd->nb_neigh==1){
+    return;
+  }
+
+  first_child_index = (nd == root) ? 0 : 1;
+  
+  for(i=first_child_index; i<nd->nb_neigh; i++){
+    output_sim_node_states(nd->neigh[i], root, num_annotations, character, outfile, method_num, first_child_index, ID, CHAR, num_nodes);
+  }
+
+  //Node identification
+  for(i=0;i<num_nodes;i++){
+      if(strcmp(nd->sim_name,ID[i])==0){
+        current = i;
+      }
+      if(nd != root) {
+        if(strcmp(nd->neigh[0]->sim_name,ID[i])==0){
+          parent = i;
+        }
+      }
+  }
+  //printf("Current = %s,%s,%s , Parent = %s,%s,%s\n", nd->sim_name, ID[current], CHAR[current], nd->neigh[0]->sim_name, ID[parent], CHAR[parent]);
+
+  //Calculation of the node BS
+  for(i=0;i<num_annotations;i++){
+      if(strcmp(character[i],CHAR[current])==0){
+        node_brier += (nd->result_probs[i] - 1.0)*(nd->result_probs[i] - 1.0);
+      } else {
+        node_brier += (nd->result_probs[i] - 0.0)*(nd->result_probs[i] - 0.0);
+      }
+  }
+  //Calculation of the edge BS
+  if(nd != root) {
+    for(i=0;i<num_annotations;i++){
+      for(j=0;j<num_annotations;j++){
+        if(strcmp(character[i],CHAR[current])==0 && strcmp(character[j],CHAR[parent])==0){
+          edge_brier += (nd->result_probs[i]*nd->neigh[0]->result_probs[j] - 1.0)*(nd->result_probs[i]*nd->neigh[0]->result_probs[j] - 1.0);
+        } else {
+          edge_brier += (nd->result_probs[i]*nd->neigh[0]->result_probs[j] - 0.0)*(nd->result_probs[i]*nd->neigh[0]->result_probs[j] - 0.0);
+        }
+      }
     }
-  } else if (method_num == 1) {
-    //OUTPUT_MARGINAL
-    for (i = 0; i < num_annotations; i++) {
-      fprintf(outfile, ",%s=%.10f", character[i], nd->result_probs[i]);
-    }
-    fprintf(outfile, "\n");
-  } else if (method_num == 2) {
-    //OUTPUT_MAP
-    for (i = 0; i < num_annotations; i++) {
-      if(nd->result_probs[i] == 1.0) fprintf(outfile, ",%s\n", character[i]);
-    }
-  } else if (method_num == 3) {
-    //OUTPUT_MARGINAL_APPROXIMATION
-    for (i = 0; i < num_annotations; i++) {
-      if(nd->result_probs[i] > 0.0) fprintf(outfile, ",%s", character[i]);
-    }
-    fprintf(outfile, "\n"); 
-  } else if (method_num == 4) {
-    //OUTPUT_PARSIMONY
-    for (i = 0; i < num_annotations; i++) {
-      if(nd->result_probs[i] > 0.0) fprintf(outfile, ",%s", character[i]);
-    }
-    fprintf(outfile, "\n"); 
+  }
+  for(i=0;i<num_annotations;i++){    
+      if(nd->result_probs[i] > 0) num_pred += 1.0;
+  }
+
+  if(nd == root){
+    node_brier /= (double)num_nodes;
+    fprintf(outfile, "%.5lf\n", node_brier);
+    node_brier = 0.0;
+    edge_brier /= (double)(num_nodes - 1);
+    fprintf(outfile, "%.5lf\n", edge_brier);
+    edge_brier = 0.0;
+    num_pred /= (double)num_nodes;
+    fprintf(outfile, "%.5lf\n", num_pred);
   }
 
   return;
@@ -63,7 +97,7 @@ void output_sim_node_states(Node *nd, Node *root, size_t num_annotations, char *
 
 
 
-int output_simulation(Tree *tree, size_t num_annotations, char **character, char *output_file_path, size_t method_num) {
+int output_simulation(Tree *tree, size_t num_annotations, char **character, char *output_file_path, size_t method_num, char **ID, char **CHAR, int num_nodes) {
     FILE* outfile = fopen(output_file_path, "w");
     if (!outfile) {
         fprintf(stderr, "Output file %s is impossible to access.", output_file_path);
@@ -71,7 +105,7 @@ int output_simulation(Tree *tree, size_t num_annotations, char **character, char
         fprintf(stderr, "Error opening the file: %s\n", strerror(errno));
         return ENOENT;
     }
-    output_sim_node_states(tree->root, tree->root, num_annotations, character, outfile, method_num, 0);
+    output_sim_node_states(tree->root, tree->root, num_annotations, character, outfile, method_num, 0, ID, CHAR, num_nodes);
 
     fclose(outfile);
     return EXIT_SUCCESS;

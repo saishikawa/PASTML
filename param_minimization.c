@@ -209,7 +209,7 @@ double minimize_params(Tree* s_tree, size_t num_annotations, double *parameters,
 
     log_cur_parameter_values(num_annotations, parameters, model, iter, s, character);
 
-    double epsabs = 1e-3;
+    double epsabs = 1e-1;
     do
     {
         iter++;
@@ -234,7 +234,7 @@ double minimize_params(Tree* s_tree, size_t num_annotations, double *parameters,
 
         if (status == GSL_SUCCESS) {
             // let's adjust the tolerance to make sure we are at the minimum
-            if (iter < 100 && epsabs > 1e-5) {
+            if (iter < 10 && epsabs > 1e-1) {
                 epsabs /= 10.0;
                 status = GSL_CONTINUE;
                 log_info("\t\t(found an optimum candidate, but to be sure decreased the gradient tolerance to %.1e)\n",
@@ -244,7 +244,7 @@ double minimize_params(Tree* s_tree, size_t num_annotations, double *parameters,
             }
         }
     }
-    while (status == GSL_CONTINUE && iter < 500);
+    while (status == GSL_CONTINUE && iter < 250);
 
     /* Make sure that the parameters contain the best value */
     optimised_parameters2real_parameters(gsl_multimin_fdfminimizer_x(s), num_annotations, scale_low, scale_up,

@@ -189,7 +189,7 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
         parameters[num_annotations] = 1.0 / s_tree->avg_branch_len;
         parameters[num_annotations + 1] = MIN(s_tree->min_branch_len, s_tree->avg_tip_branch_len / 10.0);
 
-        log_likelihood = calculate_bottom_up_likelihood(s_tree, num_annotations, parameters, is_marginal);
+        log_likelihood = calculate_bottom_up_likelihood(s_tree, num_annotations, parameters, is_marginal, model);
         if (log_likelihood == log(0)) {
             fprintf(stderr, "A problem occurred while calculating the bottom up likelihood: "
                     "Is your tree ok and has at least 2 children per every inner node?\n");
@@ -252,7 +252,7 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
             parameters[num_annotations + 1] = 0.0;
 
             // calculate joint likelihood
-            calculate_bottom_up_likelihood(s_tree, num_annotations, parameters, FALSE);
+            calculate_bottom_up_likelihood(s_tree, num_annotations, parameters, FALSE, model);
 
             log_info("PREDICTING MOST LIKELY ANCESTRAL STATES...\n\n");
             choose_joint_states(s_tree, num_annotations, parameters);

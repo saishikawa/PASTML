@@ -1,6 +1,5 @@
 #include "pastml.h"
 #include "scaling.h"
-#include "models.h"
 
 int get_max(const int *array, size_t n) {
     /**
@@ -94,33 +93,11 @@ void set_p_ij(const Node *nd, double avg_br_len, size_t num_frequencies, const d
     double epsilon = parameters[num_frequencies + 1];
     double t = get_rescaled_branch_len(nd, avg_br_len, scaling_factor, epsilon);
     double mu = get_mu(parameters, num_frequencies);
-    double *P, *matrix[1];
 
     if ((strcmp(model, JC) == 0) || (strcmp(model, F81) == 0)) {
         for (i = 0; i < num_frequencies; i++) {
             for (j = 0; j < num_frequencies; j++) {
                 nd->pij[i][j] = get_pij(parameters, mu, t, i, j);
-            }
-        }
-    }
-
-    if (strcmp(model, HKY) == 0) {
-        get_pij_hky(nd, num_frequencies, parameters, t);
-    }
-
-    if (strcmp(model, JTT) == 0) {
-        matrix[0] = calloc(num_frequencies * num_frequencies * sizeof(double), 1);
-        if (matrix[0] == NULL) {
-            fprintf(stderr, "Out of memory allocating 'matrix': CreateRates()\n");
-            // TODO: raise an error here
-            return;
-        }
-        SetJTTMatrix(matrix[0], t);
-        P = matrix[0];
-        for (i = 0; i < num_frequencies; i++) {
-            for (j = 0; j < num_frequencies; j++) {
-                nd->pij[i][j] = (*P);
-                P++;
             }
         }
     }

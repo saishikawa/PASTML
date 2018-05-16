@@ -46,8 +46,7 @@ static double jttFrequencies[NUM_AA] = {
         0.059498, 0.023414, 0.040530, 0.050532, 0.068225, 0.058518, 0.014336, 0.032303, 0.066374
 };
 
-void exchange_params(size_t *num_annotations, size_t *num_tips, int *states, char **character, char *model,
-                     double *parameters) {
+void exchange_params(size_t num_tips, int *states, char **character, char *model) {
     size_t i;
 
     if (strcmp(model, HKY) == 0) {

@@ -194,7 +194,7 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
 
     /*Re-order states, characters and frequencies for the HKY and JTT models*/
     if ((strcmp(model, HKY) == 0) || (strcmp(model, JTT) == 0)) {
-        exchange_params(num_annotations, num_tips, states, character, model, parameters);
+        exchange_params(num_tips, states, character, model);
     }
 
     initialise_tip_probabilities(s_tree, tips, states, num_tips, num_annotations);

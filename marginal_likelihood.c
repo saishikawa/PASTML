@@ -115,7 +115,7 @@ double get_marginal_likelihood(Node* nd, size_t num_annotations) {
         lk += nd->result_probs[i];
     }
     lk = remove_upscaling_factors(log(lk), nd->scaling_factor_down[0] + nd->scaling_factor_up[0]);
-    return round(lk * 100.0) / 100.0;
+    return round(lk * 10.0) / 10.0;
 }
 
 void check_marginal_probabilities(Tree *s_tree, size_t num_annotations) {
@@ -135,7 +135,7 @@ void calculate_marginal_probabilities(Tree *s_tree, size_t num_annotations, doub
      * Calculates marginal probabilities of tree nodes.
      */
     _calculate_node_marginal_probabilities(s_tree->root, s_tree->root, num_annotations, frequencies);
-    check_marginal_probabilities(s_tree, num_annotations);
+//    check_marginal_probabilities(s_tree, num_annotations);
 }
 
 

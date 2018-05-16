@@ -27,7 +27,6 @@ pastml_module = Extension('pastml',
 
 setup(
     name='pastml',
-    # platform=['Linux', 'Windows', 'Mac OS'],
     classifiers=[
         'Development Status :: 4 - Beta',
         'Environment :: Console',
@@ -36,7 +35,7 @@ setup(
         'Topic :: Software Development',
         'Topic :: Software Development :: Libraries :: Python Modules',
     ],
-    version='0.6.6',
+    version='0.6.7',
     description='Python wrapper for PASTML.',
     maintainer='Anna Zhukova',
     maintainer_email='anna.zhukova@pasteur.fr',

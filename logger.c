@@ -6,7 +6,7 @@
 #include <stdarg.h>
 #include "pastml.h"
 
-int* QUIET = FALSE;
+int QUIET = FALSE;
 
 void log_info(const char* message, ...) {
     if (QUIET == FALSE) {

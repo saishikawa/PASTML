@@ -190,7 +190,7 @@ required arguments:
 optional arguments:
    -o OUTPUT_ANNOTATION_CSV            path where the output annotation file containing node states will be created (in csv format)
    -n OUTPUT_TREE_NWK                  path where the output tree file will be created (in newick format)
-   -n OUTPUT_PARAMETERS_CSV            path where the output parameters file will be created (in csv format)
+   -r OUTPUT_PARAMETERS_CSV            path where the output parameters file will be created (in csv format)
    -m MODEL                            state evolution model for max likelihood prediction methods: "JC" (default) or "F81"
    -p PREDICTION_METHOD                ancestral state prediction method: "marginal_approx" (default), "marginal", "max_posteriori", "joint", "downpass", "acctran", or "deltran"
 ("marginal_approx", "marginal", "max_posteriori", and "joint" are max likelihood methods, while "downpass", "acctran", and "deltran" are parsimonious ones)

@@ -34,7 +34,7 @@ void optimised_parameters2real_parameters(const gsl_vector *v, size_t num_annota
                                           double epsilon_low, double epsilon_up, double *cur_parameters,
                                           const char *model) {
     size_t i;
-    if (strcmp(F81, model) == 0) {
+    if (strcmp(JC, model) != 0) {
         /* 1. Frequencies */
         for (i = 0; i < num_annotations - 1; i++) {
             cur_parameters[i] = gsl_vector_get(v, i);
@@ -42,7 +42,7 @@ void optimised_parameters2real_parameters(const gsl_vector *v, size_t num_annota
         cur_parameters[num_annotations - 1] = 0.0;
         softmax(cur_parameters, num_annotations);
     }
-    size_t scaling_factor_index = (strcmp(F81, model) == 0) ? (num_annotations - 1): 0;
+    size_t scaling_factor_index = (strcmp(JC, model) == 0) ? 0: (num_annotations - 1);
     /* 2. Scaling factor */
     cur_parameters[num_annotations] = sigmoid(gsl_vector_get(v, scaling_factor_index), scale_low, scale_up);
 
@@ -57,7 +57,7 @@ log_cur_parameter_values(size_t num_annotations, double *parameters, const char 
 
     if (character != NULL) {
         log_info ("\tstep\tlog-lh\t\t");
-        if (strcmp(F81, model) == 0) {
+        if (strcmp(JC, model) != 0) {
             for (i = 0; i < num_annotations; i++) {
                 log_info("%s\t", character[i]);
             }
@@ -66,7 +66,7 @@ log_cur_parameter_values(size_t num_annotations, double *parameters, const char 
     }
 
     log_info("\t%3zd\t%5.10f\t\t", iter, -s->f);
-    if (strcmp(F81, model) == 0) {
+    if (strcmp(JC, model) != 0) {
         for (i = 0; i < num_annotations; i++) {
             log_info("%.10f\t", parameters[i]);
         }
@@ -86,9 +86,9 @@ gsl_vector *real_parameters2optimised_parameters(size_t num_annotations, double 
                                                  double epsilon_low, double epsilon_up,
                                                  double *parameters, char *model) {
     size_t i;
-    size_t n = (strcmp(F81, model) == 0) ? (num_annotations + 1): 2;
+    size_t n = (strcmp(JC, model) == 0) ? 2: (num_annotations + 1);
     gsl_vector* x = gsl_vector_alloc(n);
-    if (strcmp(F81, model) == 0) {
+    if (strcmp(JC, model) != 0) {
         double exp_sum = 1.0 / parameters[num_annotations - 1];
         for (i = 0; i < n - 2; i++) {
             gsl_vector_set(x, i, log(parameters[i] * exp_sum));
@@ -111,7 +111,7 @@ minus_loglikelihood (const gsl_vector *v, void *params, double* cur_parameters, 
     optimised_parameters2real_parameters(v, num_annotations, scale_low, scale_up, epsilon_low, epsilon_up,
                                          cur_parameters, model);
 
-    return -calculate_bottom_up_likelihood(s_tree, num_annotations, cur_parameters, TRUE);
+    return -calculate_bottom_up_likelihood(s_tree, num_annotations, cur_parameters, TRUE, model);
 }
 void
 d_minus_loglikelihood (const gsl_vector *v, void *params, gsl_vector *df, double* cur_parameters,
@@ -133,17 +133,18 @@ d_minus_loglikelihood (const gsl_vector *v, void *params, gsl_vector *df, double
     if (cur_minus_log_likelihood < 0) {
         optimised_parameters2real_parameters(v, num_annotations, scale_low, scale_up, epsilon_low, epsilon_up,
                                              cur_parameters, model);
-        cur_minus_log_likelihood = -calculate_bottom_up_likelihood(s_tree, num_annotations, cur_parameters, TRUE);
+        cur_minus_log_likelihood = -calculate_bottom_up_likelihood(s_tree, num_annotations, cur_parameters, TRUE,
+                                                                   model);
     }
 
-    size_t n = (strcmp(F81, model) == 0) ? (num_annotations + 1): 2;
+    size_t n = (strcmp(JC, model) == 0) ? 2: (num_annotations + 1);
     for (i = 0; i < n; i++) {
         /* create a v + delta v array, where all the values but the i-th are the same as in the initial v,
          * and the i-th value is increased by the corresponding step.*/
         gsl_vector_set(v, i, gsl_vector_get(v, i) + GRADIENT_STEP);
         optimised_parameters2real_parameters(v, num_annotations, scale_low, scale_up, epsilon_low, epsilon_up,
                                              cur_parameters, model);
-        diff_log_likelihood = -calculate_bottom_up_likelihood(s_tree, num_annotations, cur_parameters, TRUE)
+        diff_log_likelihood = -calculate_bottom_up_likelihood(s_tree, num_annotations, cur_parameters, TRUE, model)
                               - cur_minus_log_likelihood;
         /* set the corresponding gradient value*/
         gsl_vector_set(df, i, diff_log_likelihood / GRADIENT_STEP);

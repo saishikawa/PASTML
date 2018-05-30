@@ -117,6 +117,10 @@ output-related arguments:
 ## Run PASTML in python3
 
 ### Installation
+
+First install [GNU GSL](https://www.gnu.org/software/gsl/).
+Then run:
+
 ```bash
 pip3 install cytopast
 ```
@@ -165,6 +169,9 @@ pastml_pipeline(data=data, data_sep=',', columns=columns, name_column='Location'
 ## Run PASTML in C (without visualisation)
 
 ### Installation
+
+First install [GNU GSL](https://www.gnu.org/software/gsl/).
+Then run:
 ```bash
 cmake
 make

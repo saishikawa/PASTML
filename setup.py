@@ -12,7 +12,7 @@ if "CC" in os.environ:
 try:
     proc = subprocess.Popen(['gsl-config', '--version'], stdout=subprocess.PIPE)
     (out, err) = proc.communicate()
-    version = out.decode('utf-8').rstrip()
+    version = out.decode('utf-8', 'ignore').rstrip()
     print("GSL version ", version, " found.")
 except:
     sys.exit("GSL not found. Please install the GNU Scientific Library (https://www.gnu.org/software/gsl).")
@@ -36,9 +36,8 @@ setup(
         'Topic :: Software Development',
         'Topic :: Software Development :: Libraries :: Python Modules',
     ],
-    version='0.7.3',
+    version='0.7.4.5',
     description='Python wrapper for PASTML.',
-    long_description=open('README.md').read(),
     maintainer='Anna Zhukova',
     maintainer_email='anna.zhukova@pasteur.fr',
     url='https://github.com/saishikawa/PASTML',

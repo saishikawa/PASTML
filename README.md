@@ -116,21 +116,39 @@ output-related arguments:
 
 ## Run PASTML in python3
 
-### Installation
+We strongly recommend installing pastml for python via [conda](https://conda.io/docs/). 
 
-First install [GNU GSL](https://www.gnu.org/software/gsl/).
-Then run:
+Once you have conda installed create an environment for pastml with python3, gcc and gsl:
 
 ```bash
-pip3 install cytopast
+conda create --name pastml python=3 gcc gsl
+```
+
+Then activate it:
+```bash
+source activate pastml
+```
+
+Then install cytopast (a python library that adds visualisation to PASTML) in it:
+
+```bash
+pip install cytopast
 ```
 
 ### Basic usage in a command line
+If you installed cytopast via conda, do not forget to activate the dedicated environment, e.g.
+
+```bash
+source activate cytopast
+```
+
+To run cytopast:
+
 ```bash
 cytopast --tree <path/to/tree_file.nwk> --data <path/to/annotation_file.tab> --columns <one_or_more_column_names> --html_compressed <path/to/output/map.html>
 ```
 
-To see advanced options, run
+To see advanced options, run:
 ```bash
 cytopast -h
 ```

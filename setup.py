@@ -4,14 +4,15 @@ import sys
 
 import os
 
-os.environ["CC"] = "gcc -std=gnu99 -lgsl -lgslcblas -lm"
+if "CC" in os.environ:
+    print('Using {} to compile C code.'.format(os.environ['CC']))
+    os.environ["CC"] += ' -x c'
 
 # Look for GSL
 try:
     proc = subprocess.Popen(['gsl-config', '--version'], stdout=subprocess.PIPE)
     (out, err) = proc.communicate()
     version = out.decode('utf-8').rstrip()
-    GSL_V = version
     print("GSL version ", version, " found.")
 except:
     sys.exit("GSL not found. Please install the GNU Scientific Library (https://www.gnu.org/software/gsl).")
@@ -35,8 +36,9 @@ setup(
         'Topic :: Software Development',
         'Topic :: Software Development :: Libraries :: Python Modules',
     ],
-    version='0.6.8',
+    version='0.7.3',
     description='Python wrapper for PASTML.',
+    long_description=open('README.md').read(),
     maintainer='Anna Zhukova',
     maintainer_email='anna.zhukova@pasteur.fr',
     url='https://github.com/saishikawa/PASTML',

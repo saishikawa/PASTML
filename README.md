@@ -135,7 +135,7 @@ Then install cytopast (a python library that adds visualisation to PASTML) in it
 pip install cytopast
 ```
 
-For Windows users we recommend to use Cygwin environment, installing gcc (> 7.3.0), gsl (> 2.3), python and pip (> 3.6).
+For Windows users we recommend to use the Cygwin environment, installing gcc (> 7.3.0), gsl (> 2.3), python and pip (> 3.6).
 Then install pastml and cytopast:
 
 ```bash

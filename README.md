@@ -139,8 +139,8 @@ For Windows users we recommend to use the Cygwin environment, installing gcc (> 
 Then install pastml and cytopast:
 
 ```bash
-pip3.6 install pastml
-pip3.6 install cytopast
+pip install pastml
+pip install cytopast
 ```
 
 ### Basic usage in a command line

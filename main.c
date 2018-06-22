@@ -1,5 +1,6 @@
 #include "pastml.h"
 #include "runpastml.h"
+#include "logger.h"
 #include <getopt.h>
 #include <errno.h>
 
@@ -9,6 +10,7 @@ int main(int argc, char **argv) {
     char *model = JC, *prob_method = MARGINAL_APPROXIMATION;
     char *annotation_name = NULL;
     char *tree_name = NULL;
+    char *param_name = NULL;
     char *out_annotation_name = NULL;
     char *out_parameter_name = NULL;
     char *out_tree_name = NULL;
@@ -28,6 +30,7 @@ int main(int argc, char **argv) {
             "   -o OUTPUT_ANNOTATION_CSV            path where the output annotation file containing node states will be created (in csv format)\n"
             "   -n OUTPUT_TREE_NWK                  path where the output tree file will be created (in newick format)\n"
             "   -r OUTPUT_PARAMETERS_CSV            path where the output parameters file will be created (in csv format)\n"
+            "   -i INPUT_PARAMETERS_CSV             path to the parameters file (in csv format)\n"
             "   -m MODEL                            state evolution model for max likelihood prediction methods: "
             "\"JC\" (default) or \"F81\"\n"
             "   -p PREDICTION_METHOD                ancestral state prediction method: \"marginal_approx\" (default), "
@@ -36,7 +39,7 @@ int main(int argc, char **argv) {
             "while \"downpass\", \"acctran\", and \"deltran\" are parsimonious ones)\n"
             "   -q                                  quiet, do not print progress information\n";
 
-    opt = getopt(argc, argv, "a:t:o:r:m:n:p:q");
+    opt = getopt(argc, argv, "a:t:o:r:m:n:i:p:q");
     do {
         switch (opt) {
             case -1:
@@ -49,6 +52,10 @@ int main(int argc, char **argv) {
 
             case 'o':
                 out_annotation_name = optarg;
+                break;
+
+            case 'i':
+                param_name = optarg;
                 break;
 
             case 'r':
@@ -81,7 +88,7 @@ int main(int argc, char **argv) {
                 free(arg_error_string);
                 return EINVAL;
         }
-    } while ((opt = getopt(argc, argv, "a:t:o:r:m:n:p:q")) != -1);
+    } while ((opt = getopt(argc, argv, "a:t:o:r:m:n:i:p:q")) != -1);
     /* Make sure that the required arguments are set correctly */
     if (annotation_name == NULL) {
         snprintf(arg_error_string, 2048, "Annotation file (-a) must be specified.\n\n%s", help_string);
@@ -111,5 +118,5 @@ int main(int argc, char **argv) {
     /* No error in arguments */
     free(arg_error_string);
     return runpastml(annotation_name, tree_name, out_annotation_name, out_tree_name, out_parameter_name,
-                     model, prob_method);
+                     model, prob_method, param_name);
 }

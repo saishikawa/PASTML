@@ -1,6 +1,56 @@
 
 #include <errno.h>
 #include "pastml.h"
+#include "states.h"
+
+size_t read_parameters(char* parameter_file_path, char **character, size_t num_annotations, double *parameters) {
+    char param_line[MAXLNAME];
+    size_t i;
+    double double_value = 0;
+    FILE *param_file = fopen(parameter_file_path, "r");
+    char *quoted_state = (char*)malloc(255 * sizeof(char));
+    // we'll set its 0's bite to 1 if the frequencies are set, its 1st bite to 1 if scaling is set,
+    // and its 2nd bit to 1 if epsilon is set
+    size_t result = 0;
+
+    if (!param_file) {
+        fprintf(stderr, "Parameter file %s is not found or is impossible to access.", parameter_file_path);
+        fprintf(stderr, "Value of errno: %d\n", errno);
+        fprintf(stderr, "Error opening the file: %s\n", strerror(errno));
+        return result;
+    }
+
+    while (fgets(param_line, MAXLNAME, param_file)) {
+        char* name = strtok(param_line, ",");
+        if (strcmp(name, "parameter") == 0 || strcmp(name, "model") == 0 || strcmp(name, "log likelihood") == 0) {
+            continue;
+        }
+        char* value = (name != NULL) ? strtok(NULL, ","): NULL;
+        if (strcmp(name, "scaling factor") == 0) {
+            sscanf(value, "%lf", &double_value);
+            parameters[num_annotations] = double_value;
+            result |= SF_SET;
+        } else if (strcmp(name, "epsilon") == 0) {
+            sscanf(value, "%lf", &double_value);
+            parameters[num_annotations + 1] = double_value;
+            result |= EPSILON_SET;
+        } else {
+            for (i = 0; i < num_annotations; i++) {
+                sprintf(quoted_state, "\"%s\"", character[i]);
+                if (strcmp(character[i], name) == 0 || strcmp(quoted_state, name) == 0) {
+                    break;
+                }
+            }
+            if (i < num_annotations) {
+                sscanf(value, "%lf", &double_value);
+                parameters[i] = double_value;
+                result |= FREQUENCIES_SET;
+            }
+        }
+    }
+    fclose(param_file);
+    return result;
+}
 
 
 char **read_annotations(char *annotation_file_path, char **tips, int *states,

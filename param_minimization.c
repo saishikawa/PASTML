@@ -79,7 +79,7 @@ double anti_sigmoid(double x, const double lower_bound, const double upper_bound
     /**
      * undoes the transformation of an arbitrary value x in between lower and upper bound done with a sigmoid function.
      */
-    return -log((upper_bound - lower_bound) / (x - lower_bound) - 1.0);
+    return (upper_bound == lower_bound) ? -log(0): -log((upper_bound - lower_bound) / (x - lower_bound) - 1.0);
 }
 
 gsl_vector *real_parameters2optimised_parameters(size_t num_annotations, double scale_low, double scale_up,

@@ -78,7 +78,7 @@ int is_valid_prediction_method(char *prob_method) {
 
 int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name, char *out_tree_name,
               char *out_parameter_name, char *model,
-              char* prob_method) {
+              char* prob_method, char *parameter_name) {
     int i;
     int *states;
     double log_likelihood, sec;
@@ -181,13 +181,23 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
             fprintf(stderr, "Value of errno: %d\n", errno);
             return ENOMEM;
         }
-
-        exit_val = calculate_frequencies(num_annotations, num_tips, states, character, model, parameters);
-        if (EXIT_SUCCESS != exit_val) {
-            return exit_val;
-        }
+        
         parameters[num_annotations] = 1.0 / s_tree->avg_branch_len;
         parameters[num_annotations + 1] = s_tree->avg_tip_branch_len / 50.0;
+
+        size_t set_values = 0;
+        if (parameter_name != NULL) {
+            set_values = read_parameters(parameter_name, character, num_annotations, parameters);
+        }
+        if ((set_values & FREQUENCIES_SET) == 0) {
+            exit_val = calculate_frequencies(num_annotations, num_tips, states, character, model, parameters);
+            if (EXIT_SUCCESS != exit_val) {
+                return exit_val;
+            }
+        } else {
+            model = JC;
+            log_info("Read frequencies from %s.\n\n", parameter_name);
+        }
 
         log_likelihood = calculate_bottom_up_likelihood(s_tree, num_annotations, parameters, is_marginal, model);
         if (log_likelihood == log(0)) {
@@ -200,9 +210,20 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
             log_info("INITIAL LIKELIHOOD IS PERFECT, CANNOT DO BETTER THAN THAT.\n\n");
         } else {
             log_info("OPTIMISING PARAMETERS...\n\n");
+
+            double scale_low = ((set_values & SF_SET) == 0)
+                    ? 0.001 / s_tree->avg_branch_len: parameters[num_annotations];
+            double scale_high = ((set_values & SF_SET) == 0)
+                    ? 10.0 / s_tree->avg_branch_len: parameters[num_annotations];
+
+            double epsilon_low = ((set_values & EPSILON_SET) == 0)
+                    ? s_tree->avg_tip_branch_len / 100.0: parameters[num_annotations + 1];
+            double epsilon_high = ((set_values & EPSILON_SET) == 0)
+                    ? s_tree->avg_tip_branch_len / 10.0: parameters[num_annotations + 1];
+
             log_likelihood = minimize_params(s_tree, num_annotations, parameters, character, model,
-                                             0.001 / s_tree->avg_branch_len, 10.0 / s_tree->avg_branch_len,
-                                             s_tree->avg_tip_branch_len / 100.0, s_tree->avg_tip_branch_len / 10.0);
+                                             scale_low, scale_high,
+                                             epsilon_low, epsilon_high);
             log_info("\n");
 
             log_info("OPTIMISED PARAMETERS:\n\n");

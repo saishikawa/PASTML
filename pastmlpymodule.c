@@ -11,19 +11,25 @@ static PyObject *infer_ancestral_states(PyObject *self, PyObject *args) {
     char *out_annotation_name = NULL;
     char *out_tree_name = NULL;
     char *out_param_name = NULL;
+    char *in_param_name = NULL;
     char *model = JC;
     char *prob_method = MARGINAL_APPROXIMATION;
     int quiet = FALSE;
     int sts;
 
-    if (!PyArg_ParseTuple(args, "ss|sssssi", &annotation_name, &tree_name, &out_annotation_name,
+    if (!PyArg_ParseTuple(args, "ss|ssssssi", &annotation_name, &tree_name, &in_param_name, &out_annotation_name,
                           &out_tree_name, &out_param_name, &model, &prob_method, &quiet)) {
+        printf("Could not parse parameters O_o\n");
         return NULL;
     }
     if (quiet != FALSE) {
         QUIET = TRUE;
     }
-    sts = runpastml(annotation_name, tree_name, out_annotation_name, out_tree_name, out_param_name, model, prob_method);
+    if (strcmp(in_param_name, "") == 0) {
+        in_param_name = NULL;
+    }
+    sts = runpastml(annotation_name, tree_name, out_annotation_name, out_tree_name, out_param_name, model, prob_method,
+            in_param_name);
     if (sts != EXIT_SUCCESS) {
         if (errno) {
             return PyErr_SetFromErrno(PyErr_NewException("pastml.error", NULL, NULL));
@@ -42,6 +48,7 @@ static PyMethodDef PastmlMethods[] =
                         "Infer tree ancestral states with PASTML.\n"
                         "   :param annotation_file: str, path to the csv file containing two (unnamed) columns: tree tip ids and their states.\n"
                         "   :param tree_file: str, path to the tree in newick format.\n"
+                        "   :param in_param_file: str, path to the csv file containing parameters.\n"
                         "   :param out_annotation_file: str, path where the csv file with the inferred annotations will be stored.\n"
                         "   :param out_tree_file: str, path where the output tree (with named internal nodes) in newick format will be stored.\n"
                         "   :param out_param_file: str, path where the output parameter file in csv format will be stored.\n"

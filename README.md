@@ -3,10 +3,12 @@
 __PASTML__ infers ancestral states on a phylogenetical tree with annotated tips, using maximum likelihood.
 The tree with reconstructed ancestral states can then be visualised as a zoomable html map with __cytopast__.
 
+# Run PASTML online
+Try it at [pastml.pasteur.fr](https://pastml.pasteur.fr)
 
-# Run PASTML
+# Run PASTML on your computer
 
-There are 3 alternative ways to run PASTML: with [docker](https://hub.docker.com/), in python3, or in C (without visualisation).
+There are 3 alternative ways to run PASTML on your computer: with [docker](https://hub.docker.com/), in python3, or in C (without visualisation).
 
 
 ## Run PASTML with docker

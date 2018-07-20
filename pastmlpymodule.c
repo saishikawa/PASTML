@@ -52,7 +52,7 @@ static PyMethodDef PastmlMethods[] =
                         "   :param out_annotation_file: str, path where the csv file with the inferred annotations will be stored.\n"
                         "   :param out_tree_file: str, path where the output tree (with named internal nodes) in newick format will be stored.\n"
                         "   :param out_param_file: str, path where the output parameter file in csv format will be stored.\n"
-                        "   :param model: str, the model of state evolution: pastml.JC or pastml.F81.\n"
+                        "   :param model: str, the model of state evolution: pastml.F81, pastml.JC, or pastml.EFT.\n"
                         "   :param prediction_method: str, ancestral state prediction method: "
                                 "pastml.MARGINAL_APPROXIMATION, pastml.MARGINAL, pastml.MAX_POSTERIORI, pastml.JOINT, "
                                 "pastml.DOWNPASS, pastml.DELTRAN, or pastml.ACCTRAN.\n"
@@ -83,6 +83,7 @@ PyInit_pastml(void)
     PyModule_AddStringMacro(m, ACCTRAN);
     PyModule_AddStringMacro(m, JOINT);
     PyModule_AddStringMacro(m, JC);
+    PyModule_AddStringMacro(m, EFT);
     PyModule_AddStringMacro(m, F81);
     return m;
 }

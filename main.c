@@ -7,7 +7,7 @@
 extern int QUIET;
 
 int main(int argc, char **argv) {
-    char *model = JC, *prob_method = MARGINAL_APPROXIMATION;
+    char *model = F81, *prob_method = MARGINAL_APPROXIMATION;
     char *annotation_name = NULL;
     char *tree_name = NULL;
     char *param_name = NULL;
@@ -32,7 +32,7 @@ int main(int argc, char **argv) {
             "   -r OUTPUT_PARAMETERS_CSV            path where the output parameters file will be created (in csv format)\n"
             "   -i INPUT_PARAMETERS_CSV             path to the parameters file (in csv format)\n"
             "   -m MODEL                            state evolution model for max likelihood prediction methods: "
-            "\"JC\" (default) or \"F81\"\n"
+            "\"F81\"(default), \"JC\", or \"EFT\" (Estimate From Tips)\n"
             "   -p PREDICTION_METHOD                ancestral state prediction method: \"marginal_approx\" (default), "
             "\"marginal\", \"max_posteriori\", \"joint\", \"downpass\", \"acctran\", or \"deltran\"\n"
             "(\"marginal_approx\", \"marginal\", \"max_posteriori\", and \"joint\" are max likelihood methods, "

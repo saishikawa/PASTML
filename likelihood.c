@@ -81,7 +81,7 @@ void set_p_ij(const Node *nd, double avg_br_len, size_t num_frequencies, const d
     /**
      * Sets node probabilities of substitution: p[i][j]:
      *
-     * For K81 (and JC which is a simpler version of it)
+     * For F81 (and JC which is a simpler version of it)
      * Pxy(t) = \pi_y (1 - exp(-mu t)) + exp(-mu t), if x ==y, \pi_y (1 - exp(-mu t)), otherwise
      * [Gascuel "Mathematics of Evolution and Phylogeny" 2005]
      *
@@ -94,7 +94,7 @@ void set_p_ij(const Node *nd, double avg_br_len, size_t num_frequencies, const d
     double t = get_rescaled_branch_len(nd, avg_br_len, scaling_factor, epsilon);
     double mu = get_mu(parameters, num_frequencies);
 
-    if ((strcmp(model, JC) == 0) || (strcmp(model, F81) == 0)) {
+    if ((strcmp(model, JC) == 0) || (strcmp(model, F81) == 0) || (strcmp(model, EFT) == 0)) {
         for (i = 0; i < num_frequencies; i++) {
             for (j = 0; j < num_frequencies; j++) {
                 nd->pij[i][j] = get_pij(parameters, mu, t, i, j);

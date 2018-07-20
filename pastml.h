@@ -31,6 +31,7 @@
 #define DELTRAN "deltran"
 #define JC "JC"
 #define F81 "F81"
+#define EFT "EFT"
 
 typedef struct __Node {
     char *name;

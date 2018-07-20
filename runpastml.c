@@ -41,7 +41,7 @@ int calculate_frequencies(size_t num_annotations, size_t num_tips, int *states, 
     for (i = 0; i < num_annotations; i++) {
         if (strcmp(model, JC) == 0) {
             parameters[i] = ((double) 1) / num_annotations;
-        } else if (strcmp(model, F81) == 0) {
+        } else if ((strcmp(model, F81) == 0) || (strcmp(model, EFT) == 0)) {
             parameters[i] = ((double) count_array[i]) / sum_freq;
         }
         log_info("\t%s:\t%.10f\n", character[i], parameters[i]);
@@ -55,7 +55,7 @@ int calculate_frequencies(size_t num_annotations, size_t num_tips, int *states, 
 }
 
 int is_valid_model(char* model) {
-    return (strcmp(model, JC) == 0) || (strcmp(model, F81) == 0);
+    return (strcmp(model, JC) == 0) || (strcmp(model, F81) == 0) || (strcmp(model, EFT) == 0);
 }
 
 int is_marginal_method(char *prob_method) {
@@ -126,7 +126,7 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
     if (out_parameter_name == NULL) {
         if (!is_parsimonious) {
             out_parameter_name = calloc(256, sizeof(char));
-            sprintf(out_parameter_name, "%s.maxlikelihood.pastml.parameters.csv", annotation_name);
+            sprintf(out_parameter_name, "%s.%s.maxlikelihood.pastml.parameters.csv", annotation_name, model);
         }
     }
 

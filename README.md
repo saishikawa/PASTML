@@ -67,3 +67,7 @@ To see advanced options (including the choice of evolutionary model and ancestra
 ```bash
 pastml -h
 ```
+
+## Examples
+
+See the [examples folder](https://github.com/saishikawa/PASTML/tree/master/examples) for ideas :)

@@ -4,7 +4,7 @@
 #include <getopt.h>
 #include <errno.h>
 
-static const int HELP_STRING_LEN = 3000;
+static const int HELP_STRING_LEN = 4000;
 extern int QUIET;
 
 int main(int argc, char **argv) {
@@ -26,7 +26,8 @@ int main(int argc, char **argv) {
                               "[-f OUTPUT_MARGINAL_PROBAB_CSV]\n"
             "\n"
             "required arguments:\n"
-            "   -a ANNOTATION_FILE                  path to the annotation file containing tip states (in csv format)\n"
+            "   -a ANNOTATION_FILE                  path to the annotation file containing tip states (in csv format: <tip_id>,<state>);"
+            "                                       should not contain any header, must include all tips (leave <state> blank when unknown)\n"
             "   -t TREE_NWK                         path to the rooted tree file (in newick format)\n"
             "\n"
             "optional arguments:\n"

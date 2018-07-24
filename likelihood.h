@@ -7,8 +7,7 @@
 #define PASTML_LIK_H
 
 double
-calculate_bottom_up_likelihood(Tree *s_tree, size_t num_annotations, double *parameters, int is_marginal,
-                               char* model);
+calculate_bottom_up_likelihood(Tree *s_tree, size_t num_annotations, double *parameters, int is_marginal);
 
 void rescale_branch_lengths(Tree *s_tree, double scaling_factor, double epsilon);
 double get_mu(const double* frequencies, size_t n);

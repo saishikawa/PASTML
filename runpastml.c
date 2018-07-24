@@ -78,7 +78,7 @@ int is_valid_prediction_method(char *prob_method) {
 
 int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name, char *out_tree_name,
               char *out_parameter_name, char *model,
-              char* prob_method, char *parameter_name) {
+              char* prob_method, char *parameter_name, char *out_mp_name) {
     int i;
     int *states;
     double log_likelihood, sec;
@@ -113,14 +113,6 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
             sprintf(out_annotation_name, "%s.%s.pastml.out.csv", annotation_name, prob_method);
         } else {
             sprintf(out_annotation_name, "%s.%s.%s.pastml.out.csv", annotation_name, model, prob_method);
-        }
-    }
-    if (out_tree_name == NULL) {
-        out_tree_name = calloc(256, sizeof(char));
-        if (is_parsimonious) {
-            sprintf(out_tree_name, "%s.parsimonious.pastml.tree.nwk", annotation_name);
-        } else {
-            sprintf(out_tree_name, "%s.maxlikelihood.pastml.tree.nwk", annotation_name);
         }
     }
     if (out_parameter_name == NULL) {
@@ -187,19 +179,21 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
 
         size_t set_values = 0;
         if (parameter_name != NULL) {
-            set_values = read_parameters(parameter_name, character, num_annotations, parameters);
+            set_values = read_parameters(parameter_name, character, num_annotations, parameters, strcmp(F81, model) == 0);
         }
         if ((set_values & FREQUENCIES_SET) == 0) {
             exit_val = calculate_frequencies(num_annotations, num_tips, states, character, model, parameters);
             if (EXIT_SUCCESS != exit_val) {
                 return exit_val;
             }
+            if (strcmp(F81, model) != 0) {
+                set_values |= FREQUENCIES_SET;
+            }
         } else {
-            model = JC;
             log_info("Read frequencies from %s.\n\n", parameter_name);
         }
 
-        log_likelihood = calculate_bottom_up_likelihood(s_tree, num_annotations, parameters, is_marginal, model);
+        log_likelihood = calculate_bottom_up_likelihood(s_tree, num_annotations, parameters, is_marginal);
         if (log_likelihood == log(0)) {
             fprintf(stderr, "A problem occurred while calculating the bottom up likelihood: "
                     "Is your tree ok and has at least 2 children per every inner node?\n");
@@ -208,6 +202,8 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
         log_info("INITIAL LOG LIKELIHOOD:\t%.10f\n\n", log_likelihood);
         if (log_likelihood == log(1)) {
             log_info("INITIAL LIKELIHOOD IS PERFECT, CANNOT DO BETTER THAN THAT.\n\n");
+        } else if (((set_values & FREQUENCIES_SET) != 0) && ((set_values & SF_SET) != 0) && ((set_values & EPSILON_SET) != 0)) {
+            log_info("ALL THE PARAMETERS ARE PRESET, NOTHING TO OPTIMIZE.\n\n");
         } else {
             log_info("OPTIMISING PARAMETERS...\n\n");
 
@@ -221,13 +217,13 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
             double epsilon_high = ((set_values & EPSILON_SET) == 0)
                     ? s_tree->avg_tip_branch_len / 10.0: parameters[num_annotations + 1];
 
-            log_likelihood = minimize_params(s_tree, num_annotations, parameters, character, model,
+            log_likelihood = minimize_params(s_tree, num_annotations, parameters, character, ((set_values & FREQUENCIES_SET) == 0),
                                              scale_low, scale_high,
                                              epsilon_low, epsilon_high);
             log_info("\n");
 
             log_info("OPTIMISED PARAMETERS:\n\n");
-            if (0 == strcmp(F81, model)) {
+            if ((set_values & FREQUENCIES_SET) == 0) {
                 for (i = 0; i < num_annotations; i++) {
                     log_info("\tFrequency of %s:\t%.10f\n", character[i], parameters[i]);
                 }
@@ -240,11 +236,11 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
             log_info("\n");
         }
 
-        exit_val = output_parameters(parameters, num_annotations, character, log_likelihood, model, out_parameter_name);
+        exit_val = output_parameters(parameters, num_annotations, character, log_likelihood, model, set_values, out_parameter_name);
         if (EXIT_SUCCESS != exit_val) {
             return exit_val;
         }
-        log_info("\tOptimised parameters are written to %s in csv format.\n", out_parameter_name);
+        log_info("\tParameter values are written to %s in csv format.\n", out_parameter_name);
         log_info("\n");
 
         rescale_branch_lengths(s_tree, parameters[num_annotations], parameters[num_annotations + 1]);
@@ -257,6 +253,15 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
             calculate_marginal_probabilities(s_tree, num_annotations, parameters);
 
             normalize_result_probabilities(s_tree, num_annotations);
+
+            if (out_mp_name != NULL) {
+                exit_val = output_ancestral_states(s_tree, num_annotations, character, out_mp_name, "%.8f");
+                if (EXIT_SUCCESS != exit_val) {
+                    return exit_val;
+                }
+                log_info("\tMarginal probabilities are written to %s in csv format.\n\n", out_mp_name);
+            }
+
             set_id_best_states(s_tree, num_annotations);
 
             if (strcmp(prob_method, MARGINAL_APPROXIMATION) == 0) {
@@ -272,7 +277,7 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
             parameters[num_annotations + 1] = 0.0;
 
             // calculate joint likelihood
-            calculate_bottom_up_likelihood(s_tree, num_annotations, parameters, FALSE, model);
+            calculate_bottom_up_likelihood(s_tree, num_annotations, parameters, FALSE);
 
             log_info("PREDICTING MOST LIKELY ANCESTRAL STATES...\n\n");
             choose_joint_states(s_tree, num_annotations, parameters);
@@ -280,15 +285,19 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
         }
         free(parameters);
     }
-
-    exit_val = write_nh_tree(s_tree, out_tree_name);
-    if (EXIT_SUCCESS != exit_val) {
-        return exit_val;
-    }
     log_info("SAVING THE RESULTS...\n\n");
-    log_info("\t%sree with internal node ids is written to %s.\n", (is_parsimonious) ? "T": "Scaled t", out_tree_name);
 
-    exit_val = output_ancestral_states(s_tree, num_annotations, character, out_annotation_name);
+    if (out_tree_name != NULL) {
+        exit_val = write_nh_tree(s_tree, out_tree_name);
+        if (EXIT_SUCCESS != exit_val) {
+            return exit_val;
+        }
+        log_info("\t%sree with internal node ids is written to %s.\n", (is_parsimonious) ? "T": "Scaled t", out_tree_name);
+    }
+
+    exit_val = output_ancestral_states(s_tree, num_annotations, character, out_annotation_name,
+            strcmp(MARGINAL, prob_method) == 0 ? "%.8f":
+            (strcmp(MARGINAL_APPROXIMATION, prob_method) == 0? "%.2f": "%.0f"));
     if (EXIT_SUCCESS != exit_val) {
         return exit_val;
     }

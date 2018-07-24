@@ -3,7 +3,8 @@
 #include "pastml.h"
 #include "states.h"
 
-size_t read_parameters(char* parameter_file_path, char **character, size_t num_annotations, double *parameters) {
+size_t read_parameters(char* parameter_file_path, char **character, size_t num_annotations, double *parameters,
+        bool read_frequencies) {
     char param_line[MAXLNAME];
     size_t i;
     double double_value = 0;
@@ -34,7 +35,7 @@ size_t read_parameters(char* parameter_file_path, char **character, size_t num_a
             sscanf(value, "%lf", &double_value);
             parameters[num_annotations + 1] = double_value;
             result |= EPSILON_SET;
-        } else {
+        } else if (read_frequencies) {
             for (i = 0; i < num_annotations; i++) {
                 sprintf(quoted_state, "\"%s\"", character[i]);
                 if (strcmp(character[i], name) == 0 || strcmp(quoted_state, name) == 0) {
@@ -123,7 +124,7 @@ char **read_annotations(char *annotation_file_path, char **tips, int *states,
     return character;
 }
 
-int output_ancestral_states(Tree *tree, size_t num_annotations, char **character, char *output_file_path) {
+int output_ancestral_states(Tree *tree, size_t num_annotations, char **character, char *output_file_path, char* format) {
     FILE* outfile = fopen(output_file_path, "w");
     if (!outfile) {
         fprintf(stderr, "Output annotation file %s is impossible to access.", output_file_path);
@@ -148,7 +149,8 @@ int output_ancestral_states(Tree *tree, size_t num_annotations, char **character
         fprintf(outfile, "%s", nd->name);
 
         for (i = 0; i < num_annotations; i++) {
-            fprintf(outfile, ",%.e", nd->result_probs[i]);
+            fprintf(outfile, ",");
+            fprintf(outfile, format, nd->result_probs[i]);
         }
         fprintf(outfile, "\n");
     }
@@ -157,9 +159,8 @@ int output_ancestral_states(Tree *tree, size_t num_annotations, char **character
     return EXIT_SUCCESS;
 }
 
-
-int output_parameters(double *parameters, size_t num_annotations, char **character, double log_lh, char *model,
-                      char *output_file_path) {
+int output_parameters(const double *parameters, size_t num_annotations, char **character, double log_lh,
+        const char *model, size_t set_values, const char *output_file_path) {
     FILE* outfile = fopen(output_file_path, "w");
     if (!outfile) {
         fprintf(stderr, "Output parameter file %s is impossible to access.", output_file_path);
@@ -173,6 +174,9 @@ int output_parameters(double *parameters, size_t num_annotations, char **charact
     fprintf(outfile, "parameter,value\n");
     fprintf(outfile, "model,%s\n", model);
     fprintf(outfile, "log likelihood,%.8f\n", log_lh);
+    fprintf(outfile, "frequencies were fixed,%s\n", (set_values & FREQUENCIES_SET) == 0 ? "No": "Yes");
+    fprintf(outfile, "scaling factor was fixed,%s\n", (set_values & SF_SET) == 0 ? "No": "Yes");
+    fprintf(outfile, "epsilon was fixed,%s\n", (set_values & EPSILON_SET) == 0 ? "No": "Yes");
     fprintf(outfile, "scaling factor,%.8f\n", parameters[num_annotations]);
     fprintf(outfile, "epsilon,%.e\n", parameters[num_annotations + 1]);
     for (i = 0; i < num_annotations; i++) {

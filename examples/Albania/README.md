@@ -12,7 +12,7 @@ and a comma-separated annotation file describing the Country of sampling for eac
 To run the ACR of the Country with the state evolution model: F81, 
 and the maximum likelihood prediction method: marginal approximation, run:
 ```bash
-pastml -t Albania/data/Albanian.tree.152tax.tre -d Albania/data/data.txt -m F81 -p marginal_approx
+cytopast -t Albania/data/Albanian.tree.152tax.tre -d Albania/data/data.txt -m F81 --prediction_method marginal_approx -p Albania/data/maps/Albania_F81_MPPA.html -s ',' -v
 ```
 
 Other __models__ are also available: JC and EFT (which stands for "estimate frequencies from tips", not recommended),

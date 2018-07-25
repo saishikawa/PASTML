@@ -1,4 +1,4 @@
-# Simulation datasets
+# Simulation datasets and scripts
   
 The dataset were used in the simulation study performed by Ishikawa et al., submitted to *Mol. Biol. Evol.*
   

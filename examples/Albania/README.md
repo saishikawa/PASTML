@@ -25,4 +25,4 @@ To run it:
 ```bash
 python Albania/main.py
 ```
-Be aware of running with python > 3.6
+Please be aware of running with python > 3.6.

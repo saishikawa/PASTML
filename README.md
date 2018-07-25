@@ -43,11 +43,10 @@ Note, that here we do not know the annotation for tip_3, so we left it blank.
 
 ## PastML C library Installation
 
-First install GNU Scientific Library, following the instructions on [GNU GSL web site](https://www.gnu.org/software/gsl/).
+First install GNU Scientific Library (> ver.2.3), following the instructions on [GNU GSL web site](https://www.gnu.org/software/gsl/).
 
 Then download and extract PastML, change to its folder and run:
 ```bash
-cmake
 make
 ```
 

@@ -47,10 +47,10 @@ RM = /usr/bin/cmake -E remove -f
 # Escaping for special characters.
 EQUALS = =
 
-# The top-level source directory on which CMake was run.
+# The top-level source directory on which CMake was run. For now it's the same directory with Makefile.
 CMAKE_SOURCE_DIR = ./
 
-# The top-level build directory on which CMake was run.
+# The top-level build directory on which CMake was run. For now it's the same directory with Makefile.
 CMAKE_BINARY_DIR = ./
 
 #=============================================================================

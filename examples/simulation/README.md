@@ -11,7 +11,7 @@ __Annotations_20__ : tip annotations (protein-like data) generated on the origin
 __scenarios_4__ : the list of true ancestral states (A, T, G or C) for all internal nodes of the original tree, which were observed in the data generation  
 __scenarios_20__ : the list of true ancestral states (20 amino-acids) for all internal nodes of the original tree, which were observed in the data generation  
 __PASTML-v0.6.6.1__ : PASTML source code and binary to be used in the ancestral state reconstructions  
-__Seq-Gen.v.1.3.3__ : Seq-Gen source code and binary to be used fo generating *Annotations* and *scenarios* 
+__Seq-Gen.v.1.3.3__ : Seq-Gen source code and binary to be used fo generating *Annotations* and *scenarios*  
 __Results_simulation__: Results of the accuracy of ML- and Parsimony-based methods. R commands are included to visualize the results. 
   
 ## Results

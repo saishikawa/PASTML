@@ -33,7 +33,7 @@ __AA\_(JC,F81,JTT)__ : The files of 'Results.ml.1000.4.(JC,F81,JTT).(original,re
 __AA\_(JC,F81,JTT)\_FLAT__ : The files of 'Results.ml.1000.4.(JC,F81,JTT).flat.txt' contain the same contents with __AA\_(JC,F81,JTT)__ but here we show the results provided from the analyses with flattened trees.
   
   
-## To automatically analyze all data
+## To automatically analyze and summarize data
   
 ```bash
 ./auto_analysis.sh

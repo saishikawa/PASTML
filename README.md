@@ -5,6 +5,10 @@ The tree with reconstructed ancestral states can then be visualised as a zoomabl
 __PastML__ is a core C library that provides fast Ancestor Character Reconstruction (ACR) methods without visualisation.
 For using __PastML with visualisation__ please refer to [__cytopast__ web page](https://github.com/evolbioinfo/cytopast).
 
+# Article
+
+For a detailed description of PastML/cytopast: see Ishikawa SA, Zhukova A, Iwasaki W, Gascuel O (2018) __A Fast Likelihood Method to Reconstruct and Visualize Ancestral Scenarios__ [[bioRxiv]](https://doi.org/10.1101/379529).
+
 # Input data
 As an input, one needs to provide a **rooted** phylogenetical tree in [newick](https://en.wikipedia.org/wiki/Newick_format) format,
 and a table containing tip states.

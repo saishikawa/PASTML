@@ -209,7 +209,7 @@ double minimize_params(Tree* s_tree, size_t num_annotations, double *parameters,
 
     log_cur_parameter_values(num_annotations, parameters, optimize_frequencies, iter, s, character);
 
-    double epsabs = 1e-3;
+    double epsabs = MIN(1e-3, epsilon_low / 2);
     do
     {
         iter++;

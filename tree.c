@@ -373,6 +373,7 @@ Tree *parse_nh_string(char *in_str, size_t nbanno) {
         }
     }
     t->min_branch_len = -1.0;
+    t->min_tip_branch_len = -1.0;
     maxpoly=0;
 
     double branch_len_sum = 0.;
@@ -380,6 +381,9 @@ Tree *parse_nh_string(char *in_str, size_t nbanno) {
         cur_node = t->nodes[i];
         if(cur_node->nb_neigh == 1){ //tips
           tip_branch_len_sum += cur_node->branch_len;
+          if ((t->min_tip_branch_len < 0 || t->min_tip_branch_len > cur_node->branch_len) && cur_node->branch_len > 0.0) {
+              t->min_tip_branch_len = cur_node->branch_len;
+          }
         }
         if(maxpoly < cur_node->nb_neigh)  {
             maxpoly = cur_node->nb_neigh;
@@ -404,7 +408,8 @@ Tree *parse_nh_string(char *in_str, size_t nbanno) {
     log_info("\tNumber of edges:\t%d\n", t->nb_edges);
     log_info("\tAvg branch length:\t%e\n", t->avg_branch_len);
     log_info("\tAvg tip branch length:\t%e\n", t->avg_tip_branch_len);
-    log_info("\tMin branch length:\t%e\n", t->min_branch_len);
+    log_info("\tMin non-zero branch length:\t%e\n", t->min_branch_len);
+    log_info("\tMin non-zero tip branch length:\t%e\n", t->min_tip_branch_len);
     log_info("\tMax number of children per node:\t%zd\n", maxpoly-1);
     log_info("\n");
 

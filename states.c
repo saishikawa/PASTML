@@ -147,7 +147,6 @@ int output_ancestral_states(Tree *tree, size_t num_annotations, char **character
         nd = tree->nodes[k];
 
         fprintf(outfile, "%s", nd->name);
-
         for (i = 0; i < num_annotations; i++) {
             fprintf(outfile, ",");
             fprintf(outfile, format, nd->result_probs[i]);

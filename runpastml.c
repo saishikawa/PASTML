@@ -213,13 +213,39 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
                     ? 10.0 / s_tree->avg_branch_len: parameters[num_annotations];
 
             double epsilon_low = ((set_values & EPSILON_SET) == 0)
-                    ? s_tree->avg_tip_branch_len / 100.0: parameters[num_annotations + 1];
+                    ? MIN(s_tree->min_tip_branch_len / 2, s_tree->avg_tip_branch_len / 100.0): parameters[num_annotations + 1];
             double epsilon_high = ((set_values & EPSILON_SET) == 0)
                     ? s_tree->avg_tip_branch_len / 10.0: parameters[num_annotations + 1];
 
-            log_likelihood = minimize_params(s_tree, num_annotations, parameters, character, ((set_values & FREQUENCIES_SET) == 0),
-                                             scale_low, scale_high,
-                                             epsilon_low, epsilon_high);
+            log_likelihood = minimize_params(s_tree, num_annotations, parameters, character,
+                    ((set_values & FREQUENCIES_SET) == 0), scale_low, scale_high, epsilon_low, epsilon_high);
+
+            bool redo = FALSE;
+            // if we hit the bound with SF or Epsilon, let's relax the bound a bit and reoptimise.
+            if ((set_values & SF_SET) == 0) {
+                if ((fabs(parameters[num_annotations] - scale_high) < 1e-5)
+                || (fabs(parameters[num_annotations] - scale_low) < 1e-5)) {
+                    redo = TRUE;
+                    scale_high *= 2;
+                    scale_low /= 2;
+                }
+            }
+            if ((set_values & EPSILON_SET) == 0) {
+                if ((fabs(parameters[num_annotations + 1] - epsilon_low) < 1e-5)
+                || (fabs(parameters[num_annotations + 1] - epsilon_high) < 1e-5)) {
+                    redo = TRUE;
+                    epsilon_high *= 2;
+                    epsilon_low /= 2;
+                }
+            }
+            if (redo == TRUE) {
+                parameters[num_annotations] = (scale_high + scale_low) / 2;
+                parameters[num_annotations + 1] = (epsilon_high + epsilon_low) / 2;
+
+                log_likelihood = minimize_params(s_tree, num_annotations, parameters, character,
+                        ((set_values & FREQUENCIES_SET) == 0), scale_low, scale_high, epsilon_low, epsilon_high);
+            }
+
             log_info("\n");
 
             log_info("OPTIMISED PARAMETERS:\n\n");

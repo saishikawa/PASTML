@@ -63,6 +63,7 @@ typedef struct __Tree {
     double avg_branch_len;
     double min_branch_len;
     double avg_tip_branch_len;
+    double min_tip_branch_len;
 } Tree;
 
 #endif // PASTML_H

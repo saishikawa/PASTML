@@ -153,6 +153,10 @@ d_minus_loglikelihood (const gsl_vector *v, void *params, gsl_vector *df, double
     }
 }
 
+double my_f(const gsl_vector *v, void *params);
+void my_df(const gsl_vector *v, void *params, gsl_vector *df);
+void my_fdf(const gsl_vector *v, void *params, double *f, gsl_vector *df);
+
 double minimize_params(Tree* s_tree, size_t num_annotations, double *parameters, char **character,
         bool optimize_frequencies, double scale_low, double scale_up, double epsilon_low, double epsilon_up) {
     /**

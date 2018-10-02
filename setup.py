@@ -36,7 +36,7 @@ setup(
         'Topic :: Software Development',
         'Topic :: Software Development :: Libraries :: Python Modules',
     ],
-    version='1.0.1',
+    version='1.0.2',
     description='Python wrapper for PASTML.',
     maintainer='Anna Zhukova',
     maintainer_email='anna.zhukova@pasteur.fr',

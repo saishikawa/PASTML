@@ -7,6 +7,13 @@
 #define GRADIENT_STEP 1.0e-5
 
 
+double random_double(double min_bound, double max_bound) {
+    /**
+     * Generates a random double within given bounds.
+     */
+    return min_bound + (max_bound - min_bound) * rand() / RAND_MAX;
+}
+
 void softmax(double* xs, size_t n) {
     /**
      * transforms an array of n arbitrary values x in such a way that all of them become between 0 and 1 and sum to 1,
@@ -157,7 +164,9 @@ double my_f(const gsl_vector *v, void *params);
 void my_df(const gsl_vector *v, void *params, gsl_vector *df);
 void my_fdf(const gsl_vector *v, void *params, double *f, gsl_vector *df);
 
-double minimize_params(Tree* s_tree, size_t num_annotations, double *parameters, char **character,
+
+
+double _minimize_params(Tree* s_tree, size_t num_annotations, double *parameters, char **character,
         bool optimize_frequencies, double scale_low, double scale_up, double epsilon_low, double epsilon_up) {
     /**
      * Optimises the following parameters:
@@ -169,6 +178,18 @@ double minimize_params(Tree* s_tree, size_t num_annotations, double *parameters,
 
     size_t iter = 0;
     int status;
+
+    // set initial values to random ones within bounds
+    parameters[num_annotations] = random_double(scale_low, scale_up);
+    parameters[num_annotations + 1] = random_double(epsilon_low, epsilon_up);
+
+    if (optimize_frequencies) {
+        double upper_bound = 1.0;
+        for (int i = 0; i < num_annotations; i++) {
+            parameters[i] = random_double(0.0, upper_bound);
+            upper_bound -= parameters[i];
+        }
+    }
 
     log_info("Scaling factor can vary between %.10f and %.10f, starting at %.10f.\n", scale_low, scale_up,
              parameters[num_annotations]);
@@ -242,7 +263,7 @@ double minimize_params(Tree* s_tree, size_t num_annotations, double *parameters,
                 epsabs /= 10.0;
                 status = GSL_CONTINUE;
                 log_info("\t\t(found an optimum candidate, but to be sure decreased the gradient tolerance to %.1e)\n",
-                       epsabs);
+                         epsabs);
             } else {
                 log_info("\t\t(optimum found!)\n");
             }
@@ -257,6 +278,51 @@ double minimize_params(Tree* s_tree, size_t num_annotations, double *parameters,
 
     gsl_multimin_fdfminimizer_free(s);
     gsl_vector_free(x);
+    return optimum;
+}
+
+double minimize_params(Tree* s_tree, size_t num_annotations, double *parameters, char **character,
+        bool optimize_frequencies, double scale_low, double scale_up, double epsilon_low, double epsilon_up) {
+    /**
+     * Optimises the following parameters:
+     * parameters = [frequency_char_1, .., frequency_char_n, scaling_factor, epsilon],
+     * using BFGS algorithm.
+     * The parameters variable is updated to contain the optimal parameters found.
+     * The optimal value of the likelihood is returned.
+     */
+    double* best_parameters = calloc(num_annotations + 2, sizeof(double));
+    double optimum;
+    bool relaxed_bounds = FALSE;
+
+    for (int i = 0; i < 5; i++) {
+        log_info("\nOptimising parameters, iteration %d out of 5\n", i + 1);
+        double res = _minimize_params(s_tree, num_annotations, parameters, character, optimize_frequencies,
+                                          scale_low, scale_up, epsilon_low, epsilon_up);
+
+        if (relaxed_bounds == FALSE) {
+            // if we hit the bound with SF or Epsilon, let's relax the bound a bit and reoptimise.
+            if ((fabs(scale_up - scale_low) > 1e-5)
+            && ((fabs(parameters[num_annotations] - scale_up) < 1e-5)
+            || (fabs(parameters[num_annotations] - scale_low) < 1e-5))) {
+                    relaxed_bounds = TRUE;
+                    scale_up *= 2;
+                    scale_low /= 2;
+            }
+            if ((fabs(epsilon_up - epsilon_low) > 1e-5)
+            && ((fabs(parameters[num_annotations + 1] - epsilon_low) < 1e-5)
+            || (fabs(parameters[num_annotations + 1] - epsilon_up) < 1e-5))) {
+                    relaxed_bounds = TRUE;
+                    epsilon_low /= 2;
+            }
+        }
+
+        if ((i == 0) || (res > optimum)) {
+            memcpy(best_parameters, parameters, (num_annotations + 2) * sizeof(double));
+            optimum = res;
+        }
+    }
+
+    memcpy(parameters, best_parameters, (num_annotations + 2) * sizeof(double));
     return optimum;
 }
 

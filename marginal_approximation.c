@@ -2,6 +2,7 @@
 #include "pastml.h"
 #include "likelihood.h"
 
+int cmp_index(const void *a, const void *b);
 
 void
 order_marginal(Tree* tree, size_t num_annotations)

@@ -375,28 +375,32 @@ Tree *parse_nh_string(char *in_str, size_t nbanno) {
     t->min_branch_len = -1.0;
     t->min_tip_branch_len = -1.0;
     maxpoly=0;
+    int num_nonzero_tips = 0;
+    int num_nonzero_inner_branches = 0;
 
     double branch_len_sum = 0.;
     for (i = 0; i < t->nb_nodes; i++) {
         cur_node = t->nodes[i];
-        if(cur_node->nb_neigh == 1){ //tips
+        if((cur_node->nb_neigh == 1) && (cur_node->branch_len > 0.0)){ //tips
           tip_branch_len_sum += cur_node->branch_len;
-          if ((t->min_tip_branch_len < 0 || t->min_tip_branch_len > cur_node->branch_len) && cur_node->branch_len > 0.0) {
+          num_nonzero_tips += 1;
+          if ((t->min_tip_branch_len < 0) || (t->min_tip_branch_len > cur_node->branch_len)) {
               t->min_tip_branch_len = cur_node->branch_len;
           }
         }
         if(maxpoly < cur_node->nb_neigh)  {
             maxpoly = cur_node->nb_neigh;
         }
-        if (cur_node != t->root) {
-            if ((t->min_branch_len < 0 || t->min_branch_len > cur_node->branch_len) && cur_node->branch_len > 0.0) {
+        if ((cur_node != t->root) && (cur_node->branch_len > 0.0)) {
+            branch_len_sum += cur_node->branch_len;
+            num_nonzero_inner_branches += 1;
+            if ((t->min_branch_len < 0) || (t->min_branch_len > cur_node->branch_len)) {
                 t->min_branch_len = cur_node->branch_len;
             }
-            branch_len_sum += cur_node->branch_len;
         }
     }
-    t->avg_tip_branch_len = tip_branch_len_sum / (double) t->nb_taxa;
-    t->avg_branch_len = branch_len_sum / (double) t->nb_edges;
+    t->avg_tip_branch_len = tip_branch_len_sum / num_nonzero_tips;
+    t->avg_branch_len = branch_len_sum / num_nonzero_inner_branches;
 
     log_info("BASIC TREE STATISTICS:\n\n");
     log_info("\tNumber of taxa:\t%zd\n", t->nb_taxa);

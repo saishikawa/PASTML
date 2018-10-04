@@ -175,7 +175,7 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
         }
         
         parameters[num_annotations] = 1.0 / s_tree->avg_branch_len;
-        parameters[num_annotations + 1] = s_tree->avg_tip_branch_len / 50.0;
+        parameters[num_annotations + 1] = (s_tree->num_zero_tip_branches > 0) ? s_tree->min_tip_branch_len / 2 : 0.0;
 
         size_t set_values = 0;
         if (parameter_name != NULL) {
@@ -207,18 +207,21 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
         } else {
             log_info("OPTIMISING PARAMETERS...\n\n");
 
+            if (s_tree->num_zero_tip_branches == 0) {
+                set_values |= EPSILON_SET;
+            }
+
             double scale_low = ((set_values & SF_SET) == 0)
                     ? 0.001 / s_tree->avg_branch_len: parameters[num_annotations];
             double scale_high = ((set_values & SF_SET) == 0)
                     ? 10.0 / s_tree->avg_branch_len: parameters[num_annotations];
 
             double epsilon_low = ((set_values & EPSILON_SET) == 0)
-                    ? MIN(s_tree->min_tip_branch_len / 2, s_tree->avg_tip_branch_len / 100.0): parameters[num_annotations + 1];
+                    ? 0.0: parameters[num_annotations + 1];
             double epsilon_high = ((set_values & EPSILON_SET) == 0)
-                    ? s_tree->avg_tip_branch_len / 10.0: parameters[num_annotations + 1];
+                    ? s_tree->min_branch_len: parameters[num_annotations + 1];
 
-            log_likelihood = minimize_params(s_tree, num_annotations, parameters, character,
-                    ((set_values & FREQUENCIES_SET) == 0), scale_low, scale_high, epsilon_low, epsilon_high);
+            log_likelihood = minimize_params(s_tree, num_annotations, parameters, character, set_values, scale_low, scale_high, epsilon_low, epsilon_high);
             log_info("\n");
 
             log_info("OPTIMISED PARAMETERS:\n\n");

@@ -329,39 +329,55 @@ double minimize_params(Tree* s_tree, size_t num_annotations, double *parameters,
     my_func.fdf = my_fdf;
     my_func.params = par;
 
-    for (int i = 0; i < 5; i++) {
+    int i = 0;
+    bool some_optimum_found = FALSE;
+    bool start_at_random = FALSE;
+    while (i < 5) {
         log_info("\nOptimising parameters, iteration %d out of 5\n", i + 1);
-        if (i > 0) {
+        if (start_at_random) {
             set_initial_random_parameter_values(parameters, num_annotations, set_values, scale_low, scale_up,
                                                 epsilon_low, epsilon_up);
         }
-        log_info("Scaling factor can vary between %.10f and %.10f, starting at %.10f.\n",
-                 scale_low, scale_up, parameters[num_annotations]);
-        log_info("Epsilon can vary between %.10f and %.10f, starting at %.10f.\n",
-                 epsilon_low, epsilon_up, parameters[num_annotations + 1]);
+        if ((set_values & SF_SET) == 0) {
+            log_info("Scaling factor can vary between %.10f and %.10f, starting at %.10f.\n",
+                     scale_low, scale_up, parameters[num_annotations]);
+        }
+        if ((set_values & EPSILON_SET) == 0) {
+            log_info("Epsilon can vary between %.10f and %.10f, starting at %.10f.\n",
+                     epsilon_low, epsilon_up, parameters[num_annotations + 1]);
+        }
         double res = _minimize_params(s_tree, num_annotations, parameters, character, set_values,
                 scale_low, scale_up, epsilon_low, epsilon_up, my_func);
         
-        bool hit_sf_up_bound = (fabs(scale_up - scale_low) > 1e-5)
+        bool hit_sf_up_bound = ((set_values & SF_SET) == 0)
                             && (fabs(parameters[num_annotations] - scale_up) < 1e-5);
-        bool hit_sf_lower_bound = (fabs(scale_up - scale_low) > 1e-5)
+        bool hit_sf_lower_bound = ((set_values & SF_SET) == 0)
                             && (fabs(parameters[num_annotations] - scale_low) < 1e-5);
-        bool hit_epsilon_bound = (fabs(epsilon_up - epsilon_low) > 1e-5)
-                                 && (fabs(parameters[num_annotations + 1] - epsilon_up) < 1e-5);
+        bool hit_epsilon_bound = ((set_values & EPSILON_SET) == 0)
+                                 && (fabs(parameters[num_annotations + 1] - epsilon_up) < 1e-10);
+        i += 1;
+        start_at_random = TRUE;
 
         if (hit_epsilon_bound) {
             log_info("...hit epsilon upper bound...\n");
         }
         if (hit_sf_up_bound) {
-            log_info("...hit scaling factor upper bound...\n");
+            log_info("...hit scaling factor upper bound, relaxing it...\n");
+            scale_up *= 2;
+            i -= 1;
+            start_at_random = FALSE;
         }
         if (hit_sf_lower_bound) {
-            log_info("...hit scaling factor lower bound...\n");
+            log_info("...hit scaling factor lower bound, relaxing it...\n");
+            scale_low /= 2;
+            i -= 1;
+            start_at_random = FALSE;
         }
 
-        if ((i == 0) || (res > optimum)) {
+        if (!some_optimum_found || (res > optimum)) {
             memcpy(best_parameters, parameters, (num_annotations + 2) * sizeof(double));
             optimum = res;
+            some_optimum_found = TRUE;
             log_info("...%s: %.10f...\n", (i == 0) ? "our first optimum candidate": "improved the optimum", optimum);
         }
     }

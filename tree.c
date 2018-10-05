@@ -1,6 +1,12 @@
 #include <errno.h>
+#include <stdbool.h>
 #include "pastml.h"
 #include "logger.h"
+
+
+bool isTip(const Node *nd) {
+    return nd->nb_neigh == 1;
+}
 
 int index_toplevel_colon(const char *in_str, int begin, int end) {
     /* returns the index of the (first) toplevel colon only, -1 if not found */
@@ -382,7 +388,7 @@ Tree *parse_nh_string(char *in_str, size_t nbanno) {
     double branch_len_sum = 0.;
     for (i = 0; i < t->nb_nodes; i++) {
         cur_node = t->nodes[i];
-        if(cur_node->nb_neigh == 1) {//tips
+        if(isTip(cur_node)) {
           if (cur_node->branch_len > 0.0) {
               tip_branch_len_sum += cur_node->branch_len;
               num_nonzero_tips += 1;

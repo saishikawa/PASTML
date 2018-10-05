@@ -1,4 +1,5 @@
 #include "pastml.h"
+#include "tree.h"
 
 
 int intersect_with_states2(long *states1, const long *states2, size_t n) {
@@ -51,6 +52,7 @@ long* get_neighbour_state_intersection(Node *node, size_t first_index, size_t la
     }
     return intersection_is_empty ? NULL: state_intersection;
 }
+size_t update_counts(Node* nd, size_t mc);
 
 long * get_most_common_neighbour_states(Node *node, size_t first_index, size_t last_index, size_t num_annotations,
                                         int include_self, long *(*get_neighbour_states)(Node *)) {
@@ -129,8 +131,7 @@ void _uppass_node(Node* node, Node* root, size_t num_annotations) {
     long cur_state;
     size_t mask_array_len = (size_t) ceil(num_annotations / 64.0);
 
-    // a tip
-    if (node->nb_neigh == 1) {
+    if (isTip(node)) {
         // initialize the bit mask for the tips: put 1 in the position of its state(s).
         node->down_parsimony_states = calloc(mask_array_len, sizeof(long));
         cur_state = 1;
@@ -154,6 +155,9 @@ void _uppass_node(Node* node, Node* root, size_t num_annotations) {
                                                                        num_annotations, FALSE,
                                                                        get_down_parsimony_states);
 }
+
+long *get_states(Node *nd);
+long *get_up_down_states(Node *nd);
 
 void _downpass_node(Node* node, Node* root, size_t num_annotations) {
     /**
@@ -198,8 +202,7 @@ void _downpass_node(Node* node, Node* root, size_t num_annotations) {
 
         node->up_parsimony_states = get_most_common_neighbour_states(parent, (parent == root) ? 0 : 1, parent->nb_neigh,
                                                                      num_annotations, TRUE, get_states);
-        // a tip
-        if (node->nb_neigh == 1) {
+        if (isTip(node)) {
             /* if we were hesitating between several states for this tip before,
              * we might be able to reduce the number of possibilities
              * by intersecting them with the up state */

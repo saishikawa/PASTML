@@ -1,5 +1,7 @@
+#include <stdbool.h>
 #include "pastml.h"
 #include "scaling.h"
+#include "tree.h"
 
 int get_max(const int *array, size_t n) {
     /**
@@ -71,7 +73,7 @@ double get_rescaled_branch_len(const Node *nd, double avg_br_len, double scaling
      * This removes zero tip branches, while keeping the average branch length intact.
      */
     double bl = nd->branch_len;
-    if (nd->nb_neigh == 1) { /*a tip*/
+    if (isTip(nd)) {
         bl = (bl + epsilon) * (avg_br_len / (avg_br_len + epsilon));
     }
     return bl * scaling_factor;
@@ -106,8 +108,43 @@ int calculate_node_probabilities(const Node *nd, size_t num_annotations, size_t 
     int factors = 0;
     double p_child_branch_from_i, cur_child_branch_from_i;
     size_t i, j, k;
+
+    // nothing to do: tips were already initialised before
+    if (isTip(nd)) {
+        return factors;
+    }
+
+    // remove possible leftovers from previous runs.
+    for (i = 0; i < num_annotations; i++) {
+        nd->bottom_up_likelihood[i] = 0.0;
+    }
+
+    /* check if there are tip children at length zero:
+     * if so, the only possible states for our node will be one of their states. */
+    bool hasProblematicChildren = FALSE;
     for (k = first_child_index; k < nd->nb_neigh; k++) {
         Node *child = nd->neigh[k];
+        if (isTip(child) && child->branch_len == 0.0) {
+            hasProblematicChildren = TRUE;
+            for (i = 0; i < num_annotations; i++) {
+                nd->bottom_up_likelihood[i] += child->bottom_up_likelihood[i];
+            }
+        }
+    }
+    // if no child is problemetic, then every state is equal
+    if (!hasProblematicChildren) {
+        for (i = 0; i < num_annotations; i++) {
+            nd->bottom_up_likelihood[i] = 1.0;
+        }
+    }
+
+
+    for (k = first_child_index; k < nd->nb_neigh; k++) {
+        Node *child = nd->neigh[k];
+        // if it is a problematic child we have already considered it by limiting possible states above
+        if (isTip(child) && child->branch_len == 0.0) {
+            continue;
+        }
         for (i = 0; i < num_annotations; i++) {
             /* Calculate the probability of having a branch from the node to its child node,
              * given that the node is in state i: p_child_branch_from_i = sum_j(p_ij * p_child_j)
@@ -132,11 +169,7 @@ int calculate_node_probabilities(const Node *nd, size_t num_annotations, size_t 
             /* The probability of having the node in state i is a multiplication of
              * the probabilities of p_child_branch_from_i for all child branches.
              */
-            if (k == first_child_index) {
-                nd->bottom_up_likelihood[i] = p_child_branch_from_i;
-            } else {
-                nd->bottom_up_likelihood[i] *= p_child_branch_from_i;
-            }
+            nd->bottom_up_likelihood[i] *= p_child_branch_from_i;
         }
         int add_factors = upscale_node_probs(nd->bottom_up_likelihood, num_annotations);
         // if all the probabilities are zero (shown by add_factors == -1), stop here
@@ -204,6 +237,7 @@ double calculate_bottom_up_likelihood(Tree *s_tree, size_t num_annotations, doub
 }
 
 
+
 void
 initialise_tip_probabilities(Tree *s_tree, char *const *tip_names, const int *states, size_t num_tips,
                              size_t num_annotations) {
@@ -214,21 +248,21 @@ initialise_tip_probabilities(Tree *s_tree, char *const *tip_names, const int *st
      */
     Node *nd;
     size_t j, i, k;
-    double* all_ones_array = calloc(num_annotations, sizeof(double));
+    double* all_options_array = calloc(num_annotations, sizeof(double));
     for (j = 0; j < num_annotations; j++) {
-       all_ones_array[j] = 1.0;
+       all_options_array[j] = 1.0;
     }
 
     for (k = 0; k < s_tree->nb_nodes; k++) {
         nd = s_tree->nodes[k];
         /* if a tip, process it */
-        if (nd->nb_neigh == 1) {
+        if (isTip(nd)) {
             for (i = 0; i < num_tips; i++) {
                 if (strcmp(nd->name, tip_names[i]) == 0) {
                     // states[i] == -1 means that the annotation is missing
                     if (states[i] == -1) {
                         // and therefore any state is possible
-                        memcpy(nd->bottom_up_likelihood, all_ones_array, num_annotations * sizeof(double));
+                        memcpy(nd->bottom_up_likelihood, all_options_array, num_annotations * sizeof(double));
                     } else {
                         nd->bottom_up_likelihood[states[i]] = 1.0;
                     }
@@ -238,7 +272,7 @@ initialise_tip_probabilities(Tree *s_tree, char *const *tip_names, const int *st
         }
     }
 
-    free(all_ones_array);
+    free(all_options_array);
 }
 
 void rescale_branch_lengths(Tree *s_tree, double scaling_factor, double epsilon) {

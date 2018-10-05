@@ -207,9 +207,10 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
         } else {
             log_info("OPTIMISING PARAMETERS...\n\n");
 
-            if (s_tree->num_zero_tip_branches == 0) {
+//            if (s_tree->num_zero_tip_branches == 0) {
                 set_values |= EPSILON_SET;
-            }
+//            }
+            parameters[num_annotations + 1] = 0.0;
 
             double scale_low = ((set_values & SF_SET) == 0)
                     ? 0.001 / s_tree->avg_branch_len: parameters[num_annotations];

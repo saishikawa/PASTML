@@ -1,8 +1,9 @@
 cmake_minimum_required(VERSION 3.6)
 project(pastml)
 
-set(CMAKE_C_STANDARD 99)
+set(CMAKE_C_STANDARD 11)
 set(CMAKE_INCLUDE_PATH .)
+set(CMAKE_C_FLAGS "--std=c11")
 
 set(SOURCE_FILES main.c likelihood.c tree.c marginal_approximation.c marginal_likelihood.c
         states.c runpastml.c parsimony.c likelihood.h marginal_likelihood.h tree.h

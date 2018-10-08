@@ -32,19 +32,20 @@ int upscale_node_probs(double* array, size_t n) {
      * if a certain node probability is too small, we multiply this node probabilities by a scaling factor,
      * and keep the factor in mind to remove it from the final likelihood.
      */
-
-    double smallest = 1.1;
+    bool smallest_set = FALSE;
+    double smallest;
     size_t i;
     int factors = 0;
 
     /* find the smallest non-zero probability */
     for (i = 0; i < n; i++) {
-        if (array[i] > 0.0 && array[i] < smallest) {
+        if (array[i] > 0.0 && (!smallest_set || (array[i] < smallest))) {
+            smallest_set = TRUE;
             smallest = array[i];
         }
     }
     /* the whole array is zero */
-    if (smallest == 1.1) {
+    if (!smallest_set) {
         return -1;
     }
     if (smallest < LIM_P) {

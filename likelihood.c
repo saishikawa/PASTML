@@ -2,6 +2,7 @@
 #include "pastml.h"
 #include "scaling.h"
 #include "tree.h"
+#include "logger.h"
 
 int get_max(const int *array, size_t n) {
     /**
@@ -121,28 +122,33 @@ int calculate_node_probabilities(const Node *nd, size_t num_annotations, size_t 
 
     /* check if there are tip children at length zero:
      * if so, the only possible states for our node will be one of their states. */
-    bool hasProblematicChildren = FALSE;
+    bool setSomeStates = FALSE;
     for (k = first_child_index; k < nd->nb_neigh; k++) {
         Node *child = nd->neigh[k];
-        if (isTip(child) && child->branch_len == 0.0) {
-            hasProblematicChildren = TRUE;
+        if (isTip(child) && (child->branch_len == 0.0) && !child->unknown_state) {
+            setSomeStates = TRUE;
             for (i = 0; i < num_annotations; i++) {
                 nd->bottom_up_likelihood[i] += child->bottom_up_likelihood[i];
             }
         }
     }
-    // if no child is problemetic, then every state is equal
-    if (!hasProblematicChildren) {
+
+    if (!setSomeStates) {
         for (i = 0; i < num_annotations; i++) {
             nd->bottom_up_likelihood[i] = 1.0;
         }
     }
 
-
     for (k = first_child_index; k < nd->nb_neigh; k++) {
         Node *child = nd->neigh[k];
-        // if it is a problematic child we have already considered it by limiting possible states above
+        // it is a problematic child
         if (isTip(child) && child->branch_len == 0.0) {
+            if (!is_marginal) {
+                for (i = 0; i < num_annotations; i++) {
+                    // for joint pick the best child state
+                    child->best_states[i] = i;
+                }
+            }
             continue;
         }
         for (i = 0; i < num_annotations; i++) {
@@ -169,7 +175,9 @@ int calculate_node_probabilities(const Node *nd, size_t num_annotations, size_t 
             /* The probability of having the node in state i is a multiplication of
              * the probabilities of p_child_branch_from_i for all child branches.
              */
-            nd->bottom_up_likelihood[i] *= p_child_branch_from_i;
+            if (!setSomeStates) {
+                nd->bottom_up_likelihood[i] *= p_child_branch_from_i;
+            }
         }
         int add_factors = upscale_node_probs(nd->bottom_up_likelihood, num_annotations);
         // if all the probabilities are zero (shown by add_factors == -1), stop here
@@ -255,6 +263,10 @@ initialise_tip_probabilities(Tree *s_tree, char *const *tip_names, const int *st
 
     for (k = 0; k < s_tree->nb_nodes; k++) {
         nd = s_tree->nodes[k];
+        nd->unknown_state = TRUE;
+    }
+    for (k = 0; k < s_tree->nb_nodes; k++) {
+        nd = s_tree->nodes[k];
         /* if a tip, process it */
         if (isTip(nd)) {
             for (i = 0; i < num_tips; i++) {
@@ -265,6 +277,10 @@ initialise_tip_probabilities(Tree *s_tree, char *const *tip_names, const int *st
                         memcpy(nd->bottom_up_likelihood, all_options_array, num_annotations * sizeof(double));
                     } else {
                         nd->bottom_up_likelihood[states[i]] = 1.0;
+                        nd->unknown_state = FALSE;
+                        if (nd != s_tree->root) {
+                            nd->neigh[0]->unknown_state = FALSE;
+                        }
                     }
                     break;
                 }

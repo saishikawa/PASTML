@@ -9,6 +9,7 @@
 #include <math.h>
 #include <float.h>
 #include <limits.h>
+#include <stdbool.h>
 
 
 #define MAXLNAME 255
@@ -50,6 +51,7 @@ typedef struct __Node {
     int *scaling_factor_down;
     int *scaling_factor_up;
     double branch_len;
+    bool unknown_state;
 } Node;
 
 

@@ -10,7 +10,6 @@
 
 #define FREQUENCIES_SET 1
 #define SF_SET 2
-#define EPSILON_SET 4
 
 int output_ancestral_states(Tree *tree, size_t num_annotations, char **character, char *output_file_path, char* format);
 int output_parameters(const double *parameters, size_t num_annotations, char **character, double log_lh,

@@ -490,7 +490,7 @@ int copy_nh_stream_into_str(FILE *nh_stream, char *big_string) {
 } /*end copy_nh_stream_into_str */
 
 void free_node(Node *node, size_t num_anno) {
-    int j;
+    size_t j;
 
     if (node == NULL) return;
     free(node->neigh);

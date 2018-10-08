@@ -10,8 +10,7 @@ size_t read_parameters(char* parameter_file_path, char **character, size_t num_a
     double double_value = 0;
     FILE *param_file = fopen(parameter_file_path, "r");
     char *quoted_state = (char*)malloc(255 * sizeof(char));
-    // we'll set its 0's bite to 1 if the frequencies are set, its 1st bite to 1 if scaling is set,
-    // and its 2nd bit to 1 if epsilon is set
+    // we'll set its 0's bite to 1 if the frequencies are set, and its 1st bite to 1 if scaling is set
     size_t result = 0;
 
     if (!param_file) {
@@ -31,10 +30,6 @@ size_t read_parameters(char* parameter_file_path, char **character, size_t num_a
             sscanf(value, "%lf", &double_value);
             parameters[num_annotations] = double_value;
             result |= SF_SET;
-        } else if (strcmp(name, "epsilon") == 0) {
-            sscanf(value, "%lf", &double_value);
-            parameters[num_annotations + 1] = double_value;
-            result |= EPSILON_SET;
         } else if (read_frequencies) {
             for (i = 0; i < num_annotations; i++) {
                 sprintf(quoted_state, "\"%s\"", character[i]);
@@ -173,11 +168,9 @@ int output_parameters(const double *parameters, size_t num_annotations, char **c
     fprintf(outfile, "parameter,value\n");
     fprintf(outfile, "model,%s\n", model);
     fprintf(outfile, "log likelihood,%.8f\n", log_lh);
-    fprintf(outfile, "frequencies were fixed,%s\n", (set_values & FREQUENCIES_SET) == 0 ? "No": "Yes");
     fprintf(outfile, "scaling factor was fixed,%s\n", (set_values & SF_SET) == 0 ? "No": "Yes");
-    fprintf(outfile, "epsilon was fixed,%s\n", (set_values & EPSILON_SET) == 0 ? "No": "Yes");
     fprintf(outfile, "scaling factor,%.8f\n", parameters[num_annotations]);
-    fprintf(outfile, "epsilon,%.e\n", parameters[num_annotations + 1]);
+    fprintf(outfile, "frequencies were fixed,%s\n", (set_values & FREQUENCIES_SET) == 0 ? "No": "Yes");
     for (i = 0; i < num_annotations; i++) {
         fprintf(outfile, "\"%s\",%.8f\n", character[i], parameters[i]);
     }

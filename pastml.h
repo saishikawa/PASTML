@@ -58,8 +58,8 @@ typedef struct __Node {
 typedef struct __Tree {
     Node **nodes;            /* array of node pointers */
     Node *root;            /* the root or pseudo-root node */
-    int nb_nodes;
-    int nb_edges;
+    size_t nb_nodes;
+    size_t nb_edges;
     size_t nb_taxa;
     int next_avail_node_id;
     double avg_branch_len;

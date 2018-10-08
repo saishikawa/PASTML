@@ -47,7 +47,7 @@ double get_mu(const double *frequencies, size_t n) {
     return 1.0 / (1.0 - sum);
 }
 
-double get_pij(const double *frequencies, double mu, double t, int i, int j) {
+double get_pij(const double *frequencies, double mu, double t, size_t i, size_t j) {
     /**
      * Calculate the probability of substitution i->j over time t, given the mutation rate mu:
      *
@@ -65,22 +65,14 @@ double get_pij(const double *frequencies, double mu, double t, int i, int j) {
     return p_ij;
 }
 
-double get_rescaled_branch_len(const Node *nd, double avg_br_len, double scaling_factor, double epsilon) {
+double get_rescaled_branch_len(const Node *nd, double scaling_factor) {
     /**
      * Returns the node branch length multiplied by the scaling factor.
-     *
-     * For tips, before multiplying, the branch length is adjusted with epsilon:
-     * bl = (bl + eps) / (avg_tip_len / (avg_tip_len + eps)).
-     * This removes zero tip branches, while keeping the average branch length intact.
      */
-    double bl = nd->branch_len;
-    if (isTip(nd)) {
-        bl = (bl + epsilon) * (avg_br_len / (avg_br_len + epsilon));
-    }
-    return bl * scaling_factor;
+    return nd->branch_len * scaling_factor;
 }
 
-void set_p_ij(const Node *nd, double avg_br_len, size_t num_frequencies, const double *parameters) {
+void set_p_ij(const Node *nd, size_t num_frequencies, const double *parameters) {
     /**
      * Sets node probabilities of substitution: p[i][j]:
      *
@@ -88,13 +80,12 @@ void set_p_ij(const Node *nd, double avg_br_len, size_t num_frequencies, const d
      * Pxy(t) = \pi_y (1 - exp(-mu t)) + exp(-mu t), if x ==y, \pi_y (1 - exp(-mu t)), otherwise
      * [Gascuel "Mathematics of Evolution and Phylogeny" 2005]
      *
-     * parameters = [frequency_1, .., frequency_n, scaling_factor, epsilon]
+     * parameters = [frequency_1, .., frequency_n, scaling_factor]
      */
-    int i, j;
+    size_t i, j;
 
     double scaling_factor = parameters[num_frequencies];
-    double epsilon = parameters[num_frequencies + 1];
-    double t = get_rescaled_branch_len(nd, avg_br_len, scaling_factor, epsilon);
+    double t = get_rescaled_branch_len(nd, scaling_factor);
     double mu = get_mu(parameters, num_frequencies);
 
 
@@ -192,7 +183,7 @@ int calculate_node_probabilities(const Node *nd, size_t num_annotations, size_t 
 int process_node(Node *nd, Tree *s_tree, size_t num_annotations, double *parameters, int is_marginal) {
     /**
      * Calculates node probabilities.
-     * parameters = [frequency_char_1, .., frequency_char_n, scaling_factor, epsilon].
+     * parameters = [frequency_char_1, .., frequency_char_n, scaling_factor].
      */
     int factors = 0, add_factors;
     size_t i;
@@ -204,7 +195,7 @@ int process_node(Node *nd, Tree *s_tree, size_t num_annotations, double *paramet
         child = nd->neigh[i];
         
         /* set probabilities of substitution */
-        set_p_ij(child, s_tree->avg_tip_branch_len, num_annotations, parameters);
+        set_p_ij(child, num_annotations, parameters);
 
         add_factors = process_node(child, s_tree, num_annotations, parameters, is_marginal);
         // if all the probabilities are zero (shown by add_factors == -1), stop here
@@ -227,7 +218,7 @@ int process_node(Node *nd, Tree *s_tree, size_t num_annotations, double *paramet
 double calculate_bottom_up_likelihood(Tree *s_tree, size_t num_annotations, double *parameters, int is_marginal) {
     /**
      * Calculates tree log likelihood.
-     * parameters = [frequency_char_1, .., frequency_char_n, scaling_factor, epsilon].
+     * parameters = [frequency_char_1, .., frequency_char_n, scaling_factor].
      */
     double scaled_lk = 0;
     size_t i;
@@ -291,7 +282,7 @@ initialise_tip_probabilities(Tree *s_tree, char *const *tip_names, const int *st
     free(all_options_array);
 }
 
-void rescale_branch_lengths(Tree *s_tree, double scaling_factor, double epsilon) {
+void rescale_branch_lengths(Tree *s_tree, double scaling_factor) {
     /**
      * Rescales all the branches in the tree.
      */
@@ -299,7 +290,7 @@ void rescale_branch_lengths(Tree *s_tree, double scaling_factor, double epsilon)
     size_t i;
     for (i = 0; i < s_tree->nb_nodes; i++) {
         nd = s_tree->nodes[i];
-        nd->branch_len = get_rescaled_branch_len(nd, s_tree->avg_tip_branch_len, scaling_factor, epsilon);
+        nd->branch_len = get_rescaled_branch_len(nd, scaling_factor);
     }
 }
 

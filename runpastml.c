@@ -79,7 +79,7 @@ int is_valid_prediction_method(char *prob_method) {
 int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name, char *out_tree_name,
               char *out_parameter_name, char *model,
               char* prob_method, char *parameter_name, char *out_mp_name) {
-    int i;
+    size_t i;
     int *states;
     double log_likelihood, sec;
     int minutes;
@@ -165,9 +165,9 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
         parsimony(s_tree, num_annotations, prob_method);
         select_parsimonious_states(s_tree, num_annotations);
     } else {
-        /* we would need two additional spots in the parameters array: for the scaling factor, and for the epsilon,
-         * therefore num_annotations + 2*/
-        parameters = calloc(num_annotations + 2, sizeof(double));
+        /* we would need one additional spot in the parameters array: for the scaling factor,
+         * therefore num_annotations + 1*/
+        parameters = calloc(num_annotations + 1, sizeof(double));
         if (parameters == NULL) {
             fprintf(stderr, "Memory problems: %s\n", strerror(errno));
             fprintf(stderr, "Value of errno: %d\n", errno);
@@ -175,7 +175,6 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
         }
         
         parameters[num_annotations] = 1.0 / s_tree->avg_branch_len;
-        parameters[num_annotations + 1] = (s_tree->num_zero_tip_branches > 0) ? s_tree->min_tip_branch_len / 2 : 0.0;
 
         size_t set_values = 0;
         if (parameter_name != NULL) {
@@ -202,27 +201,18 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
         log_info("INITIAL LOG LIKELIHOOD:\t%.10f\n\n", log_likelihood);
         if (log_likelihood == log(1)) {
             log_info("INITIAL LIKELIHOOD IS PERFECT, CANNOT DO BETTER THAN THAT.\n\n");
-        } else if (((set_values & FREQUENCIES_SET) != 0) && ((set_values & SF_SET) != 0) && ((set_values & EPSILON_SET) != 0)) {
+        } else if (((set_values & FREQUENCIES_SET) != 0) && ((set_values & SF_SET) != 0)) {
             log_info("ALL THE PARAMETERS ARE PRESET, NOTHING TO OPTIMIZE.\n\n");
         } else {
             log_info("OPTIMISING PARAMETERS...\n\n");
-
-//            if (s_tree->num_zero_tip_branches == 0) {
-                set_values |= EPSILON_SET;
-//            }
-            parameters[num_annotations + 1] = 0.0;
 
             double scale_low = ((set_values & SF_SET) == 0)
                     ? 0.001 / s_tree->avg_branch_len: parameters[num_annotations];
             double scale_high = ((set_values & SF_SET) == 0)
                     ? 10.0 / s_tree->avg_branch_len: parameters[num_annotations];
 
-            double epsilon_low = ((set_values & EPSILON_SET) == 0)
-                    ? 0.0: parameters[num_annotations + 1];
-            double epsilon_high = ((set_values & EPSILON_SET) == 0)
-                    ? s_tree->min_branch_len: parameters[num_annotations + 1];
-
-            log_likelihood = minimize_params(s_tree, num_annotations, parameters, character, set_values, scale_low, scale_high, epsilon_low, epsilon_high);
+            log_likelihood = minimize_params(s_tree, num_annotations, parameters, character, set_values, scale_low,
+                                             scale_high);
             log_info("\n");
 
             log_info("OPTIMISED PARAMETERS:\n\n");
@@ -233,7 +223,6 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
                 log_info("\n");
             }
             log_info("\tScaling factor:\t%.10f \n", parameters[num_annotations]);
-            log_info("\tEpsilon:\t%e\n", parameters[num_annotations + 1]);
             log_info("\n");
             log_info("OPTIMISED LOG LIKELIHOOD:\t%.10f\n", log_likelihood);
             log_info("\n");
@@ -246,7 +235,7 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
         log_info("\tParameter values are written to %s in csv format.\n", out_parameter_name);
         log_info("\n");
 
-        rescale_branch_lengths(s_tree, parameters[num_annotations], parameters[num_annotations + 1]);
+        rescale_branch_lengths(s_tree, parameters[num_annotations]);
 
         if (is_marginal) {
             log_info("CALCULATING TOP-DOWN LIKELIHOOD...\n\n");
@@ -275,9 +264,8 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
                 choose_best_marginal_states(s_tree, num_annotations);
             }
         } else {
-            // the branch lengths are already rescaled, so let's put scaling factor to 1, and epsilon to 0.
+            // the branch lengths are already rescaled, so let's put scaling factor to 1.
             parameters[num_annotations] = 1.0;
-            parameters[num_annotations + 1] = 0.0;
 
             // calculate joint likelihood
             calculate_bottom_up_likelihood(s_tree, num_annotations, parameters, FALSE);

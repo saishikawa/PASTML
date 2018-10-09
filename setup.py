@@ -23,7 +23,8 @@ pastml_module = Extension('pastml',
                           sources=['pastmlpymodule.c', 'runpastml.c', 'tree.c',
                                    'likelihood.c', 'marginal_likelihood.c', 'marginal_approximation.c',
                                    'states.c', 'scaling.c', 'param_minimization.c', 'logger.c', 'parsimony.c'],
-                          libraries=['gsl', 'gslcblas']
+                          libraries=['gsl', 'gslcblas'],
+                          extra_compile_args=['-std=c11'],
                           )
 
 setup(
@@ -36,7 +37,7 @@ setup(
         'Topic :: Software Development',
         'Topic :: Software Development :: Libraries :: Python Modules',
     ],
-    version='1.0.5',
+    version='1.0.6',
     description='Python wrapper for PASTML.',
     maintainer='Anna Zhukova',
     maintainer_email='anna.zhukova@pasteur.fr',

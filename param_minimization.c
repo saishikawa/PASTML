@@ -189,6 +189,19 @@ void set_initial_random_parameter_values(double *parameters, size_t num_annotati
     }
 }
 
+void set_initial_equal_parameter_values(double *parameters, size_t num_annotations, size_t set_values, double scale_low,
+                                         double scale_up) {
+    // set initial values to random ones within bounds
+    if ((set_values & FREQUENCIES_SET) == 0) {
+        for (size_t i = 0; i < num_annotations; i++) {
+            parameters[i] = 1.0 / num_annotations;
+        }
+    }
+    if ((set_values & SF_SET) == 0) {
+        parameters[num_annotations] = (scale_low + scale_up) / 2.0;
+    }
+}
+
 double _minimize_params(Tree *s_tree, size_t num_annotations, double *parameters, char **character, size_t set_values,
                         double scale_low, double scale_up, gsl_multimin_function_fdf my_func) {
     /**
@@ -302,46 +315,34 @@ double minimize_params(Tree *s_tree, size_t num_annotations, double *parameters,
     my_func.fdf = my_fdf;
     my_func.params = par;
 
-    size_t i = 0;
     bool some_optimum_found = FALSE;
-    bool start_at_random = FALSE;
-    while (i < 5) {
-        log_info("\nOptimising parameters, iteration %d out of 5\n", i + 1);
-        if (start_at_random) {
+
+    if ((set_values & SF_SET) == 0) {
+        log_info("Scaling factor can vary between %.10f and %.10f.\n", scale_low, scale_up);
+    }
+    for (size_t i = 1; i < 6; i++) {
+        log_info("\nOptimising parameters, iteration %d out of 5\n", i);
+        if (i == 1) {
+            if ((set_values & FREQUENCIES_SET) == 0) {
+                log_info("Starting from the observed frequencies...\n");
+            }
+            // keep the initial values
+        } else if (i == 2 && (set_values & FREQUENCIES_SET) == 0) {
+            log_info("Starting from equal frequencies...\n");
+            set_initial_equal_parameter_values(parameters, num_annotations, set_values, scale_low, scale_up);
+        } else {
+            if ((set_values & FREQUENCIES_SET) == 0) {
+                log_info("Starting from random frequencies...\n");
+            }
             set_initial_random_parameter_values(parameters, num_annotations, set_values, scale_low, scale_up);
-        }
-        if ((set_values & SF_SET) == 0) {
-            log_info("Scaling factor can vary between %.10f and %.10f, starting at %.10f.\n",
-                     scale_low, scale_up, parameters[num_annotations]);
         }
         double res = _minimize_params(s_tree, num_annotations, parameters, character, set_values,
                                       scale_low, scale_up, my_func);
-        
-        bool hit_sf_up_bound = ((set_values & SF_SET) == 0)
-                            && (fabs(parameters[num_annotations] - scale_up) < 1e-5);
-        bool hit_sf_lower_bound = ((set_values & SF_SET) == 0)
-                            && (fabs(parameters[num_annotations] - scale_low) < 1e-5);
-        i += 1;
-        start_at_random = TRUE;
-
-        if (hit_sf_up_bound) {
-            log_info("...hit scaling factor upper bound, relaxing it...\n");
-            scale_up *= 2;
-            i -= 1;
-            start_at_random = FALSE;
-        }
-        if (hit_sf_lower_bound) {
-            log_info("...hit scaling factor lower bound, relaxing it...\n");
-            scale_low /= 2;
-            i -= 1;
-            start_at_random = FALSE;
-        }
-
         if (!some_optimum_found || (res > optimum)) {
             memcpy(best_parameters, parameters, (num_annotations + 1) * sizeof(double));
             optimum = res;
+            log_info("...%s: %.10f...\n", some_optimum_found ? "improved the optimum": "our first optimum candidate", optimum);
             some_optimum_found = TRUE;
-            log_info("...%s: %.10f...\n", (i == 0) ? "our first optimum candidate": "improved the optimum", optimum);
         }
     }
 

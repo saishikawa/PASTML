@@ -320,29 +320,67 @@ double minimize_params(Tree *s_tree, size_t num_annotations, double *parameters,
     if ((set_values & SF_SET) == 0) {
         log_info("Scaling factor can vary between %.10f and %.10f.\n", scale_low, scale_up);
     }
-    for (size_t i = 1; i < 6; i++) {
-        log_info("\nOptimising parameters, iteration %d out of 5\n", i);
-        if (i == 1) {
-            if ((set_values & FREQUENCIES_SET) == 0) {
-                log_info("Starting from the observed frequencies...\n");
+
+    double scale_start = parameters[num_annotations];
+
+    bool newRound = TRUE;
+    double cur_scale_low , cur_scale_up;
+    size_t max_rounds = 5;
+    /* we will perform at least 5 iterations,
+     * if after that our optimal scaling factor will not be within the proposed bounds,
+     * we'll perform more iterations (up to 10) trying to find a better one within those bounds. */
+    for (size_t i = 1; i <= MIN(max_rounds, 10);) {
+        if (newRound) {
+            cur_scale_low = scale_low;
+            cur_scale_up = scale_up;
+            log_info("\nOptimising parameters, iteration %d out of %d\n", i, max_rounds);
+            if (i == 1) {
+                if ((set_values & FREQUENCIES_SET) == 0) {
+                    log_info("Starting from the observed frequencies...\n");
+                }
+                // keep the initial values
+            } else if (i == 2 && (set_values & FREQUENCIES_SET) == 0) {
+                log_info("Starting from equal frequencies...\n");
+                set_initial_equal_parameter_values(parameters, num_annotations, set_values, scale_low, scale_up);
+                parameters[num_annotations] = scale_start;
+            } else {
+                if ((set_values & FREQUENCIES_SET) == 0) {
+                    log_info("Starting from random frequencies...\n");
+                }
+                set_initial_random_parameter_values(parameters, num_annotations, set_values, scale_low, scale_up);
             }
-            // keep the initial values
-        } else if (i == 2 && (set_values & FREQUENCIES_SET) == 0) {
-            log_info("Starting from equal frequencies...\n");
-            set_initial_equal_parameter_values(parameters, num_annotations, set_values, scale_low, scale_up);
-        } else {
-            if ((set_values & FREQUENCIES_SET) == 0) {
-                log_info("Starting from random frequencies...\n");
-            }
-            set_initial_random_parameter_values(parameters, num_annotations, set_values, scale_low, scale_up);
         }
         double res = _minimize_params(s_tree, num_annotations, parameters, character, set_values,
-                                      scale_low, scale_up, my_func);
+                                      cur_scale_low, cur_scale_up, my_func);
+
+        bool hit_sf_up_bound = ((set_values & SF_SET) == 0)
+                               && (fabs(parameters[num_annotations] - cur_scale_up) < 1e-5);
+        bool hit_sf_lower_bound = ((set_values & SF_SET) == 0)
+                                  && (fabs(parameters[num_annotations] - cur_scale_low) < 1e-5);
+        if (hit_sf_up_bound) {
+            log_info("...hit scaling factor upper bound (%.10f), relaxing it...\n", cur_scale_up);
+            cur_scale_up *= 2;
+            newRound = FALSE;
+            continue;
+        }
+        if (hit_sf_lower_bound) {
+            log_info("...hit scaling factor lower bound (%.10f), relaxing it...\n", cur_scale_low);
+            cur_scale_low /= 2;
+            newRound = FALSE;
+            continue;
+        }
+        i += 1;
+        newRound = TRUE;
+
         if (!some_optimum_found || (res > optimum)) {
             memcpy(best_parameters, parameters, (num_annotations + 1) * sizeof(double));
             optimum = res;
             log_info("...%s: %.10f...\n", some_optimum_found ? "improved the optimum": "our first optimum candidate", optimum);
             some_optimum_found = TRUE;
+            // in case the optimal scaling factor that we found is not within the initial bounds, let's try for a bit longer.
+            if (i > 5 && (set_values & SF_SET) == 0 && (best_parameters[num_annotations] < scale_low || best_parameters[i] > scale_up)) {
+                max_rounds += 1;
+            }
         }
     }
 

@@ -206,14 +206,7 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
         } else {
             log_info("OPTIMISING PARAMETERS...\n\n");
 
-            double scale_low = ((set_values & SF_SET) == 0)
-                    ? 0.001 / s_tree->avg_branch_len: parameters[num_annotations];
-            double scale_high = ((set_values & SF_SET) == 0)
-                    ? 10.0 / s_tree->avg_branch_len: parameters[num_annotations];
-
-            log_likelihood = minimize_params(s_tree, num_annotations, parameters, character, set_values, scale_low,
-                                             scale_high);
-            log_info("\n");
+            log_likelihood = minimize_params(s_tree, num_annotations, parameters, character, set_values);
 
             log_info("OPTIMISED PARAMETERS:\n\n");
             if ((set_values & FREQUENCIES_SET) == 0) {
@@ -222,7 +215,8 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
                 }
                 log_info("\n");
             }
-            log_info("\tScaling factor:\t%.10f \n", parameters[num_annotations]);
+            log_info("\tScaling factor:\t%.10f, i.e. %.10f state changes per avg branch\n",
+                    parameters[num_annotations], parameters[num_annotations] * s_tree->avg_branch_len);
             log_info("\n");
             log_info("OPTIMISED LOG LIKELIHOOD:\t%.10f\n", log_likelihood);
             log_info("\n");

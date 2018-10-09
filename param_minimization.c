@@ -175,35 +175,8 @@ d_minus_loglikelihood (const gsl_vector *v, void *params, gsl_vector *df, double
     gsl_vector_free(v_copy);
 }
 
-void set_initial_random_parameter_values(double *parameters, size_t num_annotations, size_t set_values, double scale_low,
-                                         double scale_up) {
-    // set initial values to random ones within bounds
-    if ((set_values & FREQUENCIES_SET) == 0) {
-        for (size_t i = 0; i < num_annotations; i++) {
-            parameters[i] = random_double(0.0, 1.0);
-        }
-        normalize(parameters, num_annotations);
-    }
-    if ((set_values & SF_SET) == 0) {
-        parameters[num_annotations] = random_double(scale_low, scale_up);
-    }
-}
-
-void set_initial_equal_parameter_values(double *parameters, size_t num_annotations, size_t set_values, double scale_low,
-                                         double scale_up) {
-    // set initial values to random ones within bounds
-    if ((set_values & FREQUENCIES_SET) == 0) {
-        for (size_t i = 0; i < num_annotations; i++) {
-            parameters[i] = 1.0 / num_annotations;
-        }
-    }
-    if ((set_values & SF_SET) == 0) {
-        parameters[num_annotations] = (scale_low + scale_up) / 2.0;
-    }
-}
-
-double _minimize_params(Tree *s_tree, size_t num_annotations, double *parameters, char **character, size_t set_values,
-                        double scale_low, double scale_up, gsl_multimin_function_fdf my_func) {
+double _minimize_params(Tree *s_tree, double *parameters, char **character, size_t set_values,
+        gsl_multimin_function_fdf my_func) {
     /**
      * Optimises the following parameters:
      * parameters = [frequency_char_1, .., frequency_char_n, scaling_factor],
@@ -211,11 +184,12 @@ double _minimize_params(Tree *s_tree, size_t num_annotations, double *parameters
      * The parameters variable is updated to contain the optimal parameters found.
      * The optimal value of the likelihood is returned.
      */
-
-    /* Starting point */
-    gsl_vector* x = real_parameters2optimised_parameters(num_annotations, scale_low, scale_up,
-                                                         parameters, set_values);
-
+    double *params = (double *) my_func.params;
+    size_t num_annotations = (size_t) params[0];
+    double scale_low = params[1];
+    double scale_up = params[2];
+    gsl_vector* x = real_parameters2optimised_parameters(num_annotations,
+                                                         scale_low, scale_up, parameters, set_values);
     gsl_multimin_fdfminimizer* s = gsl_multimin_fdfminimizer_alloc(gsl_multimin_fdfminimizer_vector_bfgs2,
                                                                    get_num_parameters(num_annotations, set_values));
 
@@ -281,8 +255,7 @@ double my_f(const gsl_vector *v, void *params);
 void my_df(const gsl_vector *v, void *params, gsl_vector *df);
 void my_fdf(const gsl_vector *v, void *params, double *f, gsl_vector *df);
 
-double minimize_params(Tree *s_tree, size_t num_annotations, double *parameters, char **character, size_t set_values,
-                       double scale_low, double scale_up) {
+double minimize_params(Tree *s_tree, size_t num_annotations, double *parameters, char **character, size_t set_values) {
     /**
      * Optimises the following parameters:
      * parameters = [frequency_char_1, .., frequency_char_n, scaling_factor],
@@ -293,7 +266,7 @@ double minimize_params(Tree *s_tree, size_t num_annotations, double *parameters,
     double* best_parameters = calloc(num_annotations + 1, sizeof(double));
     double optimum;
 
-    double par[3] = {(double) num_annotations, scale_low, scale_up};
+    double par[3] = {(double) num_annotations, 0.001 / s_tree->avg_branch_len, 10 / s_tree->avg_branch_len};
 
     double my_f(const gsl_vector *v, void *params) {
         return minus_loglikelihood(v, params, parameters, set_values, s_tree);
@@ -318,56 +291,68 @@ double minimize_params(Tree *s_tree, size_t num_annotations, double *parameters,
     bool some_optimum_found = FALSE;
 
     if ((set_values & SF_SET) == 0) {
-        log_info("Scaling factor can vary between %.10f and %.10f.\n", scale_low, scale_up);
+        log_info("Scaling factor can vary between %.10f and %.10f.\n", par[1], par[2]);
     }
 
-    double scale_start = parameters[num_annotations];
-
     bool newRound = TRUE;
-    double cur_scale_low , cur_scale_up;
     size_t max_rounds = 5;
     /* we will perform at least 5 iterations,
      * if after that our optimal scaling factor will not be within the proposed bounds,
      * we'll perform more iterations (up to 10) trying to find a better one within those bounds. */
     for (size_t i = 1; i <= MIN(max_rounds, 10);) {
         if (newRound) {
-            cur_scale_low = scale_low;
-            cur_scale_up = scale_up;
+            par[1] = 0.001 / s_tree->avg_branch_len;
+            par[2] = 10 / s_tree->avg_branch_len;
             log_info("\nOptimising parameters, iteration %d out of %d\n", i, max_rounds);
             if (i == 1) {
                 if ((set_values & FREQUENCIES_SET) == 0) {
                     log_info("Starting from the observed frequencies...\n");
                 }
-                // keep the initial values
+
+                if ((set_values & SF_SET) == 0) {
+                    parameters[num_annotations] = 1 / s_tree->avg_branch_len;
+                }
             } else if (i == 2 && (set_values & FREQUENCIES_SET) == 0) {
                 log_info("Starting from equal frequencies...\n");
-                set_initial_equal_parameter_values(parameters, num_annotations, set_values, scale_low, scale_up);
-                parameters[num_annotations] = scale_start;
+                for (size_t j = 0; j < num_annotations; j++) {
+                    parameters[j] = 1.0 / num_annotations;
+                }
+
+                if ((set_values & SF_SET) == 0) {
+                    parameters[num_annotations] = 1 / s_tree->avg_branch_len;
+                }
             } else {
                 if ((set_values & FREQUENCIES_SET) == 0) {
                     log_info("Starting from random frequencies...\n");
                 }
-                set_initial_random_parameter_values(parameters, num_annotations, set_values, scale_low, scale_up);
+                if ((set_values & FREQUENCIES_SET) == 0) {
+                    for (size_t j = 0; j < num_annotations; j++) {
+                        parameters[j] = random_double(0.0, 1.0);
+                    }
+                    normalize(parameters, num_annotations);
+                }
+
+                if ((set_values & SF_SET) == 0) {
+                    parameters[num_annotations] = pow(10.0, random_double(-3., 1.)) / s_tree->avg_branch_len;
+                }
             }
         }
-        double res = _minimize_params(s_tree, num_annotations, parameters, character, set_values,
-                                      cur_scale_low, cur_scale_up, my_func);
 
-        bool hit_sf_up_bound = ((set_values & SF_SET) == 0)
-                               && (fabs(parameters[num_annotations] - cur_scale_up) < 1e-5);
-        bool hit_sf_lower_bound = ((set_values & SF_SET) == 0)
-                                  && (fabs(parameters[num_annotations] - cur_scale_low) < 1e-5);
-        if (hit_sf_up_bound) {
-            log_info("...hit scaling factor upper bound (%.10f), relaxing it...\n", cur_scale_up);
-            cur_scale_up *= 2;
-            newRound = FALSE;
-            continue;
-        }
-        if (hit_sf_lower_bound) {
-            log_info("...hit scaling factor lower bound (%.10f), relaxing it...\n", cur_scale_low);
-            cur_scale_low /= 2;
-            newRound = FALSE;
-            continue;
+        double res = _minimize_params(s_tree, parameters, character, set_values, my_func);
+
+        if ((set_values & SF_SET) == 0) {
+            if (fabs(parameters[num_annotations] - par[2]) < 1e-5) {
+                log_info("...hit scaling factor upper bound (%.10f), relaxing it...\n", par[2]);
+                par[2] *= 2;
+                newRound = FALSE;
+                continue;
+            }
+            if (fabs(parameters[num_annotations] - par[1]) < 1e-5) {
+                log_info("...hit scaling factor lower bound (%.10f), relaxing it...\n", par[1]);
+                par[1] /= 2;
+                newRound = FALSE;
+                continue;
+            }
         }
         i += 1;
         newRound = TRUE;
@@ -378,7 +363,8 @@ double minimize_params(Tree *s_tree, size_t num_annotations, double *parameters,
             log_info("...%s: %.10f...\n", some_optimum_found ? "improved the optimum": "our first optimum candidate", optimum);
             some_optimum_found = TRUE;
             // in case the optimal scaling factor that we found is not within the initial bounds, let's try for a bit longer.
-            if (i > 5 && (set_values & SF_SET) == 0 && (best_parameters[num_annotations] < scale_low || best_parameters[i] > scale_up)) {
+            if (i > 5 && (set_values & SF_SET) == 0 && (best_parameters[num_annotations] * s_tree->avg_branch_len < 0.001
+                    || best_parameters[i] * s_tree->avg_branch_len > 10.0)) {
                 max_rounds += 1;
             }
         }

@@ -18,18 +18,9 @@ order_marginal(Tree* tree, size_t num_annotations)
      * and node's tmp_best field to the corresponding state indices.
      */
     size_t i;
-    //Node* nd;
 
     for (i = 0; i < tree->nb_nodes; i++) {
         nd = tree->nodes[i];
-
-        /* sort best_states by their marginal probabilities in marginal array, in decreasing order */
-        //int cmp_index(const void *a, const void *b) {
-            //size_t ia = *(size_t *) a;
-            //size_t ib = *(size_t *) b;
-            //return -(nd->result_probs[ia] < nd->result_probs[ib] ? -1 : nd->result_probs[ia] > nd->result_probs[ib]);
-        //}
-
         qsort(nd->best_states, num_annotations, sizeof(size_t), cmp_index);
     }
 }

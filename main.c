@@ -5,7 +5,7 @@
 #include <errno.h>
 
 static const int HELP_STRING_LEN = 4000;
-extern int QUIET;
+extern bool QUIET;
 
 int main(int argc, char **argv) {
     char *model = F81, *prob_method = MARGINAL_APPROXIMATION;
@@ -93,7 +93,7 @@ int main(int argc, char **argv) {
                 break;
 
             case 'q':
-                QUIET = TRUE;
+                QUIET = true;
                 break;
 
             case 'p':

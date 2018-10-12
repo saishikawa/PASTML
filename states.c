@@ -52,7 +52,7 @@ size_t read_parameters(char* parameter_file_path, char **character, size_t num_a
 char **read_annotations(char *annotation_file_path, char **tips, int *states,
                         size_t *num_annotations, size_t *num_tips) {
     char annotation_line[MAXLNAME];
-    int found_new_annotation;
+    bool found_new_annotation;
     size_t i;
     size_t max_characters = 50;
     char **character = calloc(max_characters, sizeof(char *));
@@ -83,16 +83,16 @@ char **read_annotations(char *annotation_file_path, char **tips, int *states,
         if (strcmp(annotation_value, "?") == 0) {
             states[*num_tips] = -1;
         } else {
-            found_new_annotation = TRUE;
+            found_new_annotation = true;
             for (i = 0; i < *num_tips; i++) {
                 if (strcmp(annotations[i], "?") != 0 && strcmp(annotation_value, annotations[i]) == 0) {
                     states[*num_tips] = states[i];
                     strcpy(character[states[*num_tips]], annotation_value);
-                    found_new_annotation = FALSE;
+                    found_new_annotation = false;
                     break;
                 }
             }
-            if (found_new_annotation == TRUE) {
+            if (found_new_annotation) {
                 states[*num_tips] = (int) *num_annotations;
                 if (*num_annotations >= max_characters) {
                     /* Annotations do not fit in the character array (of size max_characters) anymore,

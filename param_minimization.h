@@ -5,6 +5,8 @@
 #ifndef PASTML_PARAM_MINIMIZATION_H
 #define PASTML_PARAM_MINIMIZATION_H
 
+static const double EPSILON_APPROXIMATING_ZERO = 1.e-8;
+
 #include <stdbool.h>
 #include <math.h>
 

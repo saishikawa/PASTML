@@ -379,6 +379,7 @@ Tree *parse_nh_string(char *in_str, size_t nbanno) {
         }
     }
     t->min_branch_len = -1.0;
+    t->max_branch_len = 0.0;
     t->min_tip_branch_len = -1.0;
     t->num_zero_tip_branches = 0;
     maxpoly=0;
@@ -402,16 +403,19 @@ Tree *parse_nh_string(char *in_str, size_t nbanno) {
         if(maxpoly < cur_node->nb_neigh)  {
             maxpoly = cur_node->nb_neigh;
         }
+        branch_len_sum += cur_node->branch_len;
         if ((cur_node != t->root) && (cur_node->branch_len > 0.0)) {
-            branch_len_sum += cur_node->branch_len;
             num_nonzero_inner_branches += 1;
             if ((t->min_branch_len < 0) || (t->min_branch_len > cur_node->branch_len)) {
                 t->min_branch_len = cur_node->branch_len;
             }
         }
+        if (t->max_branch_len < cur_node->branch_len) {
+            t->max_branch_len = cur_node->branch_len;
+        }
     }
     t->avg_tip_branch_len = tip_branch_len_sum / num_nonzero_tips;
-    t->avg_branch_len = branch_len_sum / num_nonzero_inner_branches;
+    t->avg_branch_len = branch_len_sum / (num_nonzero_inner_branches + num_nonzero_tips);
 
     log_info("BASIC TREE STATISTICS:\n\n");
     log_info("\tNumber of taxa:\t%zd\n", t->nb_taxa);
@@ -421,10 +425,11 @@ Tree *parse_nh_string(char *in_str, size_t nbanno) {
     }
     log_info("\tNumber of nodes:\t%zd\n", t->nb_nodes - t->nb_taxa);
     log_info("\tNumber of edges:\t%d\n", t->nb_edges);
+    log_info("\tMax branch length:\t%e\n", t->max_branch_len);
     log_info("\tAvg branch length:\t%e\n", t->avg_branch_len);
     log_info("\tAvg tip branch length:\t%e\n", t->avg_tip_branch_len);
     log_info("\tNumber of zero tip branches:\t%d\n", t->num_zero_tip_branches);
-    log_info("\tMin non-zero branch length:\t%e\n", t->min_branch_len);
+    log_info("\tMin non-zero inner branch length:\t%e\n", t->min_branch_len);
     log_info("\tMin non-zero tip branch length:\t%e\n", t->min_tip_branch_len);
     log_info("\tMax number of children per node:\t%zd\n", maxpoly-1);
     log_info("\n");

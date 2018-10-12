@@ -158,7 +158,6 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
     num_tips = s_tree->nb_taxa;
 
     initialise_tip_probabilities(s_tree, tips, states, num_tips, num_annotations);
-    free(tips);
 
     if (is_parsimonious) {
         log_info("PREDICTING PARSIMONIOUS ANCESTRAL STATES...\n\n");
@@ -192,6 +191,12 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
             log_info("Read frequencies from %s.\n\n", parameter_name);
         }
 
+        alter_problematic_tip_states(s_tree, num_annotations);
+
+        rescale_branch_lengths(s_tree, parameters[num_annotations]);
+        double initial_sf = parameters[num_annotations];
+        parameters[num_annotations] = 1.0;
+
         log_likelihood = calculate_bottom_up_likelihood(s_tree, num_annotations, parameters, is_marginal);
         if (log_likelihood == log(0)) {
             fprintf(stderr, "A problem occurred while calculating the bottom up likelihood: "
@@ -216,24 +221,28 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
                 log_info("\n");
             }
             log_info("\tScaling factor:\t%.10f, i.e. %.10f state changes per avg branch\n",
-                    parameters[num_annotations], parameters[num_annotations] * s_tree->avg_branch_len);
+                    parameters[num_annotations] * initial_sf, parameters[num_annotations]);
             log_info("\n");
             log_info("OPTIMISED LOG LIKELIHOOD:\t%.10f\n", log_likelihood);
             log_info("\n");
         }
 
+        rescale_branch_lengths(s_tree, parameters[num_annotations]);
+
+        parameters[num_annotations] *= initial_sf;
         exit_val = output_parameters(parameters, num_annotations, character, log_likelihood, model, set_values, out_parameter_name);
+
         if (EXIT_SUCCESS != exit_val) {
             return exit_val;
         }
         log_info("\tParameter values are written to %s in csv format.\n", out_parameter_name);
         log_info("\n");
 
-        rescale_branch_lengths(s_tree, parameters[num_annotations]);
-
         if (is_marginal) {
             log_info("CALCULATING TOP-DOWN LIKELIHOOD...\n\n");
             calculate_top_down_likelihood(s_tree, num_annotations);
+
+            unalter_problematic_tip_states(s_tree, tips, states, num_tips, num_annotations, true);
 
             log_info("CALCULATING MARGINAL PROBABILITIES...\n\n");
             calculate_marginal_probabilities(s_tree, num_annotations, parameters);
@@ -260,9 +269,10 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
         } else {
             // the branch lengths are already rescaled, so let's put scaling factor to 1.
             parameters[num_annotations] = 1.0;
-
             // calculate joint likelihood
-            calculate_bottom_up_likelihood(s_tree, num_annotations, parameters, FALSE);
+            calculate_bottom_up_likelihood(s_tree, num_annotations, parameters, false);
+
+            unalter_problematic_tip_states(s_tree, tips, states, num_tips, num_annotations, false);
 
             log_info("PREDICTING MOST LIKELY ANCESTRAL STATES...\n\n");
             choose_joint_states(s_tree, num_annotations, parameters);
@@ -270,6 +280,7 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
         }
         free(parameters);
     }
+    free(tips);
     log_info("SAVING THE RESULTS...\n\n");
 
     if (out_tree_name != NULL) {

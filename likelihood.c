@@ -96,7 +96,7 @@ void set_p_ij(const Node *nd, size_t num_frequencies, const double *parameters) 
     }
 }
 
-int calculate_node_probabilities(const Node *nd, size_t num_annotations, size_t first_child_index, int is_marginal) {
+int calculate_node_probabilities(const Node *nd, size_t num_annotations, size_t first_child_index, bool is_marginal) {
     int factors = 0;
     double p_child_branch_from_i, cur_child_branch_from_i;
     size_t i, j, k;
@@ -106,42 +106,12 @@ int calculate_node_probabilities(const Node *nd, size_t num_annotations, size_t 
         return factors;
     }
 
-    // remove possible leftovers from previous runs.
     for (i = 0; i < num_annotations; i++) {
-        nd->bottom_up_likelihood[i] = 0.0;
-    }
-
-    /* check if there are tip children at length zero:
-     * if so, the only possible states for our node will be one of their states. */
-    bool setSomeStates = FALSE;
-    for (k = first_child_index; k < nd->nb_neigh; k++) {
-        Node *child = nd->neigh[k];
-        if (isTip(child) && (child->branch_len == 0.0) && !child->unknown_state) {
-            setSomeStates = TRUE;
-            for (i = 0; i < num_annotations; i++) {
-                nd->bottom_up_likelihood[i] += child->bottom_up_likelihood[i];
-            }
-        }
-    }
-
-    if (!setSomeStates) {
-        for (i = 0; i < num_annotations; i++) {
-            nd->bottom_up_likelihood[i] = 1.0;
-        }
+        nd->bottom_up_likelihood[i] = 1.0;
     }
 
     for (k = first_child_index; k < nd->nb_neigh; k++) {
         Node *child = nd->neigh[k];
-        // it is a problematic child
-        if (isTip(child) && child->branch_len == 0.0) {
-            if (!is_marginal) {
-                for (i = 0; i < num_annotations; i++) {
-                    // for joint pick the best child state
-                    child->best_states[i] = i;
-                }
-            }
-            continue;
-        }
         for (i = 0; i < num_annotations; i++) {
             /* Calculate the probability of having a branch from the node to its child node,
              * given that the node is in state i: p_child_branch_from_i = sum_j(p_ij * p_child_j)
@@ -162,13 +132,10 @@ int calculate_node_probabilities(const Node *nd, size_t num_annotations, size_t 
                     }
                 }
             }
-
             /* The probability of having the node in state i is a multiplication of
              * the probabilities of p_child_branch_from_i for all child branches.
              */
-            if (!setSomeStates) {
-                nd->bottom_up_likelihood[i] *= p_child_branch_from_i;
-            }
+            nd->bottom_up_likelihood[i] *= p_child_branch_from_i;
         }
         int add_factors = upscale_node_probs(nd->bottom_up_likelihood, num_annotations);
         // if all the probabilities are zero (shown by add_factors == -1), stop here
@@ -180,7 +147,7 @@ int calculate_node_probabilities(const Node *nd, size_t num_annotations, size_t 
     return factors;
 }
 
-int process_node(Node *nd, Tree *s_tree, size_t num_annotations, double *parameters, int is_marginal) {
+int process_node(Node *nd, Tree *s_tree, size_t num_annotations, double *parameters, bool is_marginal) {
     /**
      * Calculates node probabilities.
      * parameters = [frequency_char_1, .., frequency_char_n, scaling_factor].
@@ -247,14 +214,14 @@ initialise_tip_probabilities(Tree *s_tree, char *const *tip_names, const int *st
      */
     Node *nd;
     size_t j, i, k;
-    double* all_options_array = calloc(num_annotations, sizeof(double));
+    double *all_options_array = calloc(num_annotations, sizeof(double));
     for (j = 0; j < num_annotations; j++) {
-       all_options_array[j] = 1.0;
+        all_options_array[j] = 1.0;
     }
 
     for (k = 0; k < s_tree->nb_nodes; k++) {
         nd = s_tree->nodes[k];
-        nd->unknown_state = TRUE;
+        nd->unknown_state = true;
     }
     for (k = 0; k < s_tree->nb_nodes; k++) {
         nd = s_tree->nodes[k];
@@ -268,9 +235,9 @@ initialise_tip_probabilities(Tree *s_tree, char *const *tip_names, const int *st
                         memcpy(nd->bottom_up_likelihood, all_options_array, num_annotations * sizeof(double));
                     } else {
                         nd->bottom_up_likelihood[states[i]] = 1.0;
-                        nd->unknown_state = FALSE;
+                        nd->unknown_state = false;
                         if (nd != s_tree->root) {
-                            nd->neigh[0]->unknown_state = FALSE;
+                            nd->neigh[0]->unknown_state = false;
                         }
                     }
                     break;
@@ -278,8 +245,93 @@ initialise_tip_probabilities(Tree *s_tree, char *const *tip_names, const int *st
             }
         }
     }
+    free(all_options_array);
+}
+
+void
+alter_problematic_tip_states(Tree *s_tree, size_t num_annotations) {
+    /**
+     * Checks for problematic tips, i.e. those with branches of length 0
+     * and having siblings with 0 branches but in different states.
+     * Alters their initial states to allow for states of all problematic siblings.
+    */
+    Node *nd;
+    size_t j, i, k;
+    double* all_options_array = malloc(num_annotations * sizeof(double));
+
+    for (k = 0; k < s_tree->nb_nodes; k++) {
+        nd = s_tree->nodes[k];
+
+        if (isTip(nd)) {
+            continue;
+        }
+
+        // remove possible leftovers from previous runs.
+        for (i = 0; i < num_annotations; i++) {
+            all_options_array[i] = 0.;
+        }
+
+        /* check if there are tip children at length zero and if they have a common state. */
+        int numProblematicChildren = 0;
+        bool existsCommonOption = true;
+        for (j = (nd == s_tree->root) ? 0: 1; j < nd->nb_neigh; j++) {
+            Node *child = nd->neigh[j];
+            if (isTip(child) && child->branch_len == 0.0) {
+                numProblematicChildren += 1;
+                existsCommonOption = false;
+                for (i = 0; i < num_annotations; i++) {
+                    all_options_array[i] += (child->bottom_up_likelihood[i] > 0) ? 1.: 0.;
+                    existsCommonOption |= (all_options_array[i] == numProblematicChildren);
+                }
+            }
+        }
+
+        if (!existsCommonOption) {
+            for (i = 0; i < num_annotations; i++) {
+                all_options_array[i] = (all_options_array[i] > 0) ? 1.: 0.;
+            }
+            for (j = (nd == s_tree->root) ? 0: 1; j < nd->nb_neigh; j++) {
+                Node *child = nd->neigh[j];
+                if (isTip(child) && child->branch_len == 0.0) {
+                    memcpy(child->bottom_up_likelihood, all_options_array, num_annotations * sizeof(double));
+                }
+            }
+        }
+    }
 
     free(all_options_array);
+}
+
+
+
+void
+unalter_problematic_tip_states(Tree *s_tree, char *const *tip_names, const int *states, size_t num_tips,
+                               size_t num_annotations, bool isMarginal) {
+    /**
+     * Sets the likelihoods of problematic tips for which we had an altered value back
+     * to the value given in the annotation file.
+     */
+    Node *nd;
+    size_t i, k, j;
+    for (k = 0; k < s_tree->nb_nodes; k++) {
+        nd = s_tree->nodes[k];
+        /* if a problematic tip, process it */
+        if (isTip(nd) && !nd->unknown_state && nd->branch_len == 0.) {
+            for (i = 0; i < num_tips; i++) {
+                if (strcmp(nd->name, tip_names[i]) == 0) {
+                    for (j = 0; j < num_annotations; j++) {
+                        if (isMarginal) {
+                            if (j != states[i]) {
+                                nd->bottom_up_likelihood[j] = 0.0;
+                            }
+                        } else {
+                            nd->best_states[j] = (size_t) states[i];
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 void rescale_branch_lengths(Tree *s_tree, double scaling_factor) {

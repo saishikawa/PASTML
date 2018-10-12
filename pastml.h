@@ -19,8 +19,6 @@
 #define MAXNSP 50000
 #define MAX_TREELENGTH    10000000 /* more or less 10MB for a tree file in NH format */
 #define MAX_NAMELENGTH        255    /* max length of a taxon name */
-#define TRUE 1
-#define FALSE 0
 #define POW (-500)
 #define LIM_P pow(2, POW)
 #define LOG2 0.69314718055994528623
@@ -66,6 +64,7 @@ typedef struct __Tree {
     size_t nb_taxa;
     int next_avail_node_id;
     double avg_branch_len;
+    double max_branch_len;
     double min_branch_len;
     double avg_tip_branch_len;
     int num_zero_tip_branches;

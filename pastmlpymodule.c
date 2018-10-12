@@ -1,6 +1,7 @@
 #include <Python.h>
 #include "runpastml.h"
 #include "pastml.h"
+# include <stdbool.h>
 
 extern int QUIET;
 
@@ -15,7 +16,7 @@ static PyObject *infer_ancestral_states(PyObject *self, PyObject *args) {
     char *in_param_name = NULL;
     char *model = JC;
     char *prob_method = MARGINAL_APPROXIMATION;
-    int quiet = FALSE;
+    int quiet = 0;
     int sts;
 
     if (!PyArg_ParseTuple(args, "ss|sssssssi", &annotation_name, &tree_name, &out_annotation_name,
@@ -23,8 +24,8 @@ static PyObject *infer_ancestral_states(PyObject *self, PyObject *args) {
         printf("Could not parse parameters O_o\n");
         return NULL;
     }
-    if (quiet != FALSE) {
-        QUIET = TRUE;
+    if (quiet != 0) {
+        QUIET = true;
     }
     if (strcmp(in_param_name, "") == 0) {
         in_param_name = NULL;

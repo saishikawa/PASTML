@@ -6,10 +6,10 @@
 #include <stdarg.h>
 #include "pastml.h"
 
-int QUIET = FALSE;
+bool QUIET = false;
 
 void log_info(const char* message, ...) {
-    if (QUIET == FALSE) {
+    if (!QUIET) {
         va_list args;
         va_start(args, message);
         vprintf(message, args);

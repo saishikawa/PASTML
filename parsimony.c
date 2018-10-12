@@ -2,17 +2,17 @@
 #include "tree.h"
 
 
-int intersect_with_states2(long *states1, const long *states2, size_t n) {
-    int intersection_is_empty = TRUE;
+bool intersect_with_states2(long *states1, const long *states2, size_t n) {
+    bool intersection_is_empty = true;
     size_t k;
 
     for (k = 0; k < n; k++) {
         states1[k] &= states2[k];
         if (states1[k] != 0l) {
-            intersection_is_empty = FALSE;
+            intersection_is_empty = false;
         }
     }
-    return (intersection_is_empty == TRUE) ? FALSE: TRUE;
+    return !intersection_is_empty;
 }
 
 long* get_neighbour_state_intersection(Node *node, size_t first_index, size_t last_index,
@@ -20,14 +20,14 @@ long* get_neighbour_state_intersection(Node *node, size_t first_index, size_t la
                                        long *(*get_neighbour_states)(Node *)) {
     /**
      * Calculates child state intersection and if it's non-empty sets the node->parsimony_states to it.
-     * Returns TRUE is the intersection is non-empty else FALSE.
+     * Returns true is the intersection is non-empty else false.
      */
     size_t i, k;
-    int intersection_is_empty = TRUE;
+    bool intersection_is_empty = true;
     long* neighbour_states;
 
     long *state_intersection = calloc(mask_array_len, sizeof(long));
-    if (TRUE == include_self) {
+    if (include_self) {
         // set intersection mask to current node mask if it should be included
         memcpy(state_intersection, get_neighbour_states(node), mask_array_len * sizeof(long));
     } else {
@@ -42,7 +42,7 @@ long* get_neighbour_state_intersection(Node *node, size_t first_index, size_t la
         if (neighbour_states != NULL) {
             intersection_is_empty = !intersect_with_states2(state_intersection, neighbour_states, mask_array_len);
             // if it's already empty no need to go further
-            if (intersection_is_empty == TRUE) {
+            if (intersection_is_empty) {
                 break;
             }
         }
@@ -94,7 +94,7 @@ long * get_most_common_neighbour_states(Node *node, size_t first_index, size_t l
         return mc;
     }
 
-    if (TRUE == include_self) {
+    if (include_self) {
         // set counts to current state counts
         max_count = update_counts(node, max_count);
     }
@@ -152,7 +152,7 @@ void _uppass_node(Node* node, Node* root, size_t num_annotations) {
         _uppass_node(node->neigh[i], root, num_annotations);
     }
     node->down_parsimony_states = get_most_common_neighbour_states(node, (node == root) ? 0 : 1, node->nb_neigh,
-                                                                       num_annotations, FALSE,
+                                                                       num_annotations, false,
                                                                        get_down_parsimony_states);
 }
 
@@ -201,12 +201,12 @@ void _downpass_node(Node* node, Node* root, size_t num_annotations) {
         }
 
         node->up_parsimony_states = get_most_common_neighbour_states(parent, (parent == root) ? 0 : 1, parent->nb_neigh,
-                                                                     num_annotations, TRUE, get_states);
+                                                                     num_annotations, true, get_states);
         if (isTip(node)) {
             /* if we were hesitating between several states for this tip before,
              * we might be able to reduce the number of possibilities
              * by intersecting them with the up state */
-            if (intersect_with_states2(node->up_parsimony_states, node->down_parsimony_states, mask_array_len) == TRUE) {
+            if (intersect_with_states2(node->up_parsimony_states, node->down_parsimony_states, mask_array_len)) {
                 node->parsimony_states = node->up_parsimony_states;
             } else {
                 node->parsimony_states = node->down_parsimony_states;
@@ -224,7 +224,7 @@ void _downpass_node(Node* node, Node* root, size_t num_annotations) {
             /* find most common states among node->up_parsimony_states and its children parsimony_states,
              * and set node->parsimony_states to it. */
             node->parsimony_states = get_most_common_neighbour_states(node, (node == root) ? 0 : 1, node->nb_neigh,
-                                                                      num_annotations, TRUE, get_up_down_states);
+                                                                      num_annotations, true, get_up_down_states);
         }
     }
     // process children
@@ -243,7 +243,7 @@ void _acctran_node(Node* node, Node* root, size_t num_annotations) {
     for (i = (node == root) ? 0: 1; i < node->nb_neigh; i++) {
         child = node->neigh[i];
         // set child state to its intersection with its parent (this node) state, if non-empty
-        state_intersection = get_neighbour_state_intersection(child, 0, 1, mask_array_len, TRUE,
+        state_intersection = get_neighbour_state_intersection(child, 0, 1, mask_array_len, true,
                                                               get_down_parsimony_states);
         if (state_intersection != NULL) {
             free(child->down_parsimony_states);
@@ -263,7 +263,7 @@ void _deltran_node(Node* node, Node* root, size_t num_annotations) {
 
     if (node != root) {
         // set node state to its intersection with its parent, if non-empty
-        state_intersection = get_neighbour_state_intersection(node, 0, 1, mask_array_len, TRUE, get_parsimony_states);
+        state_intersection = get_neighbour_state_intersection(node, 0, 1, mask_array_len, true, get_parsimony_states);
         if (state_intersection != NULL) {
             free(node->parsimony_states);
             node->parsimony_states = state_intersection;

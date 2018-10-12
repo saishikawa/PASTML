@@ -18,5 +18,9 @@ double get_pij(const double *frequencies, double mu, double t, size_t i, size_t 
 void normalize(double *array, size_t n);
 int get_max(const int *array, size_t n);
 void choose_joint_states(Tree *s_tree, size_t num_annotations, const double* frequencies);
+void
+alter_problematic_tip_states(Tree *s_tree, size_t num_annotations);
+void unalter_problematic_tip_states(Tree *s_tree, char *const *tip_names, const int *states, size_t num_tips,
+                                    size_t num_annotations, bool isMarginal);
 
 #endif //PASTML_LIK_H

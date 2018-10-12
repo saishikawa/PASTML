@@ -48,48 +48,22 @@ void _calculate_top_down_likelihood(const Node *nd, const Node *root, size_t num
              * * \sum_k P(j -> k, dist(brother_1, parent)) * L_bottom_up (brother_1, k) ...
              */
 
-            // remove possible leftovers from previous runs.
-            for (j = 0; j < num_frequencies; j++) {
-                prob_parent[j] = 0.0;
-            }
-
-            bool setSomeStates = FALSE;
-            for (child_id = parent == root ? 0 : 1; child_id < parent->nb_neigh; child_id++) {
-                brother = parent->neigh[child_id];
-                if (isTip(brother) && (brother->branch_len == 0.0) && !brother->unknown_state) {
-                    setSomeStates = TRUE;
-                    for (j = 0; j < num_frequencies; j++) {
-                        prob_parent[j] += brother->bottom_up_likelihood[j];
-                    }
-                }
-            }
-            if (!setSomeStates) {
-                for (j = 0; j < num_frequencies; j++) {
-                    prob_parent[j] = 1.0;
-                }
-            }
-
             for (j = 0; j < num_frequencies; j++) {
                 parent_scaling_factors[j] = 0;
-                prob_parent[j] *= nd->pij[i][j] * parent->top_down_likelihood[j];
-                if (!isTip(nd) || nd->branch_len != 0.0) {
-                    // if our parent is not root, its first nb_neigh is our grandfather,
-                    // and we should iterate over children staring from 1
-                    for (child_id = parent == root ? 0 : 1; child_id < parent->nb_neigh; child_id++) {
-                        brother = parent->neigh[child_id];
-                        if (brother == nd) {
-                            continue;
-                        }
-                        if (isTip(brother) && brother->branch_len == 0.0) {
-                            continue;
-                        }
-                        double brother_prob = 0.0;
-                        for (k = 0; k < num_frequencies; k++) {
-                            brother_prob += brother->pij[j][k] * brother->bottom_up_likelihood[k];
-                        }
-                        prob_parent[j] *= brother_prob;
-                        parent_scaling_factors[j] += rescale_if_needed(prob_parent, j);
+                prob_parent[j] = nd->pij[i][j] * parent->top_down_likelihood[j];
+                // if our parent is not root, its first nb_neigh is our grandfather,
+                // and we should iterate over children staring from 1
+                for (child_id = parent == root ? 0 : 1; child_id < parent->nb_neigh; child_id++) {
+                    brother = parent->neigh[child_id];
+                    if (brother == nd) {
+                        continue;
                     }
+                    double brother_prob = 0.0;
+                    for (k = 0; k < num_frequencies; k++) {
+                        brother_prob += brother->pij[j][k] * brother->bottom_up_likelihood[k];
+                    }
+                    prob_parent[j] *= brother_prob;
+                    parent_scaling_factors[j] += rescale_if_needed(prob_parent, j);
                 }
             }
             scaling_factors[i] = harmonise_scaling(prob_parent, parent_scaling_factors, num_frequencies);
@@ -158,16 +132,14 @@ void check_marginal_probabilities(Tree *s_tree, size_t num_annotations) {
 
     for (i = 0; i < s_tree->nb_nodes; i++) {
         node = s_tree->nodes[i];
-        if (node != s_tree->root) {
+        if (node != s_tree->root && (node->unknown_state || node->branch_len > 0.)) {
             parent = node->neigh[0];
-            if (parent->unknown_state) {
-                node_lk = get_marginal_likelihood(node, num_annotations);
-                parent_lk = get_marginal_likelihood(parent, num_annotations);
-                if (node_lk != parent_lk) {
-                    log_info("LH: %.2f\tvs\t%.2f (%s\tvs\t%s).\n", node_lk, parent_lk, node->name, parent->name);
-                }
-                assert(node_lk == parent_lk);
+            node_lk = get_marginal_likelihood(node, num_annotations);
+            parent_lk = get_marginal_likelihood(parent, num_annotations);
+            if (node_lk != parent_lk) {
+                log_info("LH: %.2f\tvs\t%.2f (%s\tvs\t%s).\n", node_lk, parent_lk, node->name, parent->name);
             }
+            assert(node_lk == parent_lk);
         }        
     }
 }

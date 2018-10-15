@@ -4,6 +4,12 @@
 #include "tree.h"
 #include "logger.h"
 
+
+bool isProblematic(const Node *nd) {
+    return isTip(nd) && !nd->unknown_state && nd->branch_len == 0.;
+}
+
+
 int get_max(const int *array, size_t n) {
     /**
      * Finds the maximum in an array of positive integers.
@@ -276,7 +282,7 @@ alter_problematic_tip_states(Tree *s_tree, size_t num_annotations) {
         bool existsCommonOption = true;
         for (j = (nd == s_tree->root) ? 0: 1; j < nd->nb_neigh; j++) {
             Node *child = nd->neigh[j];
-            if (isTip(child) && child->branch_len == 0.0) {
+            if (isProblematic(child)) {
                 numProblematicChildren += 1;
                 existsCommonOption = false;
                 for (i = 0; i < num_annotations; i++) {
@@ -292,7 +298,7 @@ alter_problematic_tip_states(Tree *s_tree, size_t num_annotations) {
             }
             for (j = (nd == s_tree->root) ? 0: 1; j < nd->nb_neigh; j++) {
                 Node *child = nd->neigh[j];
-                if (isTip(child) && child->branch_len == 0.0) {
+                if (isProblematic(child)) {
                     memcpy(child->bottom_up_likelihood, all_options_array, num_annotations * sizeof(double));
                 }
             }
@@ -301,8 +307,6 @@ alter_problematic_tip_states(Tree *s_tree, size_t num_annotations) {
 
     free(all_options_array);
 }
-
-
 
 void
 unalter_problematic_tip_states(Tree *s_tree, char *const *tip_names, const int *states, size_t num_tips,
@@ -316,7 +320,7 @@ unalter_problematic_tip_states(Tree *s_tree, char *const *tip_names, const int *
     for (k = 0; k < s_tree->nb_nodes; k++) {
         nd = s_tree->nodes[k];
         /* if a problematic tip, process it */
-        if (isTip(nd) && !nd->unknown_state && nd->branch_len == 0.) {
+        if (isProblematic(nd)) {
             for (i = 0; i < num_tips; i++) {
                 if (strcmp(nd->name, tip_names[i]) == 0) {
                     for (j = 0; j < num_annotations; j++) {

@@ -132,7 +132,7 @@ void check_marginal_probabilities(Tree *s_tree, size_t num_annotations) {
 
     for (i = 0; i < s_tree->nb_nodes; i++) {
         node = s_tree->nodes[i];
-        if (node != s_tree->root && (node->unknown_state || node->branch_len > 0.)) {
+        if (node != s_tree->root && !isProblematic(node)) {
             parent = node->neigh[0];
             node_lk = get_marginal_likelihood(node, num_annotations);
             parent_lk = get_marginal_likelihood(parent, num_annotations);
@@ -149,7 +149,7 @@ void calculate_marginal_probabilities(Tree *s_tree, size_t num_annotations, doub
      * Calculates marginal probabilities of tree nodes.
      */
     _calculate_node_marginal_probabilities(s_tree->root, s_tree->root, num_annotations, frequencies);
-//    check_marginal_probabilities(s_tree, num_annotations);
+    check_marginal_probabilities(s_tree, num_annotations);
 }
 
 

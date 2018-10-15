@@ -12,6 +12,7 @@ size_t read_parameters(char* parameter_file_path, char **character, size_t num_a
     char *quoted_state = (char*)malloc(255 * sizeof(char));
     // we'll set its 0's bite to 1 if the frequencies are set, and its 1st bite to 1 if scaling is set
     size_t result = 0;
+    size_t num_frequency_values = 0;
 
     if (!param_file) {
         fprintf(stderr, "Parameter file %s is not found or is impossible to access.", parameter_file_path);
@@ -40,9 +41,12 @@ size_t read_parameters(char* parameter_file_path, char **character, size_t num_a
             if (i < num_annotations) {
                 sscanf(value, "%lf", &double_value);
                 parameters[i] = double_value;
-                result |= FREQUENCIES_SET;
+                num_frequency_values++;
             }
         }
+    }
+    if (num_frequency_values == num_annotations) {
+        result |= FREQUENCIES_SET;
     }
     fclose(param_file);
     return result;
@@ -154,7 +158,7 @@ int output_ancestral_states(Tree *tree, size_t num_annotations, char **character
 }
 
 int output_parameters(const double *parameters, size_t num_annotations, char **character, double log_lh,
-        const char *model, size_t set_values, const char *output_file_path) {
+        const char *model, size_t set_values, const char *output_file_path, Tree *tree) {
     FILE* outfile = fopen(output_file_path, "w");
     if (!outfile) {
         fprintf(stderr, "Output parameter file %s is impossible to access.", output_file_path);
@@ -170,6 +174,8 @@ int output_parameters(const double *parameters, size_t num_annotations, char **c
     fprintf(outfile, "log likelihood,%.8f\n", log_lh);
     fprintf(outfile, "scaling factor was fixed,%s\n", (set_values & SF_SET) == 0 ? "No": "Yes");
     fprintf(outfile, "scaling factor,%.8f\n", parameters[num_annotations]);
+    fprintf(outfile, "state changes per avg branch length,%.8f\n",
+            parameters[num_annotations] * tree->avg_branch_len);
     fprintf(outfile, "frequencies were fixed,%s\n", (set_values & FREQUENCIES_SET) == 0 ? "No": "Yes");
     for (i = 0; i < num_annotations; i++) {
         fprintf(outfile, "\"%s\",%.8f\n", character[i], parameters[i]);

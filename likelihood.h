@@ -22,5 +22,6 @@ void
 alter_problematic_tip_states(Tree *s_tree, size_t num_annotations);
 void unalter_problematic_tip_states(Tree *s_tree, char *const *tip_names, const int *states, size_t num_tips,
                                     size_t num_annotations, bool isMarginal);
+bool isProblematic(const Node *nd);
 
 #endif //PASTML_LIK_H

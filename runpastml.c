@@ -211,7 +211,10 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
         } else {
             log_info("OPTIMISING PARAMETERS...\n\n");
 
-            log_likelihood = minimize_params(s_tree, num_annotations, parameters, character, set_values);
+            minimize_params(s_tree, num_annotations, parameters, character, set_values);
+            // recalculate bottom_up likelihood (and update it in every node) using new parameters
+            log_likelihood = calculate_bottom_up_likelihood(s_tree, num_annotations, parameters, is_marginal);
+
 
             log_info("OPTIMISED PARAMETERS:\n\n");
             if ((set_values & FREQUENCIES_SET) == 0) {
@@ -230,7 +233,8 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
         rescale_branch_lengths(s_tree, parameters[num_annotations]);
 
         parameters[num_annotations] *= initial_sf;
-        exit_val = output_parameters(parameters, num_annotations, character, log_likelihood, model, set_values, out_parameter_name);
+        exit_val = output_parameters(parameters, num_annotations, character, log_likelihood, model, set_values, out_parameter_name,
+                s_tree);
 
         if (EXIT_SUCCESS != exit_val) {
             return exit_val;

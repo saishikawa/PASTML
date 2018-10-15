@@ -31,13 +31,6 @@ void softmax(double* xs, size_t n) {
     }
 }
 
-double sigmoid(double x, const double lower_bound, const double upper_bound) {
-    /**
-     * transforms an arbitrary value x to be in between lower and upper bound, using a sigmoid function.
-     */
-    return lower_bound + (upper_bound - lower_bound) / (1. + exp(-x));
-}
-
 void optimised_parameters2real_parameters(const gsl_vector *v, size_t num_annotations, double scale_low, double scale_up,
                                           double *cur_parameters, size_t set_values) {
     size_t i = 0;
@@ -51,7 +44,6 @@ void optimised_parameters2real_parameters(const gsl_vector *v, size_t num_annota
     }
     if ((set_values & SF_SET) == 0) {
         /* 2. Scaling factor */
-//        cur_parameters[num_annotations] = sigmoid(gsl_vector_get(v, i++), scale_low, scale_up);
         cur_parameters[num_annotations] = MIN(MAX(gsl_vector_get(v, i), scale_low), scale_up);
     }
 }
@@ -86,14 +78,6 @@ log_cur_parameter_values(size_t num_annotations, const double *parameters, size_
     log_info ("\n");
 }
 
-
-double anti_sigmoid(double x, const double lower_bound, const double upper_bound) {
-    /**
-     * undoes the transformation of an arbitrary value x in between lower and upper bound done with a sigmoid function.
-     */
-    return (upper_bound == lower_bound) ? -log(0): -log((upper_bound - lower_bound) / (x - lower_bound) - 1.0);
-}
-
 size_t get_num_parameters(size_t num_annotations, size_t set_values) {
     size_t n = num_annotations;
     if ((set_values & FREQUENCIES_SET) != 0) {
@@ -117,8 +101,7 @@ gsl_vector *real_parameters2optimised_parameters(size_t num_annotations, double 
         }
     }
     if ((set_values & SF_SET) == 0) {
-//        gsl_vector_set(x, i++, anti_sigmoid(parameters[num_annotations], scale_low, scale_up));
-        gsl_vector_set(x, i++, parameters[num_annotations]);
+        gsl_vector_set(x, i, parameters[num_annotations]);
     }
     return x;
 }
@@ -190,32 +173,7 @@ d_minus_loglikelihood (const gsl_vector *v, void *params, gsl_vector *df, const 
     free(changed_params);
 }
 
-bool adjustBounds(double* par, double sf) {
-    if (par[2] <= sf) {
-        log_info("\t\t(hit scaling factor upper bound (%.2f)", par[2]);
-        if (par[2] < 2.5e1) {
-            par[2] *= 2;
-            log_info(", relaxing it to %.2f)\n", par[2]);
-            return true;
-        }
-        log_info(", but it's already too large)\n");
-        return false;
-    }
-    if (par[1] >= sf) {
-        log_info("\t\t(hit scaling factor lower bound (%.3e)", par[1]);
-        if (par[1] > 4.e-4) {
-            par[1] /= 2;
-            log_info(", relaxing it to %.3e)\n", par[1]);
-            return true;
-        }
-        log_info(", but it's already too small)\n");
-        return false;
-    }
-    return false;
-}
-
-double _minimize_params(Tree *s_tree, double *parameters, char **character, size_t set_values,
-        gsl_multimin_function_fdf my_func, double *params) {
+double _minimize_params(double *parameters, char **character, size_t set_values, gsl_multimin_function_fdf my_func) {
     /**
      * Optimises the following parameters:
      * parameters = [frequency_char_1, .., frequency_char_n, scaling_factor],
@@ -223,6 +181,7 @@ double _minimize_params(Tree *s_tree, double *parameters, char **character, size
      * The parameters variable is updated to contain the optimal parameters found.
      * The optimal value of the likelihood is returned.
      */
+    double* params = (double *) my_func.params;
     size_t num_annotations = (size_t) params[0];
     double scale_low = params[1];
     double scale_up = params[2];
@@ -245,7 +204,7 @@ double _minimize_params(Tree *s_tree, double *parameters, char **character, size
         iter++;
         status = gsl_multimin_fdfminimizer_iterate(s);
 
-        optimised_parameters2real_parameters(gsl_multimin_fdfminimizer_x(s), num_annotations, params[1], params[2],
+        optimised_parameters2real_parameters(gsl_multimin_fdfminimizer_x(s), num_annotations, scale_low, scale_up,
                                              parameters, set_values);
         log_cur_parameter_values(num_annotations, parameters, set_values, iter, -s->f, NULL);
 
@@ -257,11 +216,6 @@ double _minimize_params(Tree *s_tree, double *parameters, char **character, size
                 status = GSL_CONTINUE;
                 gsl_multimin_fdfminimizer_set(s, &my_func, gsl_multimin_fdfminimizer_x(s), step_size, tol);
                 log_info("\t\t(decreased the step size to %.1e)\n", step_size);
-                continue;
-            }
-            if ((set_values & SF_SET) == 0 && adjustBounds(params, parameters[num_annotations])) {
-                gsl_multimin_fdfminimizer_set(s, &my_func, gsl_multimin_fdfminimizer_x(s), step_size, tol);
-                status = GSL_CONTINUE;
                 continue;
             }
             log_info("\t\t(stopping minimization as %s)\n", gsl_strerror(status));
@@ -277,12 +231,6 @@ double _minimize_params(Tree *s_tree, double *parameters, char **character, size
                 status = GSL_CONTINUE;
                 log_info("\t\t(found an optimum candidate, but to be sure decreased the gradient tolerance to %.1e)\n",
                          epsabs);
-                continue;
-            }
-            // let's adjust the bounds if needed
-            if ((set_values & SF_SET) == 0 && adjustBounds(params, parameters[num_annotations])) {
-                gsl_multimin_fdfminimizer_set(s, &my_func, gsl_multimin_fdfminimizer_x(s), step_size, tol);
-                status = GSL_CONTINUE;
                 continue;
             }
             log_info("\t\t(optimum found!)\n");
@@ -304,7 +252,7 @@ double my_f(const gsl_vector *v, void *params);
 void my_df(const gsl_vector *v, void *params, gsl_vector *df);
 void my_fdf(const gsl_vector *v, void *params, double *f, gsl_vector *df);
 
-double minimize_params(Tree *s_tree, size_t num_annotations, double *parameters, char **character, size_t set_values) {
+void minimize_params(Tree *s_tree, size_t num_annotations, double *parameters, char **character, size_t set_values) {
     /**
      * Optimises the following parameters:
      * parameters = [frequency_char_1, .., frequency_char_n, scaling_factor],
@@ -340,16 +288,14 @@ double minimize_params(Tree *s_tree, size_t num_annotations, double *parameters,
     bool some_optimum_found = false;
 
     if ((set_values & SF_SET) == 0) {
-        log_info("Scaling factor can vary between %.10f and %.10f.\n", par[1], par[2]);
+        log_info("Scaling factor can vary between %.3f and %.1f.\n", par[1], par[2]);
     }
 
-    size_t max_rounds = 5;
-    /* we will perform at least 5 iterations,
+    size_t max_rounds = 10;
+    /* we will perform at least 10 iterations,
      * if after that our optimal scaling factor will not be within the proposed bounds,
-     * we'll perform more iterations (up to 10) trying to find a better one within those bounds. */
-    for (size_t i = 1; i <= MIN(max_rounds, 10); i++) {
-        par[1] = .001;
-        par[2] = 10.;
+     * we'll perform more iterations (up to 25) trying to find a better one within those bounds. */
+    for (size_t i = 1; i <= MIN(max_rounds, 25); i++) {
         log_info("\nOptimising parameters, iteration %d out of %d\n", i, max_rounds);
         if (i == 1) {
             if ((set_values & FREQUENCIES_SET) == 0) {
@@ -384,7 +330,7 @@ double minimize_params(Tree *s_tree, size_t num_annotations, double *parameters,
             }
         }
 
-        double res = _minimize_params(s_tree, parameters, character, set_values, my_func, par);
+        double res = _minimize_params(parameters, character, set_values, my_func);
 
         if (!some_optimum_found || (res > optimum)) {
             memcpy(best_parameters, parameters, (num_annotations + 1) * sizeof(double));
@@ -394,13 +340,14 @@ double minimize_params(Tree *s_tree, size_t num_annotations, double *parameters,
             some_optimum_found = true;
         }
         // in case the optimal scaling factor that we found is not within the initial bounds, let's try for a bit longer.
-        if (i >= 5 && (set_values & SF_SET) == 0 &&
+        if (i >= 10 && i <= 25 && (set_values & SF_SET) == 0 &&
             (best_parameters[num_annotations] <= .001 || best_parameters[num_annotations] >= 10.)) {
+            log_info("...the best scaling factor value found so far (%.5f) hits the bound, "
+                     "so let's optimise our parameters for a bit longer...\n", parameters[num_annotations]);
             max_rounds += 1;
         }
     }
 
     memcpy(parameters, best_parameters, (num_annotations + 1) * sizeof(double));
     free(best_parameters);
-    return optimum;
 }

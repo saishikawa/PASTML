@@ -10,5 +10,5 @@ static const double EPSILON_APPROXIMATING_ZERO = 1.e-8;
 #include <stdbool.h>
 #include <math.h>
 
-double minimize_params(Tree *s_tree, size_t num_annotations, double *parameters, char **character, size_t set_values);
+void minimize_params(Tree *s_tree, size_t num_annotations, double *parameters, char **character, size_t set_values);
 #endif //PASTML_PARAM_MINIMIZATION_H

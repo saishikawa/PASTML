@@ -149,7 +149,7 @@ void calculate_marginal_probabilities(Tree *s_tree, size_t num_annotations, doub
      * Calculates marginal probabilities of tree nodes.
      */
     _calculate_node_marginal_probabilities(s_tree->root, s_tree->root, num_annotations, frequencies);
-    check_marginal_probabilities(s_tree, num_annotations);
+//    check_marginal_probabilities(s_tree, num_annotations);
 }
 
 

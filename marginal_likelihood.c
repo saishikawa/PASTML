@@ -22,12 +22,11 @@ void _calculate_top_down_likelihood(const Node *nd, const Node *root, size_t num
      * For the root node we assume its top-down likelihood to be 1 for all the states.
      */
     Node *parent;
-    Node *brother;
     int *parent_scaling_factors = calloc(num_frequencies, sizeof(int));
     int parent_scaling_factor = 0;
     int *scaling_factors = calloc(num_frequencies, sizeof(int));
     double prob_parent[num_frequencies];
-    size_t child_id, j, i, k;
+    size_t j, i;
 
     if (nd == root) {
         for (i = 0; i < num_frequencies; i++) {
@@ -44,13 +43,15 @@ void _calculate_top_down_likelihood(const Node *nd, const Node *root, size_t num
             prob_parent[j] = parent->top_down_likelihood[j] * parent->bottom_up_likelihood[j];
             parent_scaling_factors[j] += rescale_if_needed(prob_parent, j);
             // let's remove our node's contributions from the parent likelihood
-            double node_contribution = 0.;
-            for (i = 0; i < num_frequencies; i++) {
-                node_contribution += nd->pij[j][i] * nd->bottom_up_likelihood[i];
+            if (prob_parent[j] > 0.) {
+                double node_contribution = 0.;
+                for (i = 0; i < num_frequencies; i++) {
+                    node_contribution += nd->pij[j][i] * nd->bottom_up_likelihood[i];
+                }
+                prob_parent[j] /= node_contribution;
+                parent_scaling_factors[j] -= nd->scaling_factor_down[0];
+                parent_scaling_factors[j] += rescale_if_needed(prob_parent, j);
             }
-            prob_parent[j] /= node_contribution;
-            parent_scaling_factors[j] -= nd->scaling_factor_down[0];
-            parent_scaling_factors[j] += rescale_if_needed(prob_parent, j);
         }
 
         parent_scaling_factor = harmonise_scaling(prob_parent, parent_scaling_factors, num_frequencies);

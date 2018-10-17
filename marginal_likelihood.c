@@ -24,6 +24,7 @@ void _calculate_top_down_likelihood(const Node *nd, const Node *root, size_t num
     Node *parent;
     Node *brother;
     int *parent_scaling_factors = calloc(num_frequencies, sizeof(int));
+    int parent_scaling_factor = 0;
     int *scaling_factors = calloc(num_frequencies, sizeof(int));
     double prob_parent[num_frequencies];
     size_t child_id, j, i, k;
@@ -36,9 +37,27 @@ void _calculate_top_down_likelihood(const Node *nd, const Node *root, size_t num
     } else {
         parent = nd->neigh[0];
         nd->scaling_factor_up[0] = parent->scaling_factor_up[0];
+
+        // calculate the parent's top-down likelihood * bottom-up likelihood without our node's contribution
+        for (j = 0; j < num_frequencies; j++) {
+            parent_scaling_factors[j] = parent->scaling_factor_down[0];
+            prob_parent[j] = parent->top_down_likelihood[j] * parent->bottom_up_likelihood[j];
+            parent_scaling_factors[j] += rescale_if_needed(prob_parent, j);
+            // let's remove our node's contributions from the parent likelihood
+            double node_contribution = 0.;
+            for (i = 0; i < num_frequencies; i++) {
+                node_contribution += nd->pij[j][i] * nd->bottom_up_likelihood[i];
+            }
+            prob_parent[j] /= node_contribution;
+            parent_scaling_factors[j] -= nd->scaling_factor_down[0];
+            parent_scaling_factors[j] += rescale_if_needed(prob_parent, j);
+        }
+
+        parent_scaling_factor = harmonise_scaling(prob_parent, parent_scaling_factors, num_frequencies);
+
         // current node has annotation i
         for (i = 0; i < num_frequencies; i++) {
-            scaling_factors[i] = 0;
+            scaling_factors[i] = parent_scaling_factor;
             nd->top_down_likelihood[i] = 0.0;
             /* we need to combine
              * the probability of the of a branch between our node and its parent to evolve from i to j,
@@ -47,38 +66,12 @@ void _calculate_top_down_likelihood(const Node *nd, const Node *root, size_t num
              * L_top_down(nd, i) = \sum_j P(i -> j, dist(nd, parent)) * L_top_down(parent, j) *
              * * \sum_k P(j -> k, dist(brother_1, parent)) * L_bottom_up (brother_1, k) ...
              */
-
             for (j = 0; j < num_frequencies; j++) {
-                parent_scaling_factors[j] = 0;
-                prob_parent[j] = nd->pij[i][j] * parent->top_down_likelihood[j];
-                // if our parent is not root, its first nb_neigh is our grandfather,
-                // and we should iterate over children staring from 1
-                for (child_id = parent == root ? 0 : 1; child_id < parent->nb_neigh; child_id++) {
-                    brother = parent->neigh[child_id];
-                    if (brother == nd) {
-                        continue;
-                    }
-                    double brother_prob = 0.0;
-                    for (k = 0; k < num_frequencies; k++) {
-                        brother_prob += brother->pij[j][k] * brother->bottom_up_likelihood[k];
-                    }
-                    prob_parent[j] *= brother_prob;
-                    parent_scaling_factors[j] += rescale_if_needed(prob_parent, j);
-                }
+                nd->top_down_likelihood[i] += prob_parent[j] * nd->pij[i][j];
             }
-            scaling_factors[i] = harmonise_scaling(prob_parent, parent_scaling_factors, num_frequencies);
-            for (j = 0; j < num_frequencies; j++) {
-                nd->top_down_likelihood[i] += prob_parent[j];
-            }
+            scaling_factors[i] += rescale_if_needed(nd->top_down_likelihood, i);
         }
         nd->scaling_factor_up[0] += harmonise_scaling(nd->top_down_likelihood, scaling_factors, num_frequencies);
-        for (child_id = parent == root ? 0 : 1; child_id < parent->nb_neigh; child_id++) {
-            brother = parent->neigh[child_id];
-            if (brother == nd) {
-                continue;
-            }
-            nd->scaling_factor_up[0] += brother->scaling_factor_down[0];
-        }
     }
     free(parent_scaling_factors);
     free(scaling_factors);
@@ -149,7 +142,7 @@ void calculate_marginal_probabilities(Tree *s_tree, size_t num_annotations, doub
      * Calculates marginal probabilities of tree nodes.
      */
     _calculate_node_marginal_probabilities(s_tree->root, s_tree->root, num_annotations, frequencies);
-//    check_marginal_probabilities(s_tree, num_annotations);
+    check_marginal_probabilities(s_tree, num_annotations);
 }
 
 

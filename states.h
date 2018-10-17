@@ -14,6 +14,7 @@
 int output_ancestral_states(Tree *tree, size_t num_annotations, char **character, char *output_file_path, char* format);
 int output_parameters(const double *parameters, size_t num_annotations, char **character, double log_lh,
                       const char *model, size_t set_values, const char *output_file_path, Tree* tree);
+int output_parsimony_parameters(int num_pars_steps, const char *output_file_path);
 char **read_annotations(char *annotation_file_path, char **tips, int *states,
                         size_t *num_annotations, size_t *num_tips);
 

@@ -52,7 +52,7 @@ typedef struct __Node {
     int *scaling_factor_down;
     int *scaling_factor_up;
     double branch_len;
-    bool unknown_state;
+    int tip_state;
 } Node;
 
 

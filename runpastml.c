@@ -116,9 +116,11 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
         }
     }
     if (out_parameter_name == NULL) {
+        out_parameter_name = calloc(256, sizeof(char));
         if (!is_parsimonious) {
-            out_parameter_name = calloc(256, sizeof(char));
             sprintf(out_parameter_name, "%s.%s.maxlikelihood.pastml.parameters.csv", annotation_name, model);
+        } else {
+            sprintf(out_parameter_name, "%s.parsimony.pastml.parameters.csv", annotation_name);
         }
     }
 
@@ -158,11 +160,20 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
     num_tips = s_tree->nb_taxa;
 
     initialise_tip_probabilities(s_tree, tips, states, num_tips, num_annotations);
+    free(tips);
 
     if (is_parsimonious) {
         log_info("PREDICTING PARSIMONIOUS ANCESTRAL STATES...\n\n");
         parsimony(s_tree, num_annotations, prob_method);
         select_parsimonious_states(s_tree, num_annotations);
+        int num_pars_steps = get_num_parsimonious_steps(s_tree, num_annotations);
+        log_info("Number of parsimonious steps: %d.\n\n", num_pars_steps);
+        exit_val = output_parsimony_parameters(num_pars_steps, out_parameter_name);
+        if (EXIT_SUCCESS != exit_val) {
+            return exit_val;
+        }
+        log_info("\tNumber of parsimonious steps is written to %s in csv format.\n", out_parameter_name);
+        log_info("\n");
     } else {
         /* we would need one additional spot in the parameters array: for the scaling factor,
          * therefore num_annotations + 1*/
@@ -246,7 +257,7 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
             log_info("CALCULATING TOP-DOWN LIKELIHOOD...\n\n");
             calculate_top_down_likelihood(s_tree, num_annotations);
 
-            unalter_problematic_tip_states(s_tree, tips, states, num_tips, num_annotations, true);
+            unalter_problematic_tip_states(s_tree, num_annotations, true);
 
             log_info("CALCULATING MARGINAL PROBABILITIES...\n\n");
             calculate_marginal_probabilities(s_tree, num_annotations, parameters);
@@ -276,7 +287,7 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
             // calculate joint likelihood
             calculate_bottom_up_likelihood(s_tree, num_annotations, parameters, false);
 
-            unalter_problematic_tip_states(s_tree, tips, states, num_tips, num_annotations, false);
+            unalter_problematic_tip_states(s_tree, num_annotations, false);
 
             log_info("PREDICTING MOST LIKELY ANCESTRAL STATES...\n\n");
             choose_joint_states(s_tree, num_annotations, parameters);
@@ -284,7 +295,6 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
         }
         free(parameters);
     }
-    free(tips);
     log_info("SAVING THE RESULTS...\n\n");
 
     if (out_tree_name != NULL) {

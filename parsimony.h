@@ -9,4 +9,5 @@
 
 void parsimony(Tree *tree, unsigned long num_annotations, char* method);
 void select_parsimonious_states(Tree *tree, size_t num_annotations);
+int get_num_parsimonious_steps(Tree *tree, size_t num_annotations);
 #endif //PARSIMONY_H

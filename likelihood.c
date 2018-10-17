@@ -6,7 +6,7 @@
 
 
 bool isProblematic(const Node *nd) {
-    return isTip(nd) && !nd->unknown_state && nd->branch_len == 0.;
+    return isTip(nd) && (nd->tip_state != -1) && nd->branch_len == 0.;
 }
 
 
@@ -227,24 +227,17 @@ initialise_tip_probabilities(Tree *s_tree, char *const *tip_names, const int *st
 
     for (k = 0; k < s_tree->nb_nodes; k++) {
         nd = s_tree->nodes[k];
-        nd->unknown_state = true;
-    }
-    for (k = 0; k < s_tree->nb_nodes; k++) {
-        nd = s_tree->nodes[k];
         /* if a tip, process it */
         if (isTip(nd)) {
             for (i = 0; i < num_tips; i++) {
                 if (strcmp(nd->name, tip_names[i]) == 0) {
+                    nd->tip_state = states[i];
                     // states[i] == -1 means that the annotation is missing
                     if (states[i] == -1) {
                         // and therefore any state is possible
                         memcpy(nd->bottom_up_likelihood, all_options_array, num_annotations * sizeof(double));
                     } else {
                         nd->bottom_up_likelihood[states[i]] = 1.0;
-                        nd->unknown_state = false;
-                        if (nd != s_tree->root) {
-                            nd->neigh[0]->unknown_state = false;
-                        }
                     }
                     break;
                 }
@@ -309,29 +302,24 @@ alter_problematic_tip_states(Tree *s_tree, size_t num_annotations) {
 }
 
 void
-unalter_problematic_tip_states(Tree *s_tree, char *const *tip_names, const int *states, size_t num_tips,
-                               size_t num_annotations, bool isMarginal) {
+unalter_problematic_tip_states(Tree *s_tree, size_t num_annotations, bool isMarginal) {
     /**
      * Sets the likelihoods of problematic tips for which we had an altered value back
      * to the value given in the annotation file.
      */
     Node *nd;
-    size_t i, k, j;
+    size_t k, j;
     for (k = 0; k < s_tree->nb_nodes; k++) {
         nd = s_tree->nodes[k];
         /* if a problematic tip, process it */
         if (isProblematic(nd)) {
-            for (i = 0; i < num_tips; i++) {
-                if (strcmp(nd->name, tip_names[i]) == 0) {
-                    for (j = 0; j < num_annotations; j++) {
-                        if (isMarginal) {
-                            if (j != states[i]) {
-                                nd->bottom_up_likelihood[j] = 0.0;
-                            }
-                        } else {
-                            nd->best_states[j] = (size_t) states[i];
-                        }
+            for (j = 0; j < num_annotations; j++) {
+                if (isMarginal) {
+                    if (j != nd->tip_state) {
+                        nd->bottom_up_likelihood[j] = 0.0;
                     }
+                } else {
+                    nd->best_states[j] = (size_t) nd->tip_state;
                 }
             }
         }

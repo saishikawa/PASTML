@@ -183,3 +183,17 @@ int output_parameters(const double *parameters, size_t num_annotations, char **c
     fclose(outfile);
     return EXIT_SUCCESS;
 }
+
+int output_parsimony_parameters(int num_pars_steps, const char *output_file_path) {
+    FILE* outfile = fopen(output_file_path, "w");
+    if (!outfile) {
+        fprintf(stderr, "Output parameter file %s is impossible to access.", output_file_path);
+        fprintf(stderr, "Value of errno: %d\n", errno);
+        fprintf(stderr, "Error opening the file: %s\n", strerror(errno));
+        return ENOENT;
+    }
+    fprintf(outfile, "parameter,value\n");
+    fprintf(outfile, "number of character state changes,%d\n", num_pars_steps);
+    fclose(outfile);
+    return EXIT_SUCCESS;
+}

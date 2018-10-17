@@ -1,5 +1,6 @@
 #include "pastml.h"
 #include "tree.h"
+#include "logger.h"
 
 
 bool intersect_with_states2(long *states1, const long *states2, size_t n) {
@@ -413,4 +414,28 @@ void select_parsimonious_states(Tree *tree, size_t num_annotations) {
         }
         free(node->parsimony_states);
     }
+}
+
+
+int _get_num_parsimonious_steps(Node* root, Node *node, int parent_state, size_t num_annotations) {
+    int i;
+    int result = 0, my_state = parent_state;
+    // if we change the state here, let's find out to what
+    if (node == root || node->result_probs[parent_state] == 0.) {
+        result = (node == root) ? 0: 1;
+        for (i = 0; i < num_annotations; i++) {
+            if (node->result_probs[i] > 0.) {
+                my_state = i;
+                break;
+            }
+        }
+    }
+    for (i = (node == root) ? 0: 1; i < node->nb_neigh; i++) {
+        result += _get_num_parsimonious_steps(root, node->neigh[i], my_state, num_annotations);
+    }
+    return result;
+}
+
+int get_num_parsimonious_steps(Tree *tree, size_t num_annotations) {
+    _get_num_parsimonious_steps(tree->root, tree->root, -1, num_annotations);
 }

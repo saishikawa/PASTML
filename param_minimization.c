@@ -206,7 +206,9 @@ double _minimize_params(double *parameters, char **character, size_t set_values,
 
         optimised_parameters2real_parameters(gsl_multimin_fdfminimizer_x(s), num_annotations, scale_low, scale_up,
                                              parameters, set_values);
-        log_cur_parameter_values(num_annotations, parameters, set_values, iter, -s->f, NULL);
+        if (iter % 10 == 0) {
+            log_cur_parameter_values(num_annotations, parameters, set_values, iter, -s->f, NULL);
+        }
 
         if (status) {
             // if the iteration is not making progress towards solution let's try to reduce the step size
@@ -215,10 +217,11 @@ double _minimize_params(double *parameters, char **character, size_t set_values,
                 iter--;
                 status = GSL_CONTINUE;
                 gsl_multimin_fdfminimizer_set(s, &my_func, gsl_multimin_fdfminimizer_x(s), step_size, tol);
-                log_info("\t\t(decreased the step size to %.1e)\n", step_size);
+//                log_info("\t\t(decreased the step size to %.1e)\n", step_size);
                 continue;
             }
             log_info("\t\t(stopping minimization as %s)\n", gsl_strerror(status));
+            log_cur_parameter_values(num_annotations, parameters, set_values, iter, -s->f, NULL);
             break;
         }
 
@@ -229,11 +232,12 @@ double _minimize_params(double *parameters, char **character, size_t set_values,
             if (iter < 100 && epsabs > EPSILON_APPROXIMATING_ZERO) {
                 epsabs /= 10.0;
                 status = GSL_CONTINUE;
-                log_info("\t\t(found an optimum candidate, but to be sure decreased the gradient tolerance to %.1e)\n",
-                         epsabs);
+//                log_info("\t\t(found an optimum candidate, but to be sure decreased the gradient tolerance to %.1e)\n",
+//                         epsabs);
                 continue;
             }
             log_info("\t\t(optimum found!)\n");
+            log_cur_parameter_values(num_annotations, parameters, set_values, iter, -s->f, NULL);
         }
     }
     while (status == GSL_CONTINUE && iter < 500);
@@ -291,17 +295,16 @@ void minimize_params(Tree *s_tree, size_t num_annotations, double *parameters, c
         log_info("Scaling factor can vary between %.3f and %.1f.\n", par[1], par[2]);
     }
 
-    size_t max_rounds = 10;
-    /* we will perform at least 10 iterations,
+    size_t max_rounds = 3;
+    /* we will perform at least 3 iterations,
      * if after that our optimal scaling factor will not be within the proposed bounds,
      * we'll perform more iterations (up to 25) trying to find a better one within those bounds. */
-    for (size_t i = 1; i <= MIN(max_rounds, 25); i++) {
+    for (size_t i = 1; i <= MIN(max_rounds, 3); i++) {
         log_info("\nOptimising parameters, iteration %d out of %d\n", i, max_rounds);
         if (i == 1) {
             if ((set_values & FREQUENCIES_SET) == 0) {
                 log_info("Starting from the observed frequencies...\n");
             }
-
             if ((set_values & SF_SET) == 0) {
                 parameters[num_annotations] = 1.;
             }
@@ -310,7 +313,6 @@ void minimize_params(Tree *s_tree, size_t num_annotations, double *parameters, c
             for (size_t j = 0; j < num_annotations; j++) {
                 parameters[j] = 1. / num_annotations;
             }
-
             if ((set_values & SF_SET) == 0) {
                 parameters[num_annotations] = 1.;
             }
@@ -340,7 +342,7 @@ void minimize_params(Tree *s_tree, size_t num_annotations, double *parameters, c
             some_optimum_found = true;
         }
         // in case the optimal scaling factor that we found is not within the initial bounds, let's try for a bit longer.
-        if (i >= 10 && i <= 25 && (set_values & SF_SET) == 0 &&
+        if (i >= 3 && max_rounds <= 25 && (set_values & SF_SET) == 0 &&
             (best_parameters[num_annotations] <= .001 || best_parameters[num_annotations] >= 10.)) {
             log_info("...the best scaling factor value found so far (%.5f) hits the bound, "
                      "so let's optimise our parameters for a bit longer...\n", parameters[num_annotations]);

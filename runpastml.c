@@ -222,10 +222,18 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
         } else {
             log_info("OPTIMISING PARAMETERS...\n\n");
 
-            minimize_params(s_tree, num_annotations, parameters, character, set_values);
-            // recalculate bottom_up likelihood (and update it in every node) using new parameters
-            log_likelihood = calculate_bottom_up_likelihood(s_tree, num_annotations, parameters, is_marginal);
-
+            if ((set_values & SF_SET) == 0) {
+                minimize_params(s_tree, num_annotations, parameters, character, set_values | FREQUENCIES_SET);
+                // recalculate bottom_up likelihood (and update it in every node) using new parameters
+                log_likelihood = calculate_bottom_up_likelihood(s_tree, num_annotations, parameters, is_marginal);
+                log_info("\tOptimised scaling factor:\t%.10f, i.e. %.10f state changes per avg branch\n",
+                         parameters[num_annotations] * initial_sf, parameters[num_annotations]);
+            }
+            if ((set_values & FREQUENCIES_SET) == 0) {
+                minimize_params(s_tree, num_annotations, parameters, character, set_values | SF_SET);
+                // recalculate bottom_up likelihood (and update it in every node) using new parameters
+                log_likelihood = calculate_bottom_up_likelihood(s_tree, num_annotations, parameters, is_marginal);
+            }
 
             log_info("OPTIMISED PARAMETERS:\n\n");
             if ((set_values & FREQUENCIES_SET) == 0) {

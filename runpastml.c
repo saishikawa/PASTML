@@ -9,6 +9,7 @@
 #include "parsimony.h"
 #include <time.h>
 #include <errno.h>
+#include "metric.h"
 
 extern int* QUIET;
 
@@ -313,6 +314,8 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
     }
     log_info("\tState predictions are written to %s in csv format.\n", out_annotation_name);
     log_info("\n");
+
+    compute_metric(s_tree, num_annotations, character);
 
     //free all
     free(character);

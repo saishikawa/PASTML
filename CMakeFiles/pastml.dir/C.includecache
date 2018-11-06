@@ -1,0 +1,44 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/saishi/Desktop/WORKING/Git/PASTML/metric.c
+stdbool.h
+-
+errno.h
+-
+pastml.h
+/home/saishi/Desktop/WORKING/Git/PASTML/pastml.h
+tree.h
+/home/saishi/Desktop/WORKING/Git/PASTML/tree.h
+
+/home/saishi/Desktop/WORKING/Git/PASTML/pastml.h
+ctype.h
+-
+stdio.h
+-
+stdlib.h
+-
+stddef.h
+-
+string.h
+-
+math.h
+-
+float.h
+-
+limits.h
+-
+stdbool.h
+-
+
+/home/saishi/Desktop/WORKING/Git/PASTML/tree.h
+pastml.h
+/home/saishi/Desktop/WORKING/Git/PASTML/pastml.h
+stdbool.h
+-
+

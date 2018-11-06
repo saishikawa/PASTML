@@ -1,0 +1,3 @@
+/home/saishi/Desktop/WORKING/Git/PASTML/CMakeFiles/rebuild_cache.dir
+/home/saishi/Desktop/WORKING/Git/PASTML/CMakeFiles/edit_cache.dir
+/home/saishi/Desktop/WORKING/Git/PASTML/CMakeFiles/pastml.dir

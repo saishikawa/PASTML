@@ -42,7 +42,7 @@ typedef struct __Node {
     struct __Node **neigh;    /* neighbour nodes */
 
     double **pij;           /* probability of substitution from i to j */
-    double *bottom_up_likelihood;       /* conditional likelihoods at the node*/
+    double *bottom_up_likelihood;       /* conditional likelihoods at the node */
     long *parsimony_states;
     long *down_parsimony_states;
     long *up_parsimony_states;
@@ -53,6 +53,10 @@ typedef struct __Node {
     int *scaling_factor_up;
     double branch_len;
     int tip_state;
+
+    int num_tips;
+    int **color_tips;
+    double **local_dist_tips;
 } Node;
 
 

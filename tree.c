@@ -498,6 +498,14 @@ void free_node(Node *node, size_t num_anno) {
     size_t j;
 
     if (node == NULL) return;
+    if (!isTip(node)) {
+        for(j = 0; j < node->nb_neigh; j++){
+            free(node->color_tips[j]);
+            free(node->local_dist_tips[j]);
+        }
+        free(node->color_tips);
+        free(node->local_dist_tips);
+    }
     free(node->neigh);
     if (strcmp(node->name, "ROOT") != 0 && node->name) {
         free(node->name);

@@ -66,7 +66,7 @@ int node_check_tips(Node *nd, Tree *s_tree, size_t num_annotations) {
                     if(j == child->tip_state){
                         tmp_dist += 0;
                     } else {
-                        tmp_dist ++;
+                        if(child!=s_tree->root) tmp_dist += child->branch_len;
                     }
                 }
             }
@@ -84,7 +84,7 @@ int node_check_tips(Node *nd, Tree *s_tree, size_t num_annotations) {
                             if(l == k){
                                 tmp_dist += 0;
                             } else {
-                                tmp_dist ++;
+                                if(child!=s_tree->root) tmp_dist += child->branch_len;
                             }
                         }
                     }

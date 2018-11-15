@@ -187,7 +187,7 @@ void compute_metric(Tree *s_tree, size_t num_annotations, char** character) {
 
     filename_list = calloc(256, sizeof(char));
     sprintf(filename_list, "list_pairs.csv");
-    output_list = fopen(filename_list, "w");
+    output_list = fopen(filename_list, "aw");
     if (!output_list) {
         fprintf(stderr, "Output file %s is impossible to access.", filename_list);
         fprintf(stderr, "Value of errno: %d\n", errno);
@@ -205,7 +205,7 @@ void compute_metric(Tree *s_tree, size_t num_annotations, char** character) {
 
     filename_pairs = calloc(256, sizeof(char));
     sprintf(filename_pairs, "dist_pairs.csv");
-    output_pairs = fopen(filename_pairs, "w");
+    output_pairs = fopen(filename_pairs, "aw");
     if (!output_pairs) {
         fprintf(stderr, "Output file %s is impossible to access.", filename_pairs);
         fprintf(stderr, "Value of errno: %d\n", errno);

@@ -291,7 +291,7 @@ void minimize_params(Tree *s_tree, size_t num_annotations, double *parameters, c
         log_info("Scaling factor can vary between %.3f and %.1f.\n", par[1], par[2]);
     }
 
-    size_t max_rounds = 10;
+    size_t max_rounds = 2;
     /* we will perform at least 10 iterations,
      * if after that our optimal scaling factor will not be within the proposed bounds,
      * we'll perform more iterations (up to 25) trying to find a better one within those bounds. */

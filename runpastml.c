@@ -11,6 +11,8 @@
 #include <errno.h>
 #include "metric.h"
 
+#define SIM 1
+
 extern int* QUIET;
 
 int calculate_frequencies(size_t num_annotations, size_t num_tips, int *states, char **character, char *model,
@@ -91,6 +93,9 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
     int exit_val;
     Tree *s_tree;
     int is_marginal, is_parsimonious;
+    char **ID, **CHAR;
+    int ret;
+    FILE *fp;
 
     clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time_start);
     srand((unsigned) time(NULL));
@@ -315,9 +320,29 @@ int runpastml(char *annotation_name, char *tree_name, char *out_annotation_name,
     log_info("\tState predictions are written to %s in csv format.\n", out_annotation_name);
     log_info("\n");
 
+    ID = calloc(s_tree->nb_nodes, sizeof(char *));
+    for (i = 0; i < s_tree->nb_nodes; i++) ID[i] = calloc(MAXLNAME, sizeof(char));
+    CHAR = calloc(s_tree->nb_nodes, sizeof(char *));
+    for (i = 0; i < s_tree->nb_nodes; i++) CHAR[i] = calloc(MAXLNAME, sizeof(char));
+    if(SIM==1){
+        printf("\n*** Simulation mode ***\n\n");
+        if((fp=fopen("Ancestral.txt","r"))!=NULL){
+            i = 0;
+            while( ( ret = fscanf( fp, "%[^,],%s\n", ID[i], CHAR[i] ) ) != EOF ){
+                i++;
+            }
+        }
+        fclose(fp);
+        put_true_scenario(s_tree, s_tree->root, s_tree->root, 0, num_annotations, character, ID, CHAR);
+    }
     compute_metric(s_tree, num_annotations, character);
-
     //free all
+    for(i=0;i<s_tree->nb_nodes;i++){
+        free(ID[i]);
+        free(CHAR[i]);
+    }
+    free(ID);
+    free(CHAR);
     free(character);
     free(states);
     free_tree(s_tree, num_annotations);

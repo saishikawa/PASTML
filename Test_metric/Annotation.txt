@@ -1,0 +1,8 @@
+t1,G
+t2,G
+t3,G
+t4,A
+t5,T
+t6,T
+t7,C
+t8,C

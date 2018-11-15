@@ -1,8 +1,0 @@
-t1,C
-t2,C
-t3,A
-t4,G
-t5,C
-t6,T
-t7,C
-t8,G

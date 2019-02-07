@@ -5,13 +5,13 @@ Materials were used in the simulation study performed by Ishikawa et al., submit
 ## Data
   
 __trees_1000_original__ : the pure-birth 1000-tips trees generated for 0.1 - 10 speciation substitution rate ratios  
-__trees_1000_lognormal__ : same trees with *trees_1000_original* except that their branch lengths are noised by lognormal-variates  
+__trees_1000_lognormal_SD05__ : same trees with *trees_1000_original* except that their branch lengths are noised by lognormal-variates independently and randomly generated for each branch under the distribution of mean=1.0 and SD=0.5  
 __Annotations_4__ : tip annotations (DNA-like data) generated on the original 1000-tips trees with the HKY model  
 __Annotations_20__ : tip annotations (protein-like data) generated on the original 1000-tips trees with the JTT model  
 __scenarios_4__ : the list of true ancestral states (A, T, G or C) for all internal nodes of the original tree, which were observed in the data generation  
 __scenarios_20__ : the list of true ancestral states (20 amino-acids) for all internal nodes of the original tree, which were observed in the data generation  
 __Seq-Gen.v.1.3.3__ : Seq-Gen source code and binary to be used fo generating *Annotations* and *scenarios*  
-__Results_simulation__: Results of the accuracy of ML- and Parsimony-based methods. R commands are included to visualize the results, which were used in Figures of our manuscript. 
+__Results_simulation__: Results of the accuracy of ML- and Parsimony-based methods. R commands are included in /Figures to visualize the results, which were used in our manuscript. 
   
 ## Results
   

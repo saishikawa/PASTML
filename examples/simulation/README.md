@@ -39,6 +39,7 @@ __AA\_(F81,JTT)\_LOG__ : The files of 'Results.ml.1000.4.(JC,F81,JTT).flat.txt' 
 ## To automatically analyze and summarize data
   
 ```bash
+cd Data_Simulation_Ishikawa_etal_2019_PastML_v1.9_revision
 ./auto_analysis.sh
 ```
   

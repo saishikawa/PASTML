@@ -1,29 +1,19 @@
-# PastML 
-__PastML__ infers ancestral characters on a rooted phylogenetic tree with annotated tips, using maximum likelihood or parsimony.
-The tree with reconstructed ancestral states can then be visualised as a zoomable html map with [__cytopast__](https://github.com/evolbioinfo/cytopast).
-
-__PastML__ is a core C library that provides fast Ancestor Character Reconstruction (ACR) methods without visualisation.
-For using __PastML with visualisation__ please refer to [__cytopast__ web page](https://github.com/evolbioinfo/cytopast).
+# PastML C library
+This repository contains C code for PastML versions till 1.0. However we have still decided to move to python3. You can find the new versions of PastML and more information at [evolbioinfo/pastml](https://github.com/evolbioinfo/pastml).
 
 # Article
 
-For a detailed description of PastML/cytopast: see Ishikawa SA, Zhukova A, Iwasaki W, Gascuel O (2018) __A Fast Likelihood Method to Reconstruct and Visualize Ancestral Scenarios__ [[bioRxiv]](https://doi.org/10.1101/379529).
-
-# Input data
-As an input, one needs to provide a **rooted** phylogenetical tree in [newick](https://en.wikipedia.org/wiki/Newick_format) format,
-and a table containing tip states.
+For a detailed description of PastML see Ishikawa SA, Zhukova A, Iwasaki W, Gascuel O (2019) __A Fast Likelihood Method to Reconstruct and Visualize Ancestral Scenarios__ [[bioRxiv]](https://doi.org/10.1101/379529).
 
 # Try it online
 Try it at [pastml.pasteur.fr](https://pastml.pasteur.fr)
 
+# Input data
+As an input, one needs to provide a **rooted** phylogenetical tree in [newick](https://en.wikipedia.org/wiki/Newick_format) format, and a table containing tip states.
 
 # Run it on your computer
 
-If you want to run PastML __with visualisation__, please refer to the [__cytopast__ web page](https://github.com/evolbioinfo/cytopast). 
-Two ways are described there: via __[docker](https://hub.docker.com/)__, and in __python3/command line__.
-
-If you want to run the core PastML __C library__ (__without visualisation__), follow the instructions below.
-
+To run the core PastML __C library__ (__without visualisation__), follow the instructions below. For running PastML with visualisation see [evolbioinfo/pastml](https://github.com/evolbioinfo/pastml).
 
 ## Input data example
 Let's assume that we have a __rooted__ tree with n tips (in [newick](https://en.wikipedia.org/wiki/Newick_format) format), 

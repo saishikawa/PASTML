@@ -20,20 +20,20 @@ A table format of summary statistics will be generated in each folder of *Result
 __Pars\_(NUC,AA)\_DOWNPASS__ : The files of 'Results.parsimony.1000.(4,20).downpass.txt' contain statistics of the Parsimony (DOWNPASS) method. First column shows the speciation substitution rate ratios. Second column shows Brier score of the ancestral states predicted for a certain node, computed and averaged among all trees and data generated for the rate. Third columns shows Brier score of ancestral states predicted for a certain edge. Fourth column shows the average number of states predicted for a certain node.
   
   
-__NUC\_(JC,F81,HKY)__ : The files of 'Results.ml.1000.4.(JC,F81,HKY).(original,lognormal).txt' contain statistics of the maximum-likelihood methods, Joint, Marginal, MAP, and MPPA, in analyses of DNA-like data. Trees kept their original branch lengths (original) or those noised by the lognormal variates (lognormal, see our manuscript). Models of Jukes and Cantor 1969 (JC), Felsenstein 1981 (F81), and Hasegawa et al. 1985 (HKY) were applied in data analyses.
+__NUC\_(F81,HKY)__ : The files of 'Results.ml.1000.4.(F81,HKY).(original,lognormal).txt' contain statistics of the maximum-likelihood methods, Joint, Marginal, MAP, and MPPA, in analyses of DNA-like data. Trees kept their original branch lengths (original) or those noised by the lognormal variates (lognormal, see our manuscript). Models of Felsenstein 1981 (F81) and Hasegawa et al. 1985 (HKY) were applied in data analyses.
   
 First column shows the speciation substitution rate ratios. Second-fifth columns show the node Brier scores computed for the four methods. 6th column shows the average number of states predicted by MPPA for a certain node. Seventh-eleventh columns contain the same information but computed for the root. Remained columns show the edge Brier scores for the four methods.
   
   
-__NUC\_(JC,F81,HKY)\_LOG__ : The files of 'Results.ml.1000.4.(JC,F81,HKY).lognormal.txt' contain the same contents with __NUC\_(JC,F81,HKY)__ but here we show the results provided from the analyses with noised trees.
+__NUC\_(F81,HKY)\_LOG__ : The files of 'Results.ml.1000.4.(F81,HKY).lognormal.txt' contain the same contents with __NUC\_(F81,HKY)__ but here we show the results provided from the analyses with noised trees.
   
   
-__AA\_(JC,F81,JTT)__ : The files of 'Results.ml.1000.4.(JC,F81,JTT).(original,lognormal).txt' contain statistics of the maximum-likelihood methods, Joint, Marginal, MAP, and MPPA in analyses of Protein-like data. Trees kept their original branch lengths (original) or those noised by the lognormal variates (lognormal, see our manuscript). JC-like and F81-like models for 20 cahracters, and Junes et al. 1992 (JTT) model were applied in data analyses.
+__AA\_(F81,JTT)__ : The files of 'Results.ml.1000.4.(F81,JTT).(original,lognormal).txt' contain statistics of the maximum-likelihood methods, Joint, Marginal, MAP, and MPPA in analyses of Protein-like data. Trees kept their original branch lengths (original) or those noised by the lognormal variates (lognormal, see our manuscript). The F81-like models for 20 cahracters and Junes et al. 1992 (JTT) model were applied in data analyses.
   
 First column shows the speciation substitution rate ratios. Second-fifth columns show the node Brier scores computed for the four methods. 6th column shows the average number of states predicted by MPPA for a certain node. Seventh-eleventh columns contain the same information but computed for the root. Remained columns show the edge Brier scores for the four methods.
   
   
-__AA\_(JC,F81,JTT)\_LOG__ : The files of 'Results.ml.1000.4.(JC,F81,JTT).flat.txt' contain the same contents with __AA\_(JC,F81,JTT)__ but here we show the results provided from the analyses with noised trees.
+__AA\_(F81,JTT)\_LOG__ : The files of 'Results.ml.1000.4.(JC,F81,JTT).flat.txt' contain the same contents with __AA\_(F81,JTT)__ but here we show the results provided from the analyses with noised trees.
   
   
 ## To automatically analyze and summarize data

@@ -3,7 +3,7 @@ This repository contains C code for PastML versions till 1.0. However we have st
 
 # Article
 
-For a detailed description of PastML see Ishikawa SA, Zhukova A, Iwasaki W, Gascuel O (2019) __A Fast Likelihood Method to Reconstruct and Visualize Ancestral Scenarios__ [[bioRxiv]](https://doi.org/10.1101/379529).
+For a detailed description of PastML see Ishikawa SA, Zhukova A, Iwasaki W, Gascuel O (2019) __A Fast Likelihood Method to Reconstruct and Visualize Ancestral Scenarios__ [[Mol. Biol. Evol.]](https://academic.oup.com/mbe/article/36/9/2069/5498561).
 
 # Try it online
 Try it at [pastml.pasteur.fr](https://pastml.pasteur.fr)
